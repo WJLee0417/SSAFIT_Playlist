@@ -115,13 +115,30 @@
         LEFT JOIN (
             SELECT
                 music_id,
+                AVG(preference_score) AS avg_preference_score,
                 AVG(running_fit_score) AS avg_running_fit_score
             FROM music_reviews
             GROUP BY music_id
         ) review_stats ON review_stats.music_id = m.id
         <include refid="musicSearchWhere"/>
-        ORDER BY review_stats.avg_running_fit_score IS NULL,
-                 review_stats.avg_running_fit_score DESC,
+        ORDER BY (
+                    CASE
+                        WHEN m.bpm IS NULL THEN 0
+                        ELSE GREATEST(
+                            0,
+                            5 - ABS(
+                                CAST(m.bpm AS SIGNED)
+                                - ((#{minBpm} + #{maxBpm}) / 2.0)
+                            ) / 10
+                        )
+                    END
+                    + COALESCE(review_stats.avg_preference_score, 0)
+                    + COALESCE(review_stats.avg_running_fit_score, 0) * 1.5
+                    + CASE
+                        WHEN #{genre} IS NOT NULL AND m.genre = #{genre} THEN 2
+                        ELSE 0
+                    END
+                 ) DESC,
                  m.bpm ASC,
                  m.id ASC
         LIMIT #{size}

@@ -41,6 +41,8 @@ public enum ErrorCode {
     DUPLICATE_SAVE(HttpStatus.CONFLICT, "이미 저장한 플레이리스트입니다."),
 
     INVALID_INTENSITY(HttpStatus.BAD_REQUEST, "러닝 강도가 올바르지 않습니다."),
+    RECOMMENDATION_LOG_NOT_FOUND(HttpStatus.NOT_FOUND, "추천 로그를 찾을 수 없습니다."),
+    RECOMMENDATION_ALREADY_SAVED(HttpStatus.CONFLICT, "이미 플레이리스트로 저장된 추천입니다."),
     RECOMMENDATION_DATA_NOT_ENOUGH(
             HttpStatus.UNPROCESSABLE_CONTENT,
             "추천에 필요한 음악 데이터가 충분하지 않습니다."),
