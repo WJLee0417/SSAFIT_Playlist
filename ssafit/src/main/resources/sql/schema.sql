@@ -1,0 +1,3 @@
+-- SSAFIT PlayList schema.sql
+-- MVP 및 추가 기능 테이블 DDL 작성 위치
+-- application.yml에서 자동 실행하지 않고, MySQL Workbench 또는 CLI에서 직접 실행한다.

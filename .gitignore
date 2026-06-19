@@ -1,0 +1,9 @@
+/.metadata/
+target/
+.settings/
+.classpath
+.project
+.springBeans
+.sts4-cache/
+.env
+*.log

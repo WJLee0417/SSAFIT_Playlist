@@ -1,0 +1,3 @@
+-- SSAFIT PlayList data.sql
+-- 애플리케이션 구동에 필요한 기준 데이터 작성 위치
+-- application.yml에서 자동 실행하지 않고, MySQL Workbench 또는 CLI에서 직접 실행한다.
