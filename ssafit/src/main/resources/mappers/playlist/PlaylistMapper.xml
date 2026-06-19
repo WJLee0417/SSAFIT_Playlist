@@ -1,0 +1,170 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ssafy.ssafit.playlist.mapper.PlaylistMapper">
+
+    <resultMap id="playlistResultMap" type="com.ssafy.ssafit.playlist.domain.Playlist">
+        <id property="id" column="id"/>
+        <result property="ownerId" column="owner_id"/>
+        <result property="playlistType" column="playlist_type"/>
+        <result property="sourceType" column="source_type"/>
+        <result property="visibility" column="visibility"/>
+        <result property="title" column="title"/>
+        <result property="description" column="description"/>
+        <result property="spotifyPlaylistId" column="spotify_playlist_id"/>
+        <result property="spotifyPlaylistUrl" column="spotify_playlist_url"/>
+        <result property="spotifyExportStatus" column="spotify_export_status"/>
+        <result property="spotifyExportedAt" column="spotify_exported_at"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="updatedAt" column="updated_at"/>
+        <result property="deletedAt" column="deleted_at"/>
+    </resultMap>
+
+    <sql id="playlistColumns">
+        p.id,
+        p.owner_id,
+        p.playlist_type,
+        p.source_type,
+        p.visibility,
+        p.title,
+        p.description,
+        p.spotify_playlist_id,
+        p.spotify_playlist_url,
+        p.spotify_export_status,
+        p.spotify_exported_at,
+        p.created_at,
+        p.updated_at,
+        p.deleted_at
+    </sql>
+
+    <insert id="insert"
+            parameterType="com.ssafy.ssafit.playlist.domain.Playlist"
+            useGeneratedKeys="true"
+            keyProperty="id"
+            keyColumn="id">
+        INSERT INTO playlists (
+            owner_id,
+            playlist_type,
+            source_type,
+            visibility,
+            title,
+            description,
+            spotify_export_status
+        ) VALUES (
+            #{ownerId},
+            #{playlistType},
+            #{sourceType},
+            #{visibility},
+            #{title},
+            #{description},
+            #{spotifyExportStatus}
+        )
+    </insert>
+
+    <select id="selectList" resultMap="playlistResultMap">
+        SELECT
+            <include refid="playlistColumns"/>
+        FROM playlists p
+        WHERE p.deleted_at IS NULL
+          AND (
+              p.visibility = 'PUBLIC'
+              OR p.playlist_type = 'OFFICIAL'
+              <if test="viewerMemberId != null">
+                  OR p.owner_id = #{viewerMemberId}
+              </if>
+          )
+        <if test="ownerId != null">
+            AND p.owner_id = #{ownerId}
+        </if>
+        ORDER BY p.created_at DESC, p.id DESC
+    </select>
+
+    <select id="selectDetail" resultMap="playlistResultMap">
+        SELECT
+            <include refid="playlistColumns"/>
+        FROM playlists p
+        WHERE p.id = #{id}
+          AND p.deleted_at IS NULL
+    </select>
+
+    <update id="update"
+            parameterType="com.ssafy.ssafit.playlist.domain.Playlist">
+        UPDATE playlists
+        SET
+            visibility = #{visibility},
+            title = #{title},
+            description = #{description}
+        WHERE id = #{id}
+          AND deleted_at IS NULL
+    </update>
+
+    <update id="softDelete">
+        UPDATE playlists
+        SET deleted_at = CURRENT_TIMESTAMP(6)
+        WHERE id = #{id}
+          AND deleted_at IS NULL
+    </update>
+
+    <select id="selectOwnerId" resultType="long">
+        SELECT owner_id
+        FROM playlists
+        WHERE id = #{id}
+          AND deleted_at IS NULL
+    </select>
+
+    <insert id="insertCurationCopy"
+            parameterType="com.ssafy.ssafit.playlist.domain.Playlist"
+            useGeneratedKeys="true"
+            keyProperty="id"
+            keyColumn="id">
+        INSERT INTO playlists (
+            owner_id,
+            playlist_type,
+            source_type,
+            visibility,
+            title,
+            description,
+            spotify_export_status
+        ) VALUES (
+            #{ownerId},
+            'USER',
+            'CURATION_COPY',
+            #{visibility},
+            #{title},
+            #{description},
+            'NOT_EXPORTED'
+        )
+    </insert>
+
+    <update id="updateSpotifyExportResult"
+            parameterType="com.ssafy.ssafit.playlist.domain.Playlist">
+        UPDATE playlists
+        SET
+            spotify_playlist_id = #{spotifyPlaylistId},
+            spotify_playlist_url = #{spotifyPlaylistUrl},
+            spotify_export_status = 'SUCCESS',
+            spotify_exported_at = CURRENT_TIMESTAMP(6)
+        WHERE id = #{id}
+          AND deleted_at IS NULL
+    </update>
+
+    <update id="updateSpotifyExportStatus">
+        UPDATE playlists
+        SET
+            spotify_export_status = #{status},
+            spotify_exported_at = NULL
+        WHERE id = #{id}
+          AND deleted_at IS NULL
+    </update>
+
+    <select id="selectExportTargetPlaylist" resultMap="playlistResultMap">
+        SELECT
+            <include refid="playlistColumns"/>
+        FROM playlists p
+        WHERE p.id = #{id}
+          AND p.playlist_type = 'USER'
+          AND p.deleted_at IS NULL
+    </select>
+
+</mapper>

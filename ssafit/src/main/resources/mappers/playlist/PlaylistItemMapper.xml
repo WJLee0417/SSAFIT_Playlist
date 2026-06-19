@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ssafy.ssafit.playlist.mapper.PlaylistItemMapper">
+
+    <resultMap id="playlistItemResultMap"
+               type="com.ssafy.ssafit.playlist.domain.PlaylistItem">
+        <id property="id" column="id"/>
+        <result property="playlistId" column="playlist_id"/>
+        <result property="musicId" column="music_id"/>
+        <result property="orderNo" column="order_no"/>
+        <result property="createdAt" column="created_at"/>
+    </resultMap>
+
+    <insert id="insert"
+            parameterType="com.ssafy.ssafit.playlist.domain.PlaylistItem"
+            useGeneratedKeys="true"
+            keyProperty="id"
+            keyColumn="id">
+        INSERT INTO playlist_items (
+            playlist_id,
+            music_id,
+            order_no
+        ) VALUES (
+            #{playlistId},
+            #{musicId},
+            #{orderNo}
+        )
+    </insert>
+
+    <delete id="delete">
+        DELETE FROM playlist_items
+        WHERE id = #{id}
+    </delete>
+
+    <update id="updateOrder">
+        UPDATE playlist_items
+        SET order_no = #{orderNo}
+        WHERE id = #{id}
+    </update>
+
+    <select id="existsByPlaylistAndMusic" resultType="boolean">
+        SELECT EXISTS (
+            SELECT 1
+            FROM playlist_items
+            WHERE playlist_id = #{playlistId}
+              AND music_id = #{musicId}
+        )
+    </select>
+
+    <select id="existsByPlaylistAndOrder" resultType="boolean">
+        SELECT EXISTS (
+            SELECT 1
+            FROM playlist_items
+            WHERE playlist_id = #{playlistId}
+              AND order_no = #{orderNo}
+            <if test="excludeItemId != null">
+              AND id != #{excludeItemId}
+            </if>
+        )
+    </select>
+
+    <select id="selectById" resultMap="playlistItemResultMap">
+        SELECT
+            id,
+            playlist_id,
+            music_id,
+            order_no,
+            created_at
+        FROM playlist_items
+        WHERE id = #{id}
+    </select>
+
+    <select id="selectByPlaylistId" resultMap="playlistItemResultMap">
+        SELECT
+            id,
+            playlist_id,
+            music_id,
+            order_no,
+            created_at
+        FROM playlist_items
+        WHERE playlist_id = #{playlistId}
+        ORDER BY order_no ASC, id ASC
+    </select>
+
+    <insert id="bulkInsertFromRecommendation">
+        INSERT INTO playlist_items (
+            playlist_id,
+            music_id,
+            order_no
+        ) VALUES
+        <foreach collection="items" item="item" separator=",">
+            (
+                #{item.playlistId},
+                #{item.musicId},
+                #{item.orderNo}
+            )
+        </foreach>
+    </insert>
+
+    <!-- Export에서는 Spotify URI가 준비된 곡만 재생 순서대로 반환한다. -->
+    <select id="selectSpotifyUrisByPlaylistId" resultType="string">
+        SELECT m.spotify_uri
+        FROM playlist_items pi
+        INNER JOIN music m ON m.id = pi.music_id
+        WHERE pi.playlist_id = #{playlistId}
+          AND m.spotify_uri IS NOT NULL
+          AND m.spotify_uri != ''
+        ORDER BY pi.order_no ASC, pi.id ASC
+    </select>
+
+</mapper>

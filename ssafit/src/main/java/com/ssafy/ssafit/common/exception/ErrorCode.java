@@ -31,10 +31,13 @@ public enum ErrorCode {
     ACCESS_DENIED(HttpStatus.FORBIDDEN, "접근 권한이 없습니다."),
 
     PLAYLIST_NOT_FOUND(HttpStatus.NOT_FOUND, "플레이리스트를 찾을 수 없습니다."),
+    PLAYLIST_ITEM_NOT_FOUND(HttpStatus.NOT_FOUND, "플레이리스트 수록곡을 찾을 수 없습니다."),
     INVALID_PLAYLIST_TITLE(HttpStatus.BAD_REQUEST, "플레이리스트 제목이 올바르지 않습니다."),
+    INVALID_PLAYLIST_ORDER(HttpStatus.BAD_REQUEST, "플레이리스트 수록곡 순서가 올바르지 않습니다."),
     DUPLICATE_PLAYLIST_ITEM(HttpStatus.CONFLICT, "이미 플레이리스트에 포함된 음악입니다."),
     DUPLICATE_PLAYLIST_ORDER(HttpStatus.CONFLICT, "플레이리스트 수록곡 순서가 중복되었습니다."),
-    PRIVATE_PLAYLIST(HttpStatus.FORBIDDEN, "비공개 플레이리스트는 저장할 수 없습니다."),
+    PRIVATE_PLAYLIST(HttpStatus.FORBIDDEN, "비공개 플레이리스트에 접근할 수 없습니다."),
+    SPOTIFY_URI_NOT_FOUND(HttpStatus.UNPROCESSABLE_CONTENT, "Spotify URI가 없는 음악입니다."),
     DUPLICATE_SAVE(HttpStatus.CONFLICT, "이미 저장한 플레이리스트입니다."),
 
     INVALID_INTENSITY(HttpStatus.BAD_REQUEST, "러닝 강도가 올바르지 않습니다."),
