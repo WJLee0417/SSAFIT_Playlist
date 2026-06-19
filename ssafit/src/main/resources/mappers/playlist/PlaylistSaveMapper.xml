@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ssafy.ssafit.playlist.mapper.PlaylistSaveMapper">
+
+    <resultMap id="playlistResultMap" type="com.ssafy.ssafit.playlist.domain.Playlist">
+        <id property="id" column="id"/>
+        <result property="ownerId" column="owner_id"/>
+        <result property="playlistType" column="playlist_type"/>
+        <result property="sourceType" column="source_type"/>
+        <result property="visibility" column="visibility"/>
+        <result property="title" column="title"/>
+        <result property="description" column="description"/>
+        <result property="spotifyPlaylistId" column="spotify_playlist_id"/>
+        <result property="spotifyPlaylistUrl" column="spotify_playlist_url"/>
+        <result property="spotifyExportStatus" column="spotify_export_status"/>
+        <result property="spotifyExportedAt" column="spotify_exported_at"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="updatedAt" column="updated_at"/>
+        <result property="deletedAt" column="deleted_at"/>
+    </resultMap>
+
+    <insert id="insert"
+            parameterType="com.ssafy.ssafit.playlist.domain.PlaylistSave"
+            useGeneratedKeys="true"
+            keyProperty="id"
+            keyColumn="id">
+        INSERT INTO playlist_saves (
+            member_id,
+            playlist_id
+        ) VALUES (
+            #{memberId},
+            #{playlistId}
+        )
+    </insert>
+
+    <delete id="delete">
+        DELETE FROM playlist_saves
+        WHERE member_id = #{memberId}
+          AND playlist_id = #{playlistId}
+    </delete>
+
+    <select id="existsByMemberAndPlaylist" resultType="boolean">
+        SELECT EXISTS (
+            SELECT 1
+            FROM playlist_saves
+            WHERE member_id = #{memberId}
+              AND playlist_id = #{playlistId}
+        )
+    </select>
+
+    <select id="selectSavedList" resultMap="playlistResultMap">
+        SELECT
+            p.id,
+            p.owner_id,
+            p.playlist_type,
+            p.source_type,
+            p.visibility,
+            p.title,
+            p.description,
+            p.spotify_playlist_id,
+            p.spotify_playlist_url,
+            p.spotify_export_status,
+            p.spotify_exported_at,
+            p.created_at,
+            p.updated_at,
+            p.deleted_at
+        FROM playlist_saves ps
+        INNER JOIN playlists p ON p.id = ps.playlist_id
+        WHERE ps.member_id = #{memberId}
+          AND p.deleted_at IS NULL
+        ORDER BY ps.created_at DESC, ps.id DESC
+    </select>
+
+</mapper>
