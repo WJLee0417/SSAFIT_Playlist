@@ -10,9 +10,13 @@ import com.ssafy.ssafit.spotify.domain.SpotifyConnection;
 @Mapper
 public interface SpotifyConnectionMapper {
 
-    int upsert(SpotifyConnection connection);
+    int insert(SpotifyConnection connection);
 
     Optional<SpotifyConnection> selectByMemberId(@Param("memberId") Long memberId);
 
+    int updateConnection(SpotifyConnection connection);
+
     int updateToken(SpotifyConnection connection);
+
+    int deleteByMemberId(@Param("memberId") Long memberId);
 }

@@ -311,7 +311,7 @@ class MapperIntegrationTest {
     }
 
     @Test
-    void spotifyConnectionMapperUpsertsAndRefreshesToken() {
+    void spotifyConnectionMapperInsertsAndRefreshesToken() {
         Member member = insertMember("spotify_connection_member");
         SpotifyConnection connection = new SpotifyConnection();
         connection.setMemberId(member.getId());
@@ -320,7 +320,7 @@ class MapperIntegrationTest {
         connection.setRefreshToken("first-refresh");
         connection.setTokenExpiresAt(java.time.LocalDateTime.now().plusHours(1));
 
-        spotifyConnectionMapper.upsert(connection);
+        spotifyConnectionMapper.insert(connection);
         SpotifyConnection selected = spotifyConnectionMapper
                 .selectByMemberId(member.getId())
                 .orElseThrow();

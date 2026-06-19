@@ -16,7 +16,7 @@
         <result property="updatedAt" column="updated_at"/>
     </resultMap>
 
-    <insert id="upsert"
+    <insert id="insert"
             parameterType="com.ssafy.ssafit.spotify.domain.SpotifyConnection"
             useGeneratedKeys="true"
             keyProperty="id"
@@ -34,11 +34,6 @@
             #{refreshToken},
             #{tokenExpiresAt}
         )
-        ON DUPLICATE KEY UPDATE
-            spotify_user_id = VALUES(spotify_user_id),
-            access_token = VALUES(access_token),
-            refresh_token = VALUES(refresh_token),
-            token_expires_at = VALUES(token_expires_at)
     </insert>
 
     <select id="selectByMemberId" resultMap="spotifyConnectionResultMap">
@@ -55,6 +50,17 @@
         WHERE member_id = #{memberId}
     </select>
 
+    <update id="updateConnection"
+            parameterType="com.ssafy.ssafit.spotify.domain.SpotifyConnection">
+        UPDATE spotify_connections
+        SET
+            spotify_user_id = #{spotifyUserId},
+            access_token = #{accessToken},
+            refresh_token = #{refreshToken},
+            token_expires_at = #{tokenExpiresAt}
+        WHERE member_id = #{memberId}
+    </update>
+
     <update id="updateToken"
             parameterType="com.ssafy.ssafit.spotify.domain.SpotifyConnection">
         UPDATE spotify_connections
@@ -64,5 +70,10 @@
             token_expires_at = #{tokenExpiresAt}
         WHERE member_id = #{memberId}
     </update>
+
+    <delete id="deleteByMemberId">
+        DELETE FROM spotify_connections
+        WHERE member_id = #{memberId}
+    </delete>
 
 </mapper>

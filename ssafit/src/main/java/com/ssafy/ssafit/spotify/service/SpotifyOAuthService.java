@@ -1,6 +1,7 @@
 package com.ssafy.ssafit.spotify.service;
 
 import java.time.LocalDateTime;
+import java.util.Optional;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -80,14 +81,7 @@ public class SpotifyOAuthService {
             throw new CustomException(ErrorCode.SPOTIFY_API_ERROR);
         }
 
-        SpotifyConnection connection = new SpotifyConnection();
-        connection.setMemberId(loginMemberId);
-        connection.setSpotifyUserId(profile.getId());
-        connection.setAccessToken(token.getAccessToken());
-        connection.setRefreshToken(token.getRefreshToken());
-        connection.setTokenExpiresAt(expiresAt(token));
-        spotifyConnectionMapper.upsert(connection);
-        return connection;
+        return saveConnection(loginMemberId, profile.getId(), token);
     }
 
     public SpotifyConnection getConnection(Long loginMemberId) {
@@ -99,7 +93,10 @@ public class SpotifyOAuthService {
     @Transactional
     public SpotifyConnection getValidConnection(Long loginMemberId) {
         SpotifyConnection connection = getConnection(loginMemberId);
-        if (connection.getTokenExpiresAt() != null
+        if (connection.getTokenExpiresAt() == null) {
+            throw new CustomException(ErrorCode.SPOTIFY_AUTH_REQUIRED);
+        }
+        if (StringUtils.hasText(connection.getAccessToken())
                 && connection.getTokenExpiresAt()
                         .isAfter(LocalDateTime.now().plusSeconds(TOKEN_EXPIRY_SAFETY_SECONDS))) {
             return connection;
@@ -107,19 +104,87 @@ public class SpotifyOAuthService {
         return refreshConnection(connection);
     }
 
+    @Transactional
+    public void disconnect(Long loginMemberId) {
+        validateAuthenticated(loginMemberId);
+        if (spotifyConnectionMapper.deleteByMemberId(loginMemberId) == 0) {
+            throw new CustomException(ErrorCode.SPOTIFY_AUTH_REQUIRED);
+        }
+    }
+
+    private SpotifyConnection saveConnection(
+            Long loginMemberId,
+            String spotifyUserId,
+            SpotifyToken token) {
+        Optional<SpotifyConnection> existing =
+                spotifyConnectionMapper.selectByMemberId(loginMemberId);
+        if (existing.isEmpty()) {
+            if (!StringUtils.hasText(token.getRefreshToken())) {
+                throw new CustomException(ErrorCode.SPOTIFY_AUTH_REQUIRED);
+            }
+            SpotifyConnection connection = connection(
+                    loginMemberId,
+                    spotifyUserId,
+                    token.getAccessToken(),
+                    token.getRefreshToken(),
+                    expiresAt(token));
+            spotifyConnectionMapper.insert(connection);
+            return connection;
+        }
+
+        SpotifyConnection connection = existing.get();
+        boolean accountChanged = !spotifyUserId.equals(connection.getSpotifyUserId());
+        if (accountChanged && !StringUtils.hasText(token.getRefreshToken())) {
+            throw new CustomException(ErrorCode.SPOTIFY_AUTH_REQUIRED);
+        }
+        connection.setSpotifyUserId(spotifyUserId);
+        connection.setAccessToken(token.getAccessToken());
+        if (StringUtils.hasText(token.getRefreshToken())) {
+            connection.setRefreshToken(token.getRefreshToken());
+        }
+        connection.setTokenExpiresAt(expiresAt(token));
+        spotifyConnectionMapper.updateConnection(connection);
+        return connection;
+    }
+
     private SpotifyConnection refreshConnection(SpotifyConnection connection) {
         if (!StringUtils.hasText(connection.getRefreshToken())) {
             throw new CustomException(ErrorCode.SPOTIFY_TOKEN_EXPIRED);
         }
-        SpotifyToken refreshed = spotifyApiClient.refreshAccessToken(
-                connection.getRefreshToken());
-        validateToken(refreshed);
-        connection.setAccessToken(refreshed.getAccessToken());
-        if (StringUtils.hasText(refreshed.getRefreshToken())) {
-            connection.setRefreshToken(refreshed.getRefreshToken());
+        SpotifyToken refreshed;
+        try {
+            refreshed = spotifyApiClient.refreshAccessToken(
+                    connection.getRefreshToken());
+        } catch (RuntimeException exception) {
+            throw new CustomException(ErrorCode.SPOTIFY_TOKEN_EXPIRED);
         }
-        connection.setTokenExpiresAt(expiresAt(refreshed));
+        validateToken(refreshed);
+
+        String accessToken = refreshed.getAccessToken();
+        String refreshToken = StringUtils.hasText(refreshed.getRefreshToken())
+                ? refreshed.getRefreshToken()
+                : connection.getRefreshToken();
+        LocalDateTime tokenExpiresAt = expiresAt(refreshed);
+
+        connection.setAccessToken(accessToken);
+        connection.setRefreshToken(refreshToken);
+        connection.setTokenExpiresAt(tokenExpiresAt);
         spotifyConnectionMapper.updateToken(connection);
+        return connection;
+    }
+
+    private SpotifyConnection connection(
+            Long memberId,
+            String spotifyUserId,
+            String accessToken,
+            String refreshToken,
+            LocalDateTime tokenExpiresAt) {
+        SpotifyConnection connection = new SpotifyConnection();
+        connection.setMemberId(memberId);
+        connection.setSpotifyUserId(spotifyUserId);
+        connection.setAccessToken(accessToken);
+        connection.setRefreshToken(refreshToken);
+        connection.setTokenExpiresAt(tokenExpiresAt);
         return connection;
     }
 
