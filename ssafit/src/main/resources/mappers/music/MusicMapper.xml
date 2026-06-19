@@ -1,0 +1,184 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ssafy.ssafit.music.mapper.MusicMapper">
+
+    <resultMap id="musicResultMap" type="com.ssafy.ssafit.music.domain.Music">
+        <id property="id" column="id"/>
+        <result property="title" column="title"/>
+        <result property="artist" column="artist"/>
+        <result property="albumName" column="album_name"/>
+        <result property="imageUrl" column="image_url"/>
+        <result property="genre" column="genre"/>
+        <result property="bpm" column="bpm"/>
+        <result property="sourceType" column="source_type"/>
+        <result property="spotifyTrackId" column="spotify_track_id"/>
+        <result property="spotifyUri" column="spotify_uri"/>
+        <result property="spotifyExternalUrl" column="spotify_external_url"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="updatedAt" column="updated_at"/>
+    </resultMap>
+
+    <sql id="musicColumns">
+        m.id,
+        m.title,
+        m.artist,
+        m.album_name,
+        m.image_url,
+        m.genre,
+        m.bpm,
+        m.source_type,
+        m.spotify_track_id,
+        m.spotify_uri,
+        m.spotify_external_url,
+        m.created_at,
+        m.updated_at
+    </sql>
+
+    <sql id="musicSearchWhere">
+        <where>
+            <if test="keyword != null and keyword != ''">
+                AND MATCH(m.title, m.artist)
+                    AGAINST(#{keyword} IN NATURAL LANGUAGE MODE)
+            </if>
+            <if test="genre != null and genre != ''">
+                AND m.genre = #{genre}
+            </if>
+            <if test="minBpm != null">
+                AND m.bpm &gt;= #{minBpm}
+            </if>
+            <if test="maxBpm != null">
+                AND m.bpm &lt;= #{maxBpm}
+            </if>
+        </where>
+    </sql>
+
+    <select id="selectMusicList"
+            parameterType="com.ssafy.ssafit.music.domain.MusicSearchCondition"
+            resultMap="musicResultMap">
+        SELECT
+            <include refid="musicColumns"/>
+        FROM music m
+        LEFT JOIN (
+            SELECT
+                music_id,
+                AVG(running_fit_score) AS avg_running_fit_score
+            FROM music_reviews
+            GROUP BY music_id
+        ) review_stats ON review_stats.music_id = m.id
+        <include refid="musicSearchWhere"/>
+        <choose>
+            <when test="sortType != null and sortType.name() == 'TITLE_ASC'">
+                ORDER BY m.title ASC, m.id ASC
+            </when>
+            <when test="sortType != null and sortType.name() == 'BPM_ASC'">
+                ORDER BY m.bpm IS NULL, m.bpm ASC, m.id ASC
+            </when>
+            <when test="sortType != null and sortType.name() == 'BPM_DESC'">
+                ORDER BY m.bpm IS NULL, m.bpm DESC, m.id DESC
+            </when>
+            <when test="sortType != null and sortType.name() == 'RUNNING_FIT_DESC'">
+                ORDER BY review_stats.avg_running_fit_score IS NULL,
+                         review_stats.avg_running_fit_score DESC,
+                         m.id DESC
+            </when>
+            <otherwise>
+                ORDER BY m.created_at DESC, m.id DESC
+            </otherwise>
+        </choose>
+        LIMIT #{size}
+        OFFSET #{offset}
+    </select>
+
+    <select id="selectMusicDetail" resultMap="musicResultMap">
+        SELECT
+            <include refid="musicColumns"/>
+        FROM music m
+        WHERE m.id = #{id}
+    </select>
+
+    <select id="countMusicList"
+            parameterType="com.ssafy.ssafit.music.domain.MusicSearchCondition"
+            resultType="long">
+        SELECT COUNT(*)
+        FROM music m
+        <include refid="musicSearchWhere"/>
+    </select>
+
+    <select id="selectRecommendedMusic"
+            parameterType="com.ssafy.ssafit.music.domain.MusicSearchCondition"
+            resultMap="musicResultMap">
+        SELECT
+            <include refid="musicColumns"/>
+        FROM music m
+        LEFT JOIN (
+            SELECT
+                music_id,
+                AVG(running_fit_score) AS avg_running_fit_score
+            FROM music_reviews
+            GROUP BY music_id
+        ) review_stats ON review_stats.music_id = m.id
+        <include refid="musicSearchWhere"/>
+        ORDER BY review_stats.avg_running_fit_score IS NULL,
+                 review_stats.avg_running_fit_score DESC,
+                 m.bpm ASC,
+                 m.id ASC
+        LIMIT #{size}
+        OFFSET #{offset}
+    </select>
+
+    <select id="selectBySpotifyTrackId" resultMap="musicResultMap">
+        SELECT
+            <include refid="musicColumns"/>
+        FROM music m
+        WHERE m.spotify_track_id = #{spotifyTrackId}
+    </select>
+
+    <insert id="insertFromSpotify"
+            parameterType="com.ssafy.ssafit.music.domain.Music"
+            useGeneratedKeys="true"
+            keyProperty="id"
+            keyColumn="id">
+        INSERT INTO music (
+            title,
+            artist,
+            album_name,
+            image_url,
+            genre,
+            bpm,
+            source_type,
+            spotify_track_id,
+            spotify_uri,
+            spotify_external_url
+        ) VALUES (
+            #{title},
+            #{artist},
+            #{albumName},
+            #{imageUrl},
+            #{genre},
+            #{bpm},
+            #{sourceType},
+            #{spotifyTrackId},
+            #{spotifyUri},
+            #{spotifyExternalUrl}
+        )
+    </insert>
+
+    <update id="updateSpotifyMetadata"
+            parameterType="com.ssafy.ssafit.music.domain.Music">
+        UPDATE music
+        SET
+            title = #{title},
+            artist = #{artist},
+            album_name = #{albumName},
+            image_url = #{imageUrl},
+            genre = #{genre},
+            bpm = #{bpm},
+            spotify_uri = #{spotifyUri},
+            spotify_external_url = #{spotifyExternalUrl}
+        WHERE id = #{id}
+          AND spotify_track_id = #{spotifyTrackId}
+    </update>
+
+</mapper>

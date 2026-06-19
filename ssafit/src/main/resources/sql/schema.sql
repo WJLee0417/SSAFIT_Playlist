@@ -70,8 +70,10 @@ CREATE TABLE music (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
     title VARCHAR(255) NOT NULL,
     artist VARCHAR(255) NOT NULL,
+    album_name VARCHAR(255) NULL,
+    image_url VARCHAR(500) NULL,
     genre VARCHAR(100) NULL,
-    bpm SMALLINT UNSIGNED NOT NULL,
+    bpm SMALLINT UNSIGNED NULL,
     source_type VARCHAR(20) NOT NULL,
     spotify_track_id VARCHAR(100) NULL,
     spotify_uri VARCHAR(255) NULL,
@@ -82,7 +84,7 @@ CREATE TABLE music (
     CONSTRAINT pk_music PRIMARY KEY (id),
     CONSTRAINT uk_music_spotify_track_id UNIQUE (spotify_track_id),
     CONSTRAINT ck_music_bpm
-        CHECK (bpm BETWEEN 60 AND 220),
+        CHECK (bpm IS NULL OR bpm BETWEEN 60 AND 220),
     CONSTRAINT ck_music_source_type
         CHECK (source_type IN ('ADMIN', 'SEED', 'EXTERNAL', 'SPOTIFY')),
     CONSTRAINT ck_music_spotify_identity

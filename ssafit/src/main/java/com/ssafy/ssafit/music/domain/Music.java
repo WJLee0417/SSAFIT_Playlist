@@ -16,6 +16,8 @@ public class Music {
     private Long id;
     private String title;
     private String artist;
+    private String albumName;
+    private String imageUrl;
     private String genre;
     private Integer bpm;
     private MusicSourceType sourceType;
