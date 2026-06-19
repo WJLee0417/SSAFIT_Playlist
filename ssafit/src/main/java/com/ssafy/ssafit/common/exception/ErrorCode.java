@@ -25,6 +25,7 @@ public enum ErrorCode {
     INVALID_BPM_RANGE(HttpStatus.BAD_REQUEST, "BPM 범위가 올바르지 않습니다."),
     SPOTIFY_TRACK_NOT_FOUND(HttpStatus.NOT_FOUND, "Spotify 트랙 정보를 찾을 수 없습니다."),
 
+    MUSIC_REVIEW_NOT_FOUND(HttpStatus.NOT_FOUND, "음악 평가를 찾을 수 없습니다."),
     DUPLICATE_MUSIC_REVIEW(HttpStatus.CONFLICT, "이미 해당 음악을 평가했습니다."),
     INVALID_SCORE(HttpStatus.BAD_REQUEST, "평가 점수는 1에서 5 사이여야 합니다."),
     ACCESS_DENIED(HttpStatus.FORBIDDEN, "접근 권한이 없습니다."),
