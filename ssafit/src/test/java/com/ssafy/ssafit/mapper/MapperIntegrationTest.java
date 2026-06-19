@@ -46,6 +46,8 @@ import com.ssafy.ssafit.recommendation.service.RecommendationService;
 import com.ssafy.ssafit.runningprofile.domain.RunningIntensity;
 import com.ssafy.ssafit.runningprofile.domain.RunningProfile;
 import com.ssafy.ssafit.runningprofile.mapper.RunningProfileMapper;
+import com.ssafy.ssafit.spotify.domain.SpotifyConnection;
+import com.ssafy.ssafit.spotify.mapper.SpotifyConnectionMapper;
 
 @SpringBootTest
 @ActiveProfiles("mapper-test")
@@ -82,6 +84,9 @@ class MapperIntegrationTest {
 
     @Autowired
     private RecommendationService recommendationService;
+
+    @Autowired
+    private SpotifyConnectionMapper spotifyConnectionMapper;
 
     @BeforeAll
     void cleanBeforeTests() {
@@ -303,6 +308,33 @@ class MapperIntegrationTest {
         assertThat(recommendationLogMapper.selectById(log.getId())
                 .orElseThrow()
                 .getSavedPlaylistId()).isNull();
+    }
+
+    @Test
+    void spotifyConnectionMapperUpsertsAndRefreshesToken() {
+        Member member = insertMember("spotify_connection_member");
+        SpotifyConnection connection = new SpotifyConnection();
+        connection.setMemberId(member.getId());
+        connection.setSpotifyUserId("spotify-user");
+        connection.setAccessToken("first-access");
+        connection.setRefreshToken("first-refresh");
+        connection.setTokenExpiresAt(java.time.LocalDateTime.now().plusHours(1));
+
+        spotifyConnectionMapper.upsert(connection);
+        SpotifyConnection selected = spotifyConnectionMapper
+                .selectByMemberId(member.getId())
+                .orElseThrow();
+        assertThat(selected.getSpotifyUserId()).isEqualTo("spotify-user");
+        assertThat(selected.getAccessToken()).isEqualTo("first-access");
+
+        selected.setAccessToken("refreshed-access");
+        selected.setRefreshToken("refreshed-refresh");
+        selected.setTokenExpiresAt(java.time.LocalDateTime.now().plusHours(2));
+        spotifyConnectionMapper.updateToken(selected);
+
+        assertThat(spotifyConnectionMapper.selectByMemberId(member.getId())
+                .orElseThrow()
+                .getAccessToken()).isEqualTo("refreshed-access");
     }
 
     private Member insertMember(String loginId) {

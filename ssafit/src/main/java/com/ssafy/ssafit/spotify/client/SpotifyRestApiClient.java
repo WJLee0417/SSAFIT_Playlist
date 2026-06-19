@@ -1,0 +1,257 @@
+package com.ssafy.ssafit.spotify.client;
+
+import java.net.URI;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.Base64;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+
+import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
+import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientException;
+import org.springframework.web.util.UriComponentsBuilder;
+
+import com.ssafy.ssafit.common.exception.CustomException;
+import com.ssafy.ssafit.common.exception.ErrorCode;
+import com.ssafy.ssafit.spotify.config.SpotifyProperties;
+import com.ssafy.ssafit.spotify.domain.SpotifyPlaylistResult;
+import com.ssafy.ssafit.spotify.domain.SpotifyToken;
+import com.ssafy.ssafit.spotify.domain.SpotifyTrack;
+import com.ssafy.ssafit.spotify.domain.SpotifyUserProfile;
+
+import lombok.RequiredArgsConstructor;
+
+@Component
+@RequiredArgsConstructor
+public class SpotifyRestApiClient implements SpotifyApiClient {
+
+    private static final ParameterizedTypeReference<Map<String, Object>> MAP_TYPE =
+            new ParameterizedTypeReference<>() {};
+
+    private final RestClient.Builder restClientBuilder;
+    private final SpotifyProperties properties;
+
+    @Override
+    public String issueClientAccessToken() {
+        Map<String, Object> response = postToken("grant_type=client_credentials");
+        return requiredString(response, "access_token");
+    }
+
+    @Override
+    public List<SpotifyTrack> searchTracks(
+            String accessToken,
+            String query,
+            int limit) {
+        URI uri = UriComponentsBuilder
+                .fromUriString(properties.getApiBaseUrl())
+                .path("/search")
+                .queryParam("q", query)
+                .queryParam("type", "track")
+                .queryParam("limit", limit)
+                .build()
+                .encode()
+                .toUri();
+        Map<String, Object> response = get(uri, accessToken);
+        Map<String, Object> tracks = map(response.get("tracks"));
+        List<Object> items = list(tracks.get("items"));
+        List<SpotifyTrack> result = new ArrayList<>(items.size());
+        for (Object value : items) {
+            Map<String, Object> item = map(value);
+            Map<String, Object> album = map(item.get("album"));
+            List<Object> artists = list(item.get("artists"));
+            List<Object> images = list(album.get("images"));
+            result.add(new SpotifyTrack(
+                    string(item.get("id")),
+                    string(item.get("uri")),
+                    string(map(item.get("external_urls")).get("spotify")),
+                    string(item.get("name")),
+                    artists.isEmpty() ? null : string(map(artists.getFirst()).get("name")),
+                    string(album.get("name")),
+                    images.isEmpty() ? null : string(map(images.getFirst()).get("url"))));
+        }
+        return result;
+    }
+
+    @Override
+    public SpotifyToken exchangeAuthorizationCode(String code) {
+        String body = "grant_type=authorization_code"
+                + "&code=" + encode(code)
+                + "&redirect_uri=" + encode(properties.getRedirectUri());
+        return toToken(postToken(body));
+    }
+
+    @Override
+    public SpotifyToken refreshAccessToken(String refreshToken) {
+        return toToken(postToken(
+                "grant_type=refresh_token&refresh_token=" + encode(refreshToken)));
+    }
+
+    @Override
+    public SpotifyUserProfile getCurrentUser(String accessToken) {
+        Map<String, Object> response = get(
+                URI.create(properties.getApiBaseUrl() + "/me"),
+                accessToken);
+        return new SpotifyUserProfile(requiredString(response, "id"));
+    }
+
+    @Override
+    public SpotifyPlaylistResult createPlaylist(
+            String accessToken,
+            String name,
+            String description,
+            boolean isPublic) {
+        Map<String, Object> request = new LinkedHashMap<>();
+        request.put("name", name);
+        request.put("description", description);
+        request.put("public", isPublic);
+        Map<String, Object> response = postJson(
+                URI.create(properties.getApiBaseUrl() + "/me/playlists"),
+                accessToken,
+                request);
+        return new SpotifyPlaylistResult(
+                requiredString(response, "id"),
+                requiredString(map(response.get("external_urls")), "spotify"));
+    }
+
+    @Override
+    public void addTracks(
+            String accessToken,
+            String spotifyPlaylistId,
+            List<String> uris) {
+        postJson(
+                URI.create(properties.getApiBaseUrl()
+                        + "/playlists/"
+                        + encodePath(spotifyPlaylistId)
+                        + "/items"),
+                accessToken,
+                Map.of("uris", uris));
+    }
+
+    private Map<String, Object> postToken(String body) {
+        validateClientConfiguration();
+        try {
+            Map<String, Object> response = restClientBuilder.build()
+                    .post()
+                    .uri(properties.getAuthorizationBaseUrl() + "/api/token")
+                    .header(HttpHeaders.AUTHORIZATION, basicAuthorization())
+                    .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                    .body(body)
+                    .retrieve()
+                    .body(MAP_TYPE);
+            return requiredResponse(response);
+        } catch (RestClientException exception) {
+            throw new CustomException(ErrorCode.SPOTIFY_API_ERROR);
+        }
+    }
+
+    private Map<String, Object> get(URI uri, String accessToken) {
+        try {
+            Map<String, Object> response = restClientBuilder.build()
+                    .get()
+                    .uri(uri)
+                    .headers(headers -> headers.setBearerAuth(accessToken))
+                    .retrieve()
+                    .body(MAP_TYPE);
+            return requiredResponse(response);
+        } catch (RestClientException exception) {
+            throw new CustomException(ErrorCode.SPOTIFY_API_ERROR);
+        }
+    }
+
+    private Map<String, Object> postJson(
+            URI uri,
+            String accessToken,
+            Object request) {
+        try {
+            Map<String, Object> response = restClientBuilder.build()
+                    .post()
+                    .uri(uri)
+                    .headers(headers -> headers.setBearerAuth(accessToken))
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(request)
+                    .retrieve()
+                    .body(MAP_TYPE);
+            return response == null ? Map.of() : response;
+        } catch (RestClientException exception) {
+            throw new CustomException(ErrorCode.SPOTIFY_API_ERROR);
+        }
+    }
+
+    private SpotifyToken toToken(Map<String, Object> response) {
+        return new SpotifyToken(
+                requiredString(response, "access_token"),
+                string(response.get("refresh_token")),
+                integer(response.get("expires_in")));
+    }
+
+    private void validateClientConfiguration() {
+        if (!StringUtils.hasText(properties.getClientId())
+                || !StringUtils.hasText(properties.getClientSecret())
+                || !StringUtils.hasText(properties.getRedirectUri())) {
+            throw new CustomException(ErrorCode.SPOTIFY_AUTH_REQUIRED);
+        }
+    }
+
+    private String basicAuthorization() {
+        String credentials = properties.getClientId() + ":" + properties.getClientSecret();
+        return "Basic " + Base64.getEncoder()
+                .encodeToString(credentials.getBytes(StandardCharsets.UTF_8));
+    }
+
+    private String encode(String value) {
+        return UriComponentsBuilder.newInstance()
+                .queryParam("value", value)
+                .build()
+                .encode()
+                .getQueryParams()
+                .getFirst("value");
+    }
+
+    private String encodePath(String value) {
+        return UriComponentsBuilder.newInstance()
+                .pathSegment(value)
+                .build()
+                .encode()
+                .getPath()
+                .substring(1);
+    }
+
+    private Map<String, Object> requiredResponse(Map<String, Object> response) {
+        if (response == null || response.isEmpty()) {
+            throw new CustomException(ErrorCode.SPOTIFY_API_ERROR);
+        }
+        return response;
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> map(Object value) {
+        return value instanceof Map<?, ?> ? (Map<String, Object>) value : Map.of();
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<Object> list(Object value) {
+        return value instanceof List<?> ? (List<Object>) value : List.of();
+    }
+
+    private String requiredString(Map<String, Object> values, String key) {
+        String value = string(values.get(key));
+        if (!StringUtils.hasText(value)) {
+            throw new CustomException(ErrorCode.SPOTIFY_API_ERROR);
+        }
+        return value;
+    }
+
+    private String string(Object value) {
+        return value == null ? null : value.toString();
+    }
+
+    private Integer integer(Object value) {
+        return value instanceof Number number ? number.intValue() : null;
+    }
+}

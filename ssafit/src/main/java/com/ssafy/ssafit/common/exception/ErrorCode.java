@@ -24,6 +24,11 @@ public enum ErrorCode {
     INVALID_BPM_VALUE(HttpStatus.BAD_REQUEST, "BPM 값은 60에서 220 사이여야 합니다."),
     INVALID_BPM_RANGE(HttpStatus.BAD_REQUEST, "BPM 범위가 올바르지 않습니다."),
     SPOTIFY_TRACK_NOT_FOUND(HttpStatus.NOT_FOUND, "Spotify 트랙 정보를 찾을 수 없습니다."),
+    SPOTIFY_AUTH_REQUIRED(HttpStatus.UNAUTHORIZED, "Spotify 계정 연결이 필요합니다."),
+    SPOTIFY_AUTH_DENIED(HttpStatus.FORBIDDEN, "Spotify 인증 권한이 거부되었습니다."),
+    SPOTIFY_TOKEN_EXPIRED(HttpStatus.UNAUTHORIZED, "Spotify 토큰을 갱신할 수 없습니다."),
+    SPOTIFY_API_ERROR(HttpStatus.BAD_GATEWAY, "Spotify API 호출에 실패했습니다."),
+    SPOTIFY_EXPORT_FAILED(HttpStatus.BAD_GATEWAY, "Spotify 플레이리스트 내보내기에 실패했습니다."),
 
     MUSIC_REVIEW_NOT_FOUND(HttpStatus.NOT_FOUND, "음악 평가를 찾을 수 없습니다."),
     DUPLICATE_MUSIC_REVIEW(HttpStatus.CONFLICT, "이미 해당 음악을 평가했습니다."),
@@ -38,6 +43,7 @@ public enum ErrorCode {
     DUPLICATE_PLAYLIST_ORDER(HttpStatus.CONFLICT, "플레이리스트 수록곡 순서가 중복되었습니다."),
     PRIVATE_PLAYLIST(HttpStatus.FORBIDDEN, "비공개 플레이리스트에 접근할 수 없습니다."),
     SPOTIFY_URI_NOT_FOUND(HttpStatus.UNPROCESSABLE_CONTENT, "Spotify URI가 없는 음악입니다."),
+    SPOTIFY_ALREADY_EXPORTED(HttpStatus.CONFLICT, "이미 Spotify로 내보낸 플레이리스트입니다."),
     DUPLICATE_SAVE(HttpStatus.CONFLICT, "이미 저장한 플레이리스트입니다."),
 
     INVALID_INTENSITY(HttpStatus.BAD_REQUEST, "러닝 강도가 올바르지 않습니다."),
