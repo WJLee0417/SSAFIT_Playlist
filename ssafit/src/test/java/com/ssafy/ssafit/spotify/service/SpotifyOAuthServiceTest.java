@@ -15,6 +15,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.mock.web.MockHttpSession;
+import org.springframework.web.util.UriComponentsBuilder;
 
 import com.ssafy.ssafit.common.exception.CustomException;
 import com.ssafy.ssafit.common.exception.ErrorCode;
@@ -36,6 +38,8 @@ class SpotifyOAuthServiceTest {
 
     private SpotifyProperties properties;
     private SpotifyOAuthService spotifyOAuthService;
+    private SpotifyOAuthStateManager stateManager;
+    private MockHttpSession session;
 
     @BeforeEach
     void setUp() {
@@ -45,25 +49,35 @@ class SpotifyOAuthServiceTest {
         properties.setRedirectUri("http://localhost/callback");
         properties.setAuthorizationBaseUrl("https://accounts.spotify.com");
         properties.setScopes(List.of("user-read-private", "playlist-modify-private"));
+        stateManager = new SpotifyOAuthStateManager();
+        session = new MockHttpSession();
         spotifyOAuthService = new SpotifyOAuthService(
                 spotifyApiClient,
                 spotifyConnectionMapper,
-                properties);
+                properties,
+                stateManager);
     }
 
     @Test
-    void authorizationUrlContainsConfiguredValues() {
-        String url = spotifyOAuthService.buildAuthorizationUrl("csrf-state");
+    void authorizationUrlCreatesAndStoresState() {
+        String url = spotifyOAuthService.buildAuthorizationUrl(session);
+        String state = UriComponentsBuilder.fromUriString(url)
+                .build()
+                .getQueryParams()
+                .getFirst("state");
 
         assertThat(url)
                 .contains("client_id=client-id")
                 .contains("response_type=code")
-                .contains("redirect_uri=http://localhost/callback")
-                .contains("state=csrf-state");
+                .contains("redirect_uri=http://localhost/callback");
+        assertThat(state).isNotBlank();
+        assertThat(session.getAttribute(SpotifyOAuthStateManager.SESSION_ATTRIBUTE))
+                .isEqualTo(state);
     }
 
     @Test
-    void callbackStoresTokenAndSpotifyUser() {
+    void callbackValidatesStateConsumesItAndStoresConnection() {
+        String state = issueState();
         when(spotifyApiClient.exchangeAuthorizationCode("authorization-code"))
                 .thenReturn(new SpotifyToken("access", "refresh", 3600));
         when(spotifyApiClient.getCurrentUser("access"))
@@ -73,26 +87,29 @@ class SpotifyOAuthServiceTest {
                 10L,
                 "authorization-code",
                 null,
-                "state",
-                "state");
+                state,
+                session);
 
         assertThat(connection.getMemberId()).isEqualTo(10L);
         assertThat(connection.getSpotifyUserId()).isEqualTo("spotify-user");
         assertThat(connection.getAccessToken()).isEqualTo("access");
         assertThat(connection.getTokenExpiresAt()).isAfter(LocalDateTime.now());
+        assertThat(session.getAttribute(SpotifyOAuthStateManager.SESSION_ATTRIBUTE))
+                .isNull();
         verify(spotifyConnectionMapper).upsert(connection);
     }
 
     @Test
     void callbackRejectsDeniedAuthorization() {
+        String state = issueState();
         assertError(
                 ErrorCode.SPOTIFY_AUTH_DENIED,
                 () -> spotifyOAuthService.handleCallback(
                         10L,
                         null,
                         "access_denied",
-                        "state",
-                        "state"));
+                        state,
+                        session));
 
         verify(spotifyApiClient, never())
                 .exchangeAuthorizationCode(org.mockito.ArgumentMatchers.any());
@@ -100,17 +117,81 @@ class SpotifyOAuthServiceTest {
 
     @Test
     void callbackRejectsStateMismatch() {
+        issueState();
         assertError(
-                ErrorCode.SPOTIFY_AUTH_DENIED,
+                ErrorCode.SPOTIFY_OAUTH_STATE_MISMATCH,
                 () -> spotifyOAuthService.handleCallback(
                         10L,
                         "authorization-code",
                         null,
-                        "expected",
-                        "returned"));
+                        "different-state",
+                        session));
 
+        assertThat(session.getAttribute(SpotifyOAuthStateManager.SESSION_ATTRIBUTE))
+                .isNull();
         verify(spotifyApiClient, never())
                 .exchangeAuthorizationCode(org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
+    void callbackRejectsSpotifyErrorResponse() {
+        String state = issueState();
+
+        assertError(
+                ErrorCode.SPOTIFY_OAUTH_CALLBACK_ERROR,
+                () -> spotifyOAuthService.handleCallback(
+                        10L,
+                        null,
+                        "temporarily_unavailable",
+                        state,
+                        session));
+    }
+
+    @Test
+    void missingConfigurationDoesNotExposeSensitiveValues() {
+        properties.setClientSecret("");
+
+        assertThatThrownBy(() -> spotifyOAuthService.buildAuthorizationUrl(session))
+                .isInstanceOfSatisfying(
+                        CustomException.class,
+                        exception -> {
+                            assertThat(exception.getErrorCode())
+                                    .isEqualTo(ErrorCode.SPOTIFY_CONFIGURATION_ERROR);
+                            assertThat(exception.getMessage())
+                                    .doesNotContain("client-id")
+                                    .doesNotContain("client-secret")
+                                    .doesNotContain("http://localhost/callback");
+                        });
+    }
+
+    @Test
+    void authorizationUrlFailureUsesSafeErrorAndDiscardsState() {
+        properties.setScopes(null);
+
+        assertError(
+                ErrorCode.SPOTIFY_AUTH_URL_ERROR,
+                () -> spotifyOAuthService.buildAuthorizationUrl(session));
+
+        assertThat(session.getAttribute(SpotifyOAuthStateManager.SESSION_ATTRIBUTE))
+                .isNull();
+    }
+
+    @Test
+    void stateFailureDoesNotExposeAuthorizationCodeOrState() {
+        issueState();
+
+        assertThatThrownBy(() -> spotifyOAuthService.handleCallback(
+                10L,
+                "sensitive-authorization-code",
+                null,
+                "sensitive-returned-state",
+                session))
+                .isInstanceOfSatisfying(
+                        CustomException.class,
+                        exception -> assertThat(exception.getMessage())
+                                .doesNotContain("sensitive-authorization-code")
+                                .doesNotContain("sensitive-returned-state")
+                                .doesNotContain("client-secret"));
     }
 
     @Test
@@ -146,6 +227,11 @@ class SpotifyOAuthServiceTest {
         connection.setRefreshToken("old-refresh");
         connection.setTokenExpiresAt(expiresAt);
         return connection;
+    }
+
+    private String issueState() {
+        spotifyOAuthService.buildAuthorizationUrl(session);
+        return (String) session.getAttribute(SpotifyOAuthStateManager.SESSION_ATTRIBUTE);
     }
 
     private void assertError(ErrorCode expected, Runnable executable) {

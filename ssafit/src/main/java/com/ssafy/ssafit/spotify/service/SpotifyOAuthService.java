@@ -16,6 +16,7 @@ import com.ssafy.ssafit.spotify.domain.SpotifyToken;
 import com.ssafy.ssafit.spotify.domain.SpotifyUserProfile;
 import com.ssafy.ssafit.spotify.mapper.SpotifyConnectionMapper;
 
+import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -28,23 +29,27 @@ public class SpotifyOAuthService {
     private final SpotifyApiClient spotifyApiClient;
     private final SpotifyConnectionMapper spotifyConnectionMapper;
     private final SpotifyProperties properties;
+    private final SpotifyOAuthStateManager stateManager;
 
-    public String buildAuthorizationUrl(String state) {
+    public String buildAuthorizationUrl(HttpSession session) {
         validateConfiguration();
-        if (!StringUtils.hasText(state)) {
-            throw new CustomException(ErrorCode.INVALID_REQUEST);
+        String state = stateManager.createAndStore(session);
+        try {
+            return UriComponentsBuilder
+                    .fromUriString(properties.getAuthorizationBaseUrl())
+                    .path("/authorize")
+                    .queryParam("client_id", properties.getClientId())
+                    .queryParam("response_type", "code")
+                    .queryParam("redirect_uri", properties.getRedirectUri())
+                    .queryParam("scope", String.join(" ", properties.getScopes()))
+                    .queryParam("state", state)
+                    .build()
+                    .encode()
+                    .toUriString();
+        } catch (RuntimeException exception) {
+            stateManager.discard(session);
+            throw new CustomException(ErrorCode.SPOTIFY_AUTH_URL_ERROR);
         }
-        return UriComponentsBuilder
-                .fromUriString(properties.getAuthorizationBaseUrl())
-                .path("/authorize")
-                .queryParam("client_id", properties.getClientId())
-                .queryParam("response_type", "code")
-                .queryParam("redirect_uri", properties.getRedirectUri())
-                .queryParam("scope", String.join(" ", properties.getScopes()))
-                .queryParam("state", state)
-                .build()
-                .encode()
-                .toUriString();
     }
 
     @Transactional
@@ -52,15 +57,15 @@ public class SpotifyOAuthService {
             Long loginMemberId,
             String authorizationCode,
             String error,
-            String expectedState,
-            String returnedState) {
+            String returnedState,
+            HttpSession session) {
         validateAuthenticated(loginMemberId);
-        if (!StringUtils.hasText(expectedState)
-                || !expectedState.equals(returnedState)) {
-            throw new CustomException(ErrorCode.SPOTIFY_AUTH_DENIED);
-        }
+        stateManager.validateAndConsume(session, returnedState);
         if (StringUtils.hasText(error)) {
-            throw new CustomException(ErrorCode.SPOTIFY_AUTH_DENIED);
+            if ("access_denied".equals(error)) {
+                throw new CustomException(ErrorCode.SPOTIFY_AUTH_DENIED);
+            }
+            throw new CustomException(ErrorCode.SPOTIFY_OAUTH_CALLBACK_ERROR);
         }
         if (!StringUtils.hasText(authorizationCode)) {
             throw new CustomException(ErrorCode.SPOTIFY_AUTH_REQUIRED);
@@ -135,7 +140,7 @@ public class SpotifyOAuthService {
         if (!StringUtils.hasText(properties.getClientId())
                 || !StringUtils.hasText(properties.getClientSecret())
                 || !StringUtils.hasText(properties.getRedirectUri())) {
-            throw new CustomException(ErrorCode.SPOTIFY_AUTH_REQUIRED);
+            throw new CustomException(ErrorCode.SPOTIFY_CONFIGURATION_ERROR);
         }
     }
 

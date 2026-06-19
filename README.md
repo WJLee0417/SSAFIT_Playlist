@@ -98,9 +98,14 @@ STS의 Run Configurations에서 다음 환경 변수를 등록합니다.
 ```text
 SPOTIFY_CLIENT_ID=발급받은_Client_ID
 SPOTIFY_CLIENT_SECRET=발급받은_Client_Secret
+SPOTIFY_REDIRECT_URI=http://localhost:8080/api/spotify/oauth/callback
 ```
 
-Spotify Developer Dashboard에는 다음 Redirect URI를 등록합니다.
+실제 값은 `.env` 또는 IDE의 Run Configuration에만 설정하고 저장소에 커밋하지
+않습니다. `.env.example`에는 변수 이름과 로컬 예시 Redirect URI만 제공합니다.
+
+Spotify Developer Dashboard에는 `SPOTIFY_REDIRECT_URI`와 완전히 동일한 Redirect
+URI를 등록합니다.
 
 ```text
 http://localhost:8080/api/spotify/oauth/callback

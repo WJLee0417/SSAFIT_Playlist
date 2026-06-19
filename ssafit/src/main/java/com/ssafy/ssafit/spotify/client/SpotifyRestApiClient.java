@@ -194,7 +194,7 @@ public class SpotifyRestApiClient implements SpotifyApiClient {
         if (!StringUtils.hasText(properties.getClientId())
                 || !StringUtils.hasText(properties.getClientSecret())
                 || !StringUtils.hasText(properties.getRedirectUri())) {
-            throw new CustomException(ErrorCode.SPOTIFY_AUTH_REQUIRED);
+            throw new CustomException(ErrorCode.SPOTIFY_CONFIGURATION_ERROR);
         }
     }
 

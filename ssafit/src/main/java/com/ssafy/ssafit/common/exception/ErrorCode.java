@@ -26,6 +26,14 @@ public enum ErrorCode {
     SPOTIFY_TRACK_NOT_FOUND(HttpStatus.NOT_FOUND, "Spotify 트랙 정보를 찾을 수 없습니다."),
     SPOTIFY_AUTH_REQUIRED(HttpStatus.UNAUTHORIZED, "Spotify 계정 연결이 필요합니다."),
     SPOTIFY_AUTH_DENIED(HttpStatus.FORBIDDEN, "Spotify 인증 권한이 거부되었습니다."),
+    SPOTIFY_OAUTH_STATE_MISMATCH(HttpStatus.UNAUTHORIZED, "Spotify OAuth 요청 검증에 실패했습니다."),
+    SPOTIFY_OAUTH_CALLBACK_ERROR(HttpStatus.BAD_REQUEST, "Spotify OAuth callback 처리에 실패했습니다."),
+    SPOTIFY_CONFIGURATION_ERROR(
+            HttpStatus.INTERNAL_SERVER_ERROR,
+            "Spotify OAuth 환경 설정이 올바르지 않습니다."),
+    SPOTIFY_AUTH_URL_ERROR(
+            HttpStatus.INTERNAL_SERVER_ERROR,
+            "Spotify 인증 URL을 생성할 수 없습니다."),
     SPOTIFY_TOKEN_EXPIRED(HttpStatus.UNAUTHORIZED, "Spotify 토큰을 갱신할 수 없습니다."),
     SPOTIFY_API_ERROR(HttpStatus.BAD_GATEWAY, "Spotify API 호출에 실패했습니다."),
     SPOTIFY_EXPORT_FAILED(HttpStatus.BAD_GATEWAY, "Spotify 플레이리스트 내보내기에 실패했습니다."),
