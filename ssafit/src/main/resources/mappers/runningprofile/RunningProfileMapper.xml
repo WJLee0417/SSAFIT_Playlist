@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ssafy.ssafit.runningprofile.mapper.RunningProfileMapper">
+
+    <resultMap id="runningProfileResultMap"
+               type="com.ssafy.ssafit.runningprofile.domain.RunningProfile">
+        <id property="id" column="id"/>
+        <result property="memberId" column="member_id"/>
+        <result property="runningIntensity" column="running_intensity"/>
+        <result property="targetBpmMin" column="target_bpm_min"/>
+        <result property="targetBpmMax" column="target_bpm_max"/>
+        <result property="preferredGenre" column="preferred_genre"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="updatedAt" column="updated_at"/>
+    </resultMap>
+
+    <sql id="runningProfileColumns">
+        id,
+        member_id,
+        running_intensity,
+        target_bpm_min,
+        target_bpm_max,
+        preferred_genre,
+        created_at,
+        updated_at
+    </sql>
+
+    <select id="selectByMemberId" resultMap="runningProfileResultMap">
+        SELECT
+            <include refid="runningProfileColumns"/>
+        FROM running_profiles
+        WHERE member_id = #{memberId}
+    </select>
+
+    <insert id="insert"
+            parameterType="com.ssafy.ssafit.runningprofile.domain.RunningProfile"
+            useGeneratedKeys="true"
+            keyProperty="id"
+            keyColumn="id">
+        INSERT INTO running_profiles (
+            member_id,
+            running_intensity,
+            target_bpm_min,
+            target_bpm_max,
+            preferred_genre
+        ) VALUES (
+            #{memberId},
+            #{runningIntensity},
+            #{targetBpmMin},
+            #{targetBpmMax},
+            #{preferredGenre}
+        )
+    </insert>
+
+    <update id="update"
+            parameterType="com.ssafy.ssafit.runningprofile.domain.RunningProfile">
+        UPDATE running_profiles
+        SET
+            running_intensity = #{runningIntensity},
+            target_bpm_min = #{targetBpmMin},
+            target_bpm_max = #{targetBpmMax},
+            preferred_genre = #{preferredGenre}
+        WHERE member_id = #{memberId}
+    </update>
+
+</mapper>
