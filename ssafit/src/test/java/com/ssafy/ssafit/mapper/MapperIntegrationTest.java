@@ -48,6 +48,9 @@ import com.ssafy.ssafit.runningprofile.domain.RunningProfile;
 import com.ssafy.ssafit.runningprofile.mapper.RunningProfileMapper;
 import com.ssafy.ssafit.runningrecord.domain.RunningRecord;
 import com.ssafy.ssafit.runningrecord.mapper.RunningRecordMapper;
+import com.ssafy.ssafit.runningsession.domain.RunningSession;
+import com.ssafy.ssafit.runningsession.domain.RunningSessionStatus;
+import com.ssafy.ssafit.runningsession.mapper.RunningSessionMapper;
 import com.ssafy.ssafit.spotify.domain.SpotifyConnection;
 import com.ssafy.ssafit.spotify.mapper.SpotifyConnectionMapper;
 
@@ -68,6 +71,9 @@ class MapperIntegrationTest {
 
     @Autowired
     private RunningRecordMapper runningRecordMapper;
+
+    @Autowired
+    private RunningSessionMapper runningSessionMapper;
 
     @Autowired
     private MusicMapper musicMapper;
@@ -173,6 +179,61 @@ class MapperIntegrationTest {
         assertThat(runningRecordMapper.selectById(record.getId())).isEmpty();
         assertThat(runningRecordMapper.selectListByMemberId(member.getId())).isEmpty();
         assertThat(countRows("running_records")).isEqualTo(1);
+    }
+
+    @Test
+    void runningSessionMapperSupportsCrudStatusCancelAndLockQuery() {
+        Member host = insertMember("running_session_host");
+        RunningSession runningSession = new RunningSession();
+        runningSession.setHostMemberId(host.getId());
+        runningSession.setTitle("Mapper Running Session");
+        runningSession.setDescription("Mapper integration session");
+        runningSession.setMeetingPlace("Seoul");
+        runningSession.setScheduledAt(
+                java.time.LocalDateTime.of(2026, 7, 1, 9, 0));
+        runningSession.setCapacity(10);
+        runningSession.setStatus(RunningSessionStatus.OPEN);
+
+        runningSessionMapper.insert(runningSession);
+
+        assertThat(runningSession.getId()).isNotNull();
+        assertThat(runningSessionMapper.selectHostId(runningSession.getId()))
+                .isEqualTo(host.getId());
+        assertThat(runningSessionMapper.selectList())
+                .extracting(RunningSession::getId)
+                .contains(runningSession.getId());
+        assertThat(runningSessionMapper
+                .selectByIdForUpdate(runningSession.getId())
+                .orElseThrow()
+                .getStatus()).isEqualTo(RunningSessionStatus.OPEN);
+
+        runningSession.setTitle("Updated Running Session");
+        runningSession.setCapacity(20);
+        runningSessionMapper.update(runningSession);
+        runningSessionMapper.updateStatus(
+                runningSession.getId(),
+                RunningSessionStatus.CLOSED);
+
+        RunningSession closed = runningSessionMapper
+                .selectDetail(runningSession.getId())
+                .orElseThrow();
+        assertThat(closed.getTitle()).isEqualTo("Updated Running Session");
+        assertThat(closed.getCapacity()).isEqualTo(20);
+        assertThat(closed.getStatus()).isEqualTo(RunningSessionStatus.CLOSED);
+
+        runningSessionMapper.cancel(runningSession.getId());
+
+        RunningSession cancelled = runningSessionMapper
+                .selectDetail(runningSession.getId())
+                .orElseThrow();
+        assertThat(cancelled.getStatus())
+                .isEqualTo(RunningSessionStatus.CANCELLED);
+        assertThat(cancelled.getCancelledAt()).isNotNull();
+        assertThat(runningSessionMapper.update(runningSession)).isZero();
+        assertThat(runningSessionMapper.updateStatus(
+                runningSession.getId(),
+                RunningSessionStatus.OPEN)).isZero();
+        assertThat(runningSessionMapper.cancel(runningSession.getId())).isZero();
     }
 
     @Test
