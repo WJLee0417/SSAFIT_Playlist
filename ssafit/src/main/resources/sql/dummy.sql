@@ -286,3 +286,275 @@ SELECT
 FROM playlists
 WHERE title = '저강도 아침 러닝'
   AND visibility = 'PUBLIC';
+
+-- 러닝 기록
+-- duration_seconds / distance_km로 계산한 pace_seconds_per_km를 저장한다.
+INSERT INTO running_records (
+    member_id,
+    record_date,
+    distance_km,
+    duration_seconds,
+    pace_seconds_per_km,
+    memo
+)
+SELECT
+    (SELECT id FROM members WHERE login_id = 'runner_low'),
+    '2026-06-10',
+    5.00,
+    1800,
+    360,
+    '5km 아침 러닝'
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM running_records
+    WHERE member_id = (SELECT id FROM members WHERE login_id = 'runner_low')
+      AND record_date = '2026-06-10'
+      AND distance_km = 5.00
+      AND duration_seconds = 1800
+);
+
+INSERT INTO running_records (
+    member_id,
+    record_date,
+    distance_km,
+    duration_seconds,
+    pace_seconds_per_km,
+    memo
+)
+SELECT
+    (SELECT id FROM members WHERE login_id = 'runner_low'),
+    '2026-06-15',
+    10.00,
+    3300,
+    330,
+    '10km 지속주'
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM running_records
+    WHERE member_id = (SELECT id FROM members WHERE login_id = 'runner_low')
+      AND record_date = '2026-06-15'
+      AND distance_km = 10.00
+      AND duration_seconds = 3300
+);
+
+INSERT INTO running_records (
+    member_id,
+    record_date,
+    distance_km,
+    duration_seconds,
+    pace_seconds_per_km,
+    memo
+)
+SELECT
+    (SELECT id FROM members WHERE login_id = 'runner_high'),
+    '2026-06-12',
+    3.00,
+    900,
+    300,
+    '고강도 3km 템포런'
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM running_records
+    WHERE member_id = (SELECT id FROM members WHERE login_id = 'runner_high')
+      AND record_date = '2026-06-12'
+      AND distance_km = 3.00
+      AND duration_seconds = 900
+);
+
+INSERT INTO running_records (
+    member_id,
+    record_date,
+    distance_km,
+    duration_seconds,
+    pace_seconds_per_km,
+    memo
+)
+SELECT
+    (SELECT id FROM members WHERE login_id = 'runner_interval'),
+    '2026-06-18',
+    8.00,
+    2400,
+    300,
+    '인터벌 포함 8km'
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM running_records
+    WHERE member_id = (
+        SELECT id FROM members WHERE login_id = 'runner_interval'
+    )
+      AND record_date = '2026-06-18'
+      AND distance_km = 8.00
+      AND duration_seconds = 2400
+);
+
+-- 러닝 모임
+INSERT INTO running_sessions (
+    host_member_id,
+    title,
+    description,
+    meeting_place,
+    scheduled_at,
+    capacity,
+    status
+)
+SELECT
+    (SELECT id FROM members WHERE login_id = 'runner_low'),
+    '한강 초보 러닝',
+    '천천히 함께 달리는 OPEN 모임',
+    '여의나루역 2번 출구',
+    '2026-07-04 09:00:00',
+    5,
+    'OPEN'
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM running_sessions
+    WHERE host_member_id = (
+        SELECT id FROM members WHERE login_id = 'runner_low'
+    )
+      AND title = '한강 초보 러닝'
+      AND scheduled_at = '2026-07-04 09:00:00'
+);
+
+INSERT INTO running_sessions (
+    host_member_id,
+    title,
+    description,
+    meeting_place,
+    scheduled_at,
+    capacity,
+    status
+)
+SELECT
+    (SELECT id FROM members WHERE login_id = 'runner_high'),
+    '정원 1명 템포런',
+    '정원 초과 검증용 OPEN 모임',
+    '반포한강공원',
+    '2026-07-05 07:00:00',
+    1,
+    'OPEN'
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM running_sessions
+    WHERE host_member_id = (
+        SELECT id FROM members WHERE login_id = 'runner_high'
+    )
+      AND title = '정원 1명 템포런'
+      AND scheduled_at = '2026-07-05 07:00:00'
+);
+
+INSERT INTO running_sessions (
+    host_member_id,
+    title,
+    description,
+    meeting_place,
+    scheduled_at,
+    capacity,
+    status
+)
+SELECT
+    (SELECT id FROM members WHERE login_id = 'runner_interval'),
+    '참여자 없는 인터벌',
+    '빈 참여자 목록 확인용 OPEN 모임',
+    '잠실종합운동장',
+    '2026-07-06 19:30:00',
+    4,
+    'OPEN'
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM running_sessions
+    WHERE host_member_id = (
+        SELECT id FROM members WHERE login_id = 'runner_interval'
+    )
+      AND title = '참여자 없는 인터벌'
+      AND scheduled_at = '2026-07-06 19:30:00'
+);
+
+INSERT INTO running_sessions (
+    host_member_id,
+    title,
+    description,
+    meeting_place,
+    scheduled_at,
+    capacity,
+    status
+)
+SELECT
+    (SELECT id FROM members WHERE login_id = 'runner_high'),
+    '모집 마감 롱런',
+    '생성자가 모집을 닫은 CLOSED 모임',
+    '서울숲',
+    '2026-07-12 08:00:00',
+    8,
+    'CLOSED'
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM running_sessions
+    WHERE host_member_id = (
+        SELECT id FROM members WHERE login_id = 'runner_high'
+    )
+      AND title = '모집 마감 롱런'
+      AND scheduled_at = '2026-07-12 08:00:00'
+);
+
+INSERT INTO running_sessions (
+    host_member_id,
+    title,
+    description,
+    meeting_place,
+    scheduled_at,
+    capacity,
+    status,
+    cancelled_at
+)
+SELECT
+    (SELECT id FROM members WHERE login_id = 'runner_low'),
+    '취소된 우천 러닝',
+    'CANCELLED 상태 확인용 모임',
+    '뚝섬유원지역',
+    '2026-07-13 09:00:00',
+    6,
+    'CANCELLED',
+    '2026-06-20 12:00:00'
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM running_sessions
+    WHERE host_member_id = (
+        SELECT id FROM members WHERE login_id = 'runner_low'
+    )
+      AND title = '취소된 우천 러닝'
+      AND scheduled_at = '2026-07-13 09:00:00'
+);
+
+-- 러닝 모임 참여 관계
+-- 정원 1명 모임은 runner_low 한 명으로 가득 찬 상태다.
+INSERT IGNORE INTO running_session_participants (session_id, member_id)
+SELECT
+    (
+        SELECT id
+        FROM running_sessions
+        WHERE title = '정원 1명 템포런'
+          AND host_member_id = (
+              SELECT id FROM members WHERE login_id = 'runner_high'
+          )
+        LIMIT 1
+    ),
+    (SELECT id FROM members WHERE login_id = 'runner_low');
+
+-- 여러 명 정원 OPEN 모임에는 서로 다른 두 회원이 참여한다.
+INSERT IGNORE INTO running_session_participants (session_id, member_id)
+SELECT
+    (
+        SELECT id
+        FROM running_sessions
+        WHERE title = '한강 초보 러닝'
+          AND host_member_id = (
+              SELECT id FROM members WHERE login_id = 'runner_low'
+          )
+        LIMIT 1
+    ),
+    participant.member_id
+FROM (
+    SELECT id AS member_id
+    FROM members
+    WHERE login_id IN ('runner_high', 'runner_interval')
+) participant;

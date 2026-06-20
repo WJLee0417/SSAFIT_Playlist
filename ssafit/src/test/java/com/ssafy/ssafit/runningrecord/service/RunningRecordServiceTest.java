@@ -80,6 +80,18 @@ class RunningRecordServiceTest {
     }
 
     @Test
+    void unauthenticatedMemberCannotReadRecordList() {
+        when(authService.getLoginMember(session))
+                .thenThrow(new CustomException(ErrorCode.AUTH_REQUIRED));
+
+        assertError(
+                ErrorCode.AUTH_REQUIRED,
+                () -> runningRecordService.getMyRecordList(session));
+
+        verify(runningRecordMapper, never()).selectListByMemberId(any());
+    }
+
+    @Test
     void getMyRecordListUsesLoginMemberId() {
         mockLoginMember(10L);
         RunningRecord record = validRecord(100L, 10L);
@@ -163,6 +175,20 @@ class RunningRecordServiceTest {
     }
 
     @Test
+    void updateMyRecordRejectsMissingRecord() {
+        mockLoginMember(10L);
+        when(runningRecordMapper.selectById(100L)).thenReturn(Optional.empty());
+
+        assertError(
+                ErrorCode.RUNNING_RECORD_NOT_FOUND,
+                () -> runningRecordService.updateMyRecord(
+                        session,
+                        validRecord(100L, 10L)));
+
+        verify(runningRecordMapper, never()).update(any());
+    }
+
+    @Test
     void deleteMyRecordSucceedsForOwner() {
         mockLoginMember(10L);
         RunningRecord existing = validRecord(100L, 10L);
@@ -183,6 +209,18 @@ class RunningRecordServiceTest {
 
         assertError(
                 ErrorCode.ACCESS_DENIED,
+                () -> runningRecordService.deleteMyRecord(session, 100L));
+
+        verify(runningRecordMapper, never()).delete(100L);
+    }
+
+    @Test
+    void deleteMyRecordRejectsMissingRecord() {
+        mockLoginMember(10L);
+        when(runningRecordMapper.selectById(100L)).thenReturn(Optional.empty());
+
+        assertError(
+                ErrorCode.RUNNING_RECORD_NOT_FOUND,
                 () -> runningRecordService.deleteMyRecord(session, 100L));
 
         verify(runningRecordMapper, never()).delete(100L);

@@ -3,7 +3,13 @@ package com.ssafy.ssafit.mapper;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
@@ -16,8 +22,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.mock.web.MockHttpSession;
 import org.springframework.test.context.ActiveProfiles;
 
+import com.ssafy.ssafit.common.auth.SessionConst;
+import com.ssafy.ssafit.common.exception.CustomException;
+import com.ssafy.ssafit.common.exception.ErrorCode;
 import com.ssafy.ssafit.member.domain.Member;
 import com.ssafy.ssafit.member.domain.MemberStatus;
 import com.ssafy.ssafit.member.mapper.MemberMapper;
@@ -53,6 +63,7 @@ import com.ssafy.ssafit.runningsession.domain.RunningSessionParticipant;
 import com.ssafy.ssafit.runningsession.domain.RunningSessionStatus;
 import com.ssafy.ssafit.runningsession.mapper.RunningSessionMapper;
 import com.ssafy.ssafit.runningsession.mapper.RunningSessionParticipantMapper;
+import com.ssafy.ssafit.runningsession.service.RunningSessionParticipantService;
 import com.ssafy.ssafit.spotify.domain.SpotifyConnection;
 import com.ssafy.ssafit.spotify.mapper.SpotifyConnectionMapper;
 
@@ -79,6 +90,9 @@ class MapperIntegrationTest {
 
     @Autowired
     private RunningSessionParticipantMapper runningSessionParticipantMapper;
+
+    @Autowired
+    private RunningSessionParticipantService runningSessionParticipantService;
 
     @Autowired
     private MusicMapper musicMapper;
@@ -160,6 +174,15 @@ class MapperIntegrationTest {
 
         runningRecordMapper.insert(record);
 
+        RunningRecord olderRecord = new RunningRecord();
+        olderRecord.setMemberId(member.getId());
+        olderRecord.setRecordDate(java.time.LocalDate.of(2026, 6, 19));
+        olderRecord.setDistanceKm(new java.math.BigDecimal("3.00"));
+        olderRecord.setDurationSeconds(1200);
+        olderRecord.setPaceSecondsPerKm(400);
+        olderRecord.setMemo("Older mapper running record");
+        runningRecordMapper.insert(olderRecord);
+
         assertThat(record.getId()).isNotNull();
         RunningRecord selected = runningRecordMapper.selectById(record.getId())
                 .orElseThrow();
@@ -168,7 +191,7 @@ class MapperIntegrationTest {
                 .isEqualByComparingTo(new java.math.BigDecimal("5.00"));
         assertThat(runningRecordMapper.selectListByMemberId(member.getId()))
                 .extracting(RunningRecord::getId)
-                .containsExactly(record.getId());
+                .containsExactly(record.getId(), olderRecord.getId());
 
         record.setDistanceKm(new java.math.BigDecimal("10.00"));
         record.setDurationSeconds(3300);
@@ -182,8 +205,10 @@ class MapperIntegrationTest {
         runningRecordMapper.delete(record.getId());
 
         assertThat(runningRecordMapper.selectById(record.getId())).isEmpty();
-        assertThat(runningRecordMapper.selectListByMemberId(member.getId())).isEmpty();
-        assertThat(countRows("running_records")).isEqualTo(1);
+        assertThat(runningRecordMapper.selectListByMemberId(member.getId()))
+                .extracting(RunningRecord::getId)
+                .containsExactly(olderRecord.getId());
+        assertThat(countRows("running_records")).isEqualTo(2);
     }
 
     @Test
@@ -298,6 +323,44 @@ class MapperIntegrationTest {
 
         assertThat(runningSessionParticipantMapper.countParticipants(
                 runningSession.getId())).isEqualTo(1);
+    }
+
+    @Test
+    void concurrentJoinRequestsDoNotExceedCapacity() throws Exception {
+        Member host = insertMember("concurrent_host");
+        Member first = insertMember("concurrent_first");
+        Member second = insertMember("concurrent_second");
+        RunningSession runningSession = insertRunningSession(host.getId(), 1);
+        MockHttpSession firstSession = loginSession(first.getId());
+        MockHttpSession secondSession = loginSession(second.getId());
+        CountDownLatch ready = new CountDownLatch(2);
+        CountDownLatch start = new CountDownLatch(1);
+        ExecutorService executor = Executors.newFixedThreadPool(2);
+
+        try {
+            Future<ErrorCode> firstResult = executor.submit(() -> joinAfterSignal(
+                    firstSession,
+                    runningSession.getId(),
+                    ready,
+                    start));
+            Future<ErrorCode> secondResult = executor.submit(() -> joinAfterSignal(
+                    secondSession,
+                    runningSession.getId(),
+                    ready,
+                    start));
+
+            assertThat(ready.await(5, TimeUnit.SECONDS)).isTrue();
+            start.countDown();
+
+            assertThat(Arrays.asList(
+                    firstResult.get(10, TimeUnit.SECONDS),
+                    secondResult.get(10, TimeUnit.SECONDS)))
+                    .containsExactlyInAnyOrder(null, ErrorCode.SESSION_FULL);
+            assertThat(runningSessionParticipantMapper.countParticipants(
+                    runningSession.getId())).isEqualTo(1);
+        } finally {
+            executor.shutdownNow();
+        }
     }
 
     @Test
@@ -623,6 +686,27 @@ class MapperIntegrationTest {
         runningSession.setStatus(RunningSessionStatus.OPEN);
         runningSessionMapper.insert(runningSession);
         return runningSession;
+    }
+
+    private MockHttpSession loginSession(Long memberId) {
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute(SessionConst.LOGIN_MEMBER_ID, memberId);
+        return session;
+    }
+
+    private ErrorCode joinAfterSignal(
+            MockHttpSession session,
+            Long runningSessionId,
+            CountDownLatch ready,
+            CountDownLatch start) throws InterruptedException {
+        ready.countDown();
+        start.await();
+        try {
+            runningSessionParticipantService.joinSession(session, runningSessionId);
+            return null;
+        } catch (CustomException exception) {
+            return exception.getErrorCode();
+        }
     }
 
     private void insertItem(Long playlistId, Long musicId, int orderNo) {

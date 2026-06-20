@@ -81,6 +81,18 @@ class RunningSessionServiceTest {
     }
 
     @Test
+    void unauthenticatedMemberCannotReadSessionList() {
+        when(authService.getLoginMember(session))
+                .thenThrow(new CustomException(ErrorCode.AUTH_REQUIRED));
+
+        assertError(
+                ErrorCode.AUTH_REQUIRED,
+                () -> runningSessionService.getSessionList(session));
+
+        verify(runningSessionMapper, never()).selectList();
+    }
+
+    @Test
     void getSessionListReturnsSessions() {
         mockLoginMember(10L);
         RunningSession runningSession =
@@ -151,6 +163,20 @@ class RunningSessionServiceTest {
 
         assertError(
                 ErrorCode.ACCESS_DENIED,
+                () -> runningSessionService.updateMySession(
+                        session,
+                        validSession(100L, 10L, RunningSessionStatus.OPEN)));
+
+        verify(runningSessionMapper, never()).update(any());
+    }
+
+    @Test
+    void updateMySessionRejectsMissingSession() {
+        mockLoginMember(10L);
+        when(runningSessionMapper.selectDetail(100L)).thenReturn(Optional.empty());
+
+        assertError(
+                ErrorCode.SESSION_NOT_FOUND,
                 () -> runningSessionService.updateMySession(
                         session,
                         validSession(100L, 10L, RunningSessionStatus.OPEN)));

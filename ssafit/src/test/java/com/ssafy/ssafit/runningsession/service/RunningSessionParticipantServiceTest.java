@@ -117,6 +117,20 @@ class RunningSessionParticipantServiceTest {
     }
 
     @Test
+    void insertFailureDoesNotReturnParticipation() {
+        mockJoinSession(RunningSessionStatus.OPEN, 10);
+        when(participantMapper.existsParticipant(100L, 10L)).thenReturn(false);
+        when(participantMapper.countParticipants(100L)).thenReturn(0);
+        when(participantMapper.insert(any()))
+                .thenThrow(new IllegalStateException("insert failed"));
+
+        assertThatThrownBy(() -> participantService.joinSession(session, 100L))
+                .isInstanceOf(IllegalStateException.class);
+
+        verify(participantMapper).insert(any());
+    }
+
+    @Test
     void fullSessionRejectsParticipation() {
         mockJoinSession(RunningSessionStatus.OPEN, 1);
         when(participantMapper.existsParticipant(100L, 10L)).thenReturn(false);
