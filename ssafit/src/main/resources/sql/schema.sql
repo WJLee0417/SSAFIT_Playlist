@@ -346,3 +346,99 @@ CREATE TABLE spotify_connections (
   DEFAULT CHARACTER SET = utf8mb4
   COLLATE = utf8mb4_0900_ai_ci
   COMMENT = '회원별 Spotify OAuth 연결 정보';
+
+-- 10. 러닝 기록
+-- 회원이 작성한 러닝 기록은 기존 엔티티 soft delete 정책에 맞춰 deleted_at으로 삭제 처리한다.
+CREATE TABLE running_records (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    member_id BIGINT UNSIGNED NOT NULL,
+    record_date DATE NOT NULL,
+    distance_km DECIMAL(10, 2) NOT NULL,
+    duration_seconds INT UNSIGNED NOT NULL,
+    pace_seconds_per_km INT UNSIGNED NOT NULL,
+    memo TEXT NULL,
+    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6)
+        ON UPDATE CURRENT_TIMESTAMP(6),
+    deleted_at DATETIME(6) NULL,
+    CONSTRAINT pk_running_records PRIMARY KEY (id),
+    CONSTRAINT fk_running_records_member
+        FOREIGN KEY (member_id) REFERENCES members (id)
+        ON UPDATE RESTRICT
+        ON DELETE RESTRICT,
+    CONSTRAINT ck_running_records_distance
+        CHECK (distance_km > 0),
+    CONSTRAINT ck_running_records_duration
+        CHECK (duration_seconds > 0),
+    CONSTRAINT ck_running_records_pace
+        CHECK (pace_seconds_per_km > 0),
+    INDEX idx_running_records_member_date (member_id, record_date),
+    INDEX idx_running_records_record_date (record_date),
+    INDEX idx_running_records_deleted_at (deleted_at)
+) ENGINE = InnoDB
+  DEFAULT CHARACTER SET = utf8mb4
+  COLLATE = utf8mb4_0900_ai_ci
+  COMMENT = '회원별 러닝 기록';
+
+-- 11. 러닝 모임
+-- 정원 도달은 상태를 자동 변경하지 않으며 참여 Service에서 별도로 검증한다.
+CREATE TABLE running_sessions (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    host_member_id BIGINT UNSIGNED NOT NULL,
+    title VARCHAR(200) NOT NULL,
+    description TEXT NULL,
+    meeting_place VARCHAR(255) NOT NULL,
+    scheduled_at DATETIME(6) NOT NULL,
+    capacity INT UNSIGNED NOT NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'OPEN',
+    cancelled_at DATETIME(6) NULL,
+    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6)
+        ON UPDATE CURRENT_TIMESTAMP(6),
+    CONSTRAINT pk_running_sessions PRIMARY KEY (id),
+    CONSTRAINT fk_running_sessions_host_member
+        FOREIGN KEY (host_member_id) REFERENCES members (id)
+        ON UPDATE RESTRICT
+        ON DELETE RESTRICT,
+    CONSTRAINT ck_running_sessions_title
+        CHECK (CHAR_LENGTH(TRIM(title)) > 0),
+    CONSTRAINT ck_running_sessions_capacity
+        CHECK (capacity > 0),
+    CONSTRAINT ck_running_sessions_status
+        CHECK (status IN ('OPEN', 'CLOSED', 'CANCELLED')),
+    CONSTRAINT ck_running_sessions_cancelled_state
+        CHECK (
+            (status = 'CANCELLED' AND cancelled_at IS NOT NULL)
+            OR (status <> 'CANCELLED' AND cancelled_at IS NULL)
+        ),
+    INDEX idx_running_sessions_host_member (host_member_id),
+    INDEX idx_running_sessions_status_scheduled (status, scheduled_at)
+) ENGINE = InnoDB
+  DEFAULT CHARACTER SET = utf8mb4
+  COLLATE = utf8mb4_0900_ai_ci
+  COMMENT = '회원이 생성하는 러닝 모임';
+
+-- 12. 러닝 모임 참여
+-- 참여 취소는 관계 행을 물리 삭제하며 같은 모임에 대한 중복 참여는 UNIQUE 제약으로 차단한다.
+CREATE TABLE running_session_participants (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    session_id BIGINT UNSIGNED NOT NULL,
+    member_id BIGINT UNSIGNED NOT NULL,
+    joined_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    CONSTRAINT pk_running_session_participants PRIMARY KEY (id),
+    CONSTRAINT uk_running_session_participants_session_member
+        UNIQUE (session_id, member_id),
+    CONSTRAINT fk_running_session_participants_session
+        FOREIGN KEY (session_id) REFERENCES running_sessions (id)
+        ON UPDATE RESTRICT
+        ON DELETE CASCADE,
+    CONSTRAINT fk_running_session_participants_member
+        FOREIGN KEY (member_id) REFERENCES members (id)
+        ON UPDATE RESTRICT
+        ON DELETE CASCADE,
+    INDEX idx_running_session_participants_session (session_id),
+    INDEX idx_running_session_participants_member (member_id)
+) ENGINE = InnoDB
+  DEFAULT CHARACTER SET = utf8mb4
+  COLLATE = utf8mb4_0900_ai_ci
+  COMMENT = '러닝 모임 참여 회원 관계';

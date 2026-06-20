@@ -20,6 +20,12 @@ public enum ErrorCode {
     PROFILE_NOT_FOUND(HttpStatus.NOT_FOUND, "러닝 프로필을 찾을 수 없습니다."),
     INVALID_PROFILE_VALUE(HttpStatus.BAD_REQUEST, "러닝 프로필 값이 올바르지 않습니다."),
 
+    RUNNING_RECORD_NOT_FOUND(HttpStatus.NOT_FOUND, "러닝 기록을 찾을 수 없습니다."),
+    SESSION_NOT_FOUND(HttpStatus.NOT_FOUND, "러닝 모임을 찾을 수 없습니다."),
+    SESSION_CLOSED(HttpStatus.CONFLICT, "참여할 수 없는 상태의 러닝 모임입니다."),
+    SESSION_FULL(HttpStatus.CONFLICT, "러닝 모임 정원이 가득 찼습니다."),
+    DUPLICATE_SESSION_JOIN(HttpStatus.CONFLICT, "이미 참여 중인 러닝 모임입니다."),
+
     MUSIC_NOT_FOUND(HttpStatus.NOT_FOUND, "음악을 찾을 수 없습니다."),
     INVALID_BPM_VALUE(HttpStatus.BAD_REQUEST, "BPM 값은 60에서 220 사이여야 합니다."),
     INVALID_BPM_RANGE(HttpStatus.BAD_REQUEST, "BPM 범위가 올바르지 않습니다."),
