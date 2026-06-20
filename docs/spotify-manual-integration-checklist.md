@@ -118,9 +118,9 @@ SPOTIFY_REDIRECT_URI=http://localhost:8080/api/spotify/oauth/callback
 - [ ] 소유자가 아닌 회원의 Export는 `ACCESS_DENIED`다.
 - [ ] Spotify 연결이 없으면 `SPOTIFY_AUTH_REQUIRED`다.
 - [ ] URI가 없는 수록곡이 하나라도 있으면 Export 전에 중단된다.
-- [ ] Spotify Playlist 생성 실패 시 상태가 `FAILED`다.
+- [ ] Spotify Playlist 생성 실패 시 `SPOTIFY_PLAYLIST_CREATE_FAILED`가 발생하고 상태가 `FAILED`다.
 - [ ] 생성 실패에서는 Spotify Playlist ID와 URL이 비어 있다.
-- [ ] Playlist 생성 후 곡 추가 실패 시 상태가 `FAILED`다.
+- [ ] Playlist 생성 후 곡 추가 실패 시 `SPOTIFY_PLAYLIST_ITEM_ADD_FAILED`가 발생하고 상태가 `FAILED`다.
 - [ ] 부분 실패에서는 생성된 Spotify Playlist ID와 URL이 보존된다.
 - [ ] `spotify_export_error_code`에는 ErrorCode 이름만 저장되고 민감정보는 없다.
 - [ ] 외부 ID가 없는 `FAILED` 건은 재시도할 수 있다.

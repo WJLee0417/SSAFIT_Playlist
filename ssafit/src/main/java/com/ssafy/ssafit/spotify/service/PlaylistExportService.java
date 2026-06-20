@@ -40,34 +40,50 @@ public class PlaylistExportService {
                 SpotifyExportStatus.PENDING);
         SpotifyPlaylistResult spotifyPlaylist = null;
         try {
-            spotifyPlaylist = spotifyApiClient.createPlaylist(
-                    connection.getAccessToken(),
-                    playlist.getTitle(),
-                    playlist.getDescription(),
-                    playlist.getVisibility() == PlaylistVisibility.PUBLIC);
-            validateSpotifyPlaylist(spotifyPlaylist);
+            spotifyPlaylist = createSpotifyPlaylist(connection, playlist);
             playlistService.saveSpotifyExportPending(
                     loginMemberId,
                     playlistId,
                     spotifyPlaylist.getId(),
                     spotifyPlaylist.getExternalUrl());
-            addTracksInBatches(
-                    connection.getAccessToken(),
-                    spotifyPlaylist.getId(),
-                    uris);
+            try {
+                addTracksInBatches(
+                        connection.getAccessToken(),
+                        spotifyPlaylist.getId(),
+                        uris);
+            } catch (RuntimeException exception) {
+                throw new CustomException(ErrorCode.SPOTIFY_PLAYLIST_ITEM_ADD_FAILED);
+            }
             return playlistService.saveSpotifyExportResult(
                     loginMemberId,
                     playlistId,
                     spotifyPlaylist.getId(),
                     spotifyPlaylist.getExternalUrl());
         } catch (RuntimeException exception) {
+            ErrorCode errorCode = exportErrorCode(exception);
             playlistService.saveSpotifyExportFailure(
                     loginMemberId,
                     playlistId,
                     spotifyPlaylist == null ? null : spotifyPlaylist.getId(),
                     spotifyPlaylist == null ? null : spotifyPlaylist.getExternalUrl(),
-                    ErrorCode.SPOTIFY_EXPORT_FAILED);
-            throw new CustomException(ErrorCode.SPOTIFY_EXPORT_FAILED);
+                    errorCode);
+            throw new CustomException(errorCode);
+        }
+    }
+
+    private SpotifyPlaylistResult createSpotifyPlaylist(
+            SpotifyConnection connection,
+            Playlist playlist) {
+        try {
+            SpotifyPlaylistResult result = spotifyApiClient.createPlaylist(
+                    connection.getAccessToken(),
+                    playlist.getTitle(),
+                    playlist.getDescription(),
+                    playlist.getVisibility() == PlaylistVisibility.PUBLIC);
+            validateSpotifyPlaylist(result);
+            return result;
+        } catch (RuntimeException exception) {
+            throw new CustomException(ErrorCode.SPOTIFY_PLAYLIST_CREATE_FAILED);
         }
     }
 
@@ -103,5 +119,16 @@ public class PlaylistExportService {
                 || spotifyPlaylist.getExternalUrl().isBlank()) {
             throw new CustomException(ErrorCode.SPOTIFY_EXPORT_FAILED);
         }
+    }
+
+    private ErrorCode exportErrorCode(RuntimeException exception) {
+        if (exception instanceof CustomException customException) {
+            ErrorCode errorCode = customException.getErrorCode();
+            if (errorCode == ErrorCode.SPOTIFY_PLAYLIST_CREATE_FAILED
+                    || errorCode == ErrorCode.SPOTIFY_PLAYLIST_ITEM_ADD_FAILED) {
+                return errorCode;
+            }
+        }
+        return ErrorCode.SPOTIFY_EXPORT_FAILED;
     }
 }

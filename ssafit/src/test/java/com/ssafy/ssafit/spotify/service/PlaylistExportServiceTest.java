@@ -124,7 +124,7 @@ class PlaylistExportServiceTest {
                 .addTracks("access", "spotify-playlist", List.of("spotify:track:a"));
 
         assertError(
-                ErrorCode.SPOTIFY_EXPORT_FAILED,
+                ErrorCode.SPOTIFY_PLAYLIST_ITEM_ADD_FAILED,
                 () -> playlistExportService.export(10L, 1L));
 
         verify(playlistService).saveSpotifyExportFailure(
@@ -132,7 +132,7 @@ class PlaylistExportServiceTest {
                 1L,
                 "spotify-playlist",
                 "url",
-                ErrorCode.SPOTIFY_EXPORT_FAILED);
+                ErrorCode.SPOTIFY_PLAYLIST_ITEM_ADD_FAILED);
     }
 
     @Test
@@ -235,7 +235,7 @@ class PlaylistExportServiceTest {
                 .thenThrow(new CustomException(ErrorCode.SPOTIFY_API_ERROR));
 
         assertError(
-                ErrorCode.SPOTIFY_EXPORT_FAILED,
+                ErrorCode.SPOTIFY_PLAYLIST_CREATE_FAILED,
                 () -> playlistExportService.export(10L, 1L));
 
         verify(playlistService).saveSpotifyExportFailure(
@@ -243,7 +243,7 @@ class PlaylistExportServiceTest {
                 1L,
                 null,
                 null,
-                ErrorCode.SPOTIFY_EXPORT_FAILED);
+                ErrorCode.SPOTIFY_PLAYLIST_CREATE_FAILED);
         verify(spotifyApiClient, never()).addTracks(
                 org.mockito.ArgumentMatchers.any(),
                 org.mockito.ArgumentMatchers.any(),
@@ -301,7 +301,7 @@ class PlaylistExportServiceTest {
                 .addTracks("access", "spotify-playlist", uris.subList(100, 101));
 
         assertError(
-                ErrorCode.SPOTIFY_EXPORT_FAILED,
+                ErrorCode.SPOTIFY_PLAYLIST_ITEM_ADD_FAILED,
                 () -> playlistExportService.export(10L, 1L));
 
         verify(spotifyApiClient).addTracks(
@@ -311,7 +311,7 @@ class PlaylistExportServiceTest {
                 1L,
                 "spotify-playlist",
                 "url",
-                ErrorCode.SPOTIFY_EXPORT_FAILED);
+                ErrorCode.SPOTIFY_PLAYLIST_ITEM_ADD_FAILED);
     }
 
     @Test

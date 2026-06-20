@@ -39,9 +39,9 @@ cd ssafit
 - Mapper XML의 `namespace`는 Mapper Interface의 FQCN과 일치시킵니다.
 - Session 로그인 회원 ID 키는 `SessionConst.LOGIN_MEMBER_ID`를 사용합니다.
 
-## 현재 브랜치 구현 범위
+## 구현 범위와 협업 경계
 
-현재 `feature/a-db-service` 브랜치에서는 다음 내부 영역만 구현합니다.
+`feature/a-spotify-service` 브랜치에는 다음 내부 영역이 구현되어 있습니다.
 
 - DB DDL과 제약조건
 - Domain과 Enum
@@ -49,21 +49,20 @@ cd ssafit
 - Service 비즈니스 로직
 - Session 기반 인증/인가와 권한 검증
 - 규칙 기반 자동 큐레이션 내부 로직
-- Spotify 관련 DB 컬럼과 내부 저장 구조
+- Spotify 곡 검색과 선택 곡 저장
+- Spotify OAuth 연결과 Token 갱신
+- Spotify 플레이리스트 Export와 상태 저장
 
-다음 항목은 현재 브랜치에서 구현하지 않습니다.
+다음 항목은 팀원 B 담당 영역이므로 이 브랜치에서 구현하거나 임의 수정하지 않습니다.
 
 - Controller
 - Request/Response DTO
 - JSP와 Vue3 화면
+- Vue API Module
 - Spring Security와 JWT
-- 실제 Spotify API 호출
-- Spotify OAuth 실제 처리
-- Spotify Export 실제 연동
-- 실제 AI API 추천
 
-Controller와 Request/Response DTO는 팀원 B 담당입니다. 실제 Spotify API, OAuth,
-Export 연동은 이후 `feature/a-spotify-service` 브랜치에서 구현합니다.
+팀원 B는 [Spotify Service 연동 계약](docs/spotify-service-contract.md)을 기준으로
+Controller, DTO, Vue 화면을 연결합니다.
 
 ## 로컬 DB 생성
 
@@ -93,16 +92,24 @@ COLLATE utf8mb4_general_ci;
 
 ## Spotify 환경 변수
 
-STS의 Run Configurations에서 다음 환경 변수를 등록합니다.
+### 1. 환경 변수 준비
+
+저장소 루트의 `.env.example`을 참고해 STS Run Configurations 또는 로컬 실행
+환경에 다음 변수를 등록합니다.
 
 ```text
-SPOTIFY_CLIENT_ID=발급받은_Client_ID
-SPOTIFY_CLIENT_SECRET=발급받은_Client_Secret
+SPOTIFY_CLIENT_ID=<Spotify Developer Dashboard에서 발급>
+SPOTIFY_CLIENT_SECRET=<Spotify Developer Dashboard에서 발급>
 SPOTIFY_REDIRECT_URI=http://localhost:8080/api/spotify/oauth/callback
 ```
 
-실제 값은 `.env` 또는 IDE의 Run Configuration에만 설정하고 저장소에 커밋하지
-않습니다. `.env.example`에는 변수 이름과 로컬 예시 Redirect URI만 제공합니다.
+- 실제 값은 IDE Run Configuration, OS 환경 변수 또는 별도 비밀 저장소에만 둡니다.
+- 실제 Client ID, Secret, Token을 `.env.example`, `application.yml`, README,
+  테스트 코드에 넣지 않습니다.
+- 프로젝트는 `.env` 파일을 자동으로 읽지 않으므로 `.env`를 사용할 경우 IDE나
+  별도 로더를 통해 환경 변수로 주입해야 합니다.
+
+### 2. Redirect URI 등록
 
 Spotify Developer Dashboard에는 `SPOTIFY_REDIRECT_URI`와 완전히 동일한 Redirect
 URI를 등록합니다.
@@ -110,6 +117,26 @@ URI를 등록합니다.
 ```text
 http://localhost:8080/api/spotify/oauth/callback
 ```
+
+프로토콜, 호스트, 포트, 경로와 마지막 슬래시까지 모두 일치해야 합니다.
+
+### 3. 필요한 Spotify scope
+
+```text
+user-read-private
+playlist-modify-private
+playlist-modify-public
+```
+
+### 4. 보안 기준
+
+- Access Token, Refresh Token, Authorization Code, Client Secret은 API 응답과
+  로그에 출력하지 않습니다.
+- Spotify 연결 상태 응답에 `SpotifyConnection` Domain을 그대로 노출하지 않습니다.
+- Vue에서 Access Token을 저장하거나 Spotify API를 직접 호출하지 않습니다.
+
+상세 입력·출력 및 ErrorCode 계약은
+[Spotify Service 연동 계약](docs/spotify-service-contract.md)을 확인합니다.
 
 ## Spotify Export 상태 정책
 
@@ -133,12 +160,18 @@ ADD COLUMN spotify_export_error_code VARCHAR(50) NULL
 AFTER spotify_export_status;
 ```
 
+## Spotify 문서
+
+- [팀원 B용 Service 연동 계약](docs/spotify-service-contract.md)
+- [실제 Spotify 계정 수동 통합 체크리스트](docs/spotify-manual-integration-checklist.md)
+
 ## 실행 확인
 
 Windows:
 
 ```bash
 mvnw.cmd clean test
+mvnw.cmd -o clean test
 mvnw.cmd spring-boot:run
 ```
 
@@ -146,8 +179,13 @@ macOS/Linux:
 
 ```bash
 ./mvnw clean test
+./mvnw -o clean test
 ./mvnw spring-boot:run
 ```
+
+오프라인 테스트는 필요한 Maven 의존성이 로컬 캐시에 한 번 이상 내려받아진 이후
+실행할 수 있습니다. Spotify 관련 JUnit 테스트는 Mock 기반이며 실제 Spotify API를
+호출하지 않습니다.
 
 애플리케이션 실행 후 다음 주소에서 `OK` 응답을 확인합니다.
 

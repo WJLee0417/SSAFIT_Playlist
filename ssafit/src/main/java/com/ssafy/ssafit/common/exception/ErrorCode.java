@@ -37,6 +37,12 @@ public enum ErrorCode {
             "Spotify 인증 URL을 생성할 수 없습니다."),
     SPOTIFY_TOKEN_EXPIRED(HttpStatus.UNAUTHORIZED, "Spotify 토큰을 갱신할 수 없습니다."),
     SPOTIFY_API_ERROR(HttpStatus.BAD_GATEWAY, "Spotify API 호출에 실패했습니다."),
+    SPOTIFY_PLAYLIST_CREATE_FAILED(
+            HttpStatus.BAD_GATEWAY,
+            "Spotify 플레이리스트 생성에 실패했습니다."),
+    SPOTIFY_PLAYLIST_ITEM_ADD_FAILED(
+            HttpStatus.BAD_GATEWAY,
+            "Spotify 플레이리스트 수록곡 추가에 실패했습니다."),
     SPOTIFY_EXPORT_FAILED(HttpStatus.BAD_GATEWAY, "Spotify 플레이리스트 내보내기에 실패했습니다."),
 
     MUSIC_REVIEW_NOT_FOUND(HttpStatus.NOT_FOUND, "음악 평가를 찾을 수 없습니다."),
