@@ -49,8 +49,10 @@ import com.ssafy.ssafit.runningprofile.mapper.RunningProfileMapper;
 import com.ssafy.ssafit.runningrecord.domain.RunningRecord;
 import com.ssafy.ssafit.runningrecord.mapper.RunningRecordMapper;
 import com.ssafy.ssafit.runningsession.domain.RunningSession;
+import com.ssafy.ssafit.runningsession.domain.RunningSessionParticipant;
 import com.ssafy.ssafit.runningsession.domain.RunningSessionStatus;
 import com.ssafy.ssafit.runningsession.mapper.RunningSessionMapper;
+import com.ssafy.ssafit.runningsession.mapper.RunningSessionParticipantMapper;
 import com.ssafy.ssafit.spotify.domain.SpotifyConnection;
 import com.ssafy.ssafit.spotify.mapper.SpotifyConnectionMapper;
 
@@ -74,6 +76,9 @@ class MapperIntegrationTest {
 
     @Autowired
     private RunningSessionMapper runningSessionMapper;
+
+    @Autowired
+    private RunningSessionParticipantMapper runningSessionParticipantMapper;
 
     @Autowired
     private MusicMapper musicMapper;
@@ -234,6 +239,65 @@ class MapperIntegrationTest {
                 runningSession.getId(),
                 RunningSessionStatus.OPEN)).isZero();
         assertThat(runningSessionMapper.cancel(runningSession.getId())).isZero();
+    }
+
+    @Test
+    void runningSessionParticipantMapperSupportsJoinCancelAndRejoin() {
+        Member host = insertMember("participant_host");
+        Member first = insertMember("participant_first");
+        Member second = insertMember("participant_second");
+        RunningSession runningSession = insertRunningSession(host.getId(), 1);
+
+        RunningSessionParticipant firstParticipation =
+                new RunningSessionParticipant();
+        firstParticipation.setSessionId(runningSession.getId());
+        firstParticipation.setMemberId(first.getId());
+        runningSessionParticipantMapper.insert(firstParticipation);
+
+        assertThat(firstParticipation.getId()).isNotNull();
+        assertThat(runningSessionParticipantMapper.existsParticipant(
+                runningSession.getId(),
+                first.getId())).isTrue();
+        assertThat(runningSessionParticipantMapper.countParticipants(
+                runningSession.getId())).isEqualTo(1);
+        assertThat(runningSessionParticipantMapper.selectParticipants(
+                runningSession.getId()))
+                .extracting(RunningSessionParticipant::getMemberId)
+                .containsExactly(first.getId());
+        assertThat(runningSessionParticipantMapper
+                .selectBySessionIdAndMemberId(
+                        runningSession.getId(),
+                        first.getId()))
+                .isPresent();
+
+        RunningSessionParticipant duplicate = new RunningSessionParticipant();
+        duplicate.setSessionId(runningSession.getId());
+        duplicate.setMemberId(first.getId());
+        assertThatThrownBy(() ->
+                runningSessionParticipantMapper.insert(duplicate))
+                .isInstanceOf(DataIntegrityViolationException.class);
+        assertThat(runningSessionParticipantMapper.countParticipants(
+                runningSession.getId())).isEqualTo(1);
+
+        assertThat(runningSessionParticipantMapper.delete(
+                runningSession.getId(),
+                second.getId())).isZero();
+        assertThat(runningSessionParticipantMapper.countParticipants(
+                runningSession.getId())).isEqualTo(1);
+
+        assertThat(runningSessionParticipantMapper.delete(
+                runningSession.getId(),
+                first.getId())).isEqualTo(1);
+        assertThat(runningSessionParticipantMapper.countParticipants(
+                runningSession.getId())).isZero();
+
+        RunningSessionParticipant rejoined = new RunningSessionParticipant();
+        rejoined.setSessionId(runningSession.getId());
+        rejoined.setMemberId(first.getId());
+        runningSessionParticipantMapper.insert(rejoined);
+
+        assertThat(runningSessionParticipantMapper.countParticipants(
+                runningSession.getId())).isEqualTo(1);
     }
 
     @Test
@@ -545,6 +609,20 @@ class MapperIntegrationTest {
         playlist.setSpotifyExportStatus(SpotifyExportStatus.NOT_EXPORTED);
         playlistMapper.insert(playlist);
         return playlist;
+    }
+
+    private RunningSession insertRunningSession(Long hostMemberId, int capacity) {
+        RunningSession runningSession = new RunningSession();
+        runningSession.setHostMemberId(hostMemberId);
+        runningSession.setTitle("Participant Test Session");
+        runningSession.setDescription("Participant mapper integration");
+        runningSession.setMeetingPlace("Seoul");
+        runningSession.setScheduledAt(
+                java.time.LocalDateTime.of(2026, 7, 1, 9, 0));
+        runningSession.setCapacity(capacity);
+        runningSession.setStatus(RunningSessionStatus.OPEN);
+        runningSessionMapper.insert(runningSession);
+        return runningSession;
     }
 
     private void insertItem(Long playlistId, Long musicId, int orderNo) {
