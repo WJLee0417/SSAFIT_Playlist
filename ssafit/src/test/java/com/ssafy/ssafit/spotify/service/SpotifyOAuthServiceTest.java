@@ -368,6 +368,19 @@ class SpotifyOAuthServiceTest {
     }
 
     @Test
+    void existingConnectionCanBeQueriedWithoutTokenRefresh() {
+        SpotifyConnection connection = connection(LocalDateTime.now().plusMinutes(10));
+        when(spotifyConnectionMapper.selectByMemberId(10L))
+                .thenReturn(Optional.of(connection));
+
+        SpotifyConnection result = spotifyOAuthService.getConnection(10L);
+
+        assertThat(result).isSameAs(connection);
+        verify(spotifyApiClient, never())
+                .refreshAccessToken(org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
     void missingConnectionRequiresSpotifyAuthentication() {
         when(spotifyConnectionMapper.selectByMemberId(10L))
                 .thenReturn(Optional.empty());

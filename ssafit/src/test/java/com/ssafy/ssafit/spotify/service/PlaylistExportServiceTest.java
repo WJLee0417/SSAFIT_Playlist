@@ -59,7 +59,10 @@ class PlaylistExportServiceTest {
         SpotifyConnection connection = connection();
         Playlist exported = playlist();
         exported.setSpotifyPlaylistId("spotify-playlist");
+        exported.setSpotifyPlaylistUrl(
+                "https://open.spotify.com/playlist/spotify-playlist");
         exported.setSpotifyExportStatus(SpotifyExportStatus.SUCCESS);
+        exported.setSpotifyExportedAt(java.time.LocalDateTime.now());
         when(playlistService.getExportTarget(10L, 1L)).thenReturn(playlist);
         when(spotifyOAuthService.getValidConnection(10L)).thenReturn(connection);
         when(playlistItemService.getSpotifyUris(10L, 1L))
@@ -82,6 +85,12 @@ class PlaylistExportServiceTest {
         Playlist result = playlistExportService.export(10L, 1L);
 
         assertThat(result).isSameAs(exported);
+        assertThat(result.getSpotifyPlaylistId()).isEqualTo("spotify-playlist");
+        assertThat(result.getSpotifyPlaylistUrl())
+                .isEqualTo("https://open.spotify.com/playlist/spotify-playlist");
+        assertThat(result.getSpotifyExportStatus())
+                .isEqualTo(SpotifyExportStatus.SUCCESS);
+        assertThat(result.getSpotifyExportedAt()).isNotNull();
         verify(playlistService).updateSpotifyExportStatus(
                 10L,
                 1L,
