@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ssafy.ssafit.runningrecord.mapper.RunningRecordMapper">
+
+    <resultMap id="runningRecordResultMap"
+               type="com.ssafy.ssafit.runningrecord.domain.RunningRecord">
+        <id property="id" column="id"/>
+        <result property="memberId" column="member_id"/>
+        <result property="recordDate" column="record_date"/>
+        <result property="distanceKm" column="distance_km"/>
+        <result property="durationSeconds" column="duration_seconds"/>
+        <result property="paceSecondsPerKm" column="pace_seconds_per_km"/>
+        <result property="memo" column="memo"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="updatedAt" column="updated_at"/>
+        <result property="deletedAt" column="deleted_at"/>
+    </resultMap>
+
+    <sql id="runningRecordColumns">
+        id,
+        member_id,
+        record_date,
+        distance_km,
+        duration_seconds,
+        pace_seconds_per_km,
+        memo,
+        created_at,
+        updated_at,
+        deleted_at
+    </sql>
+
+    <insert id="insert"
+            parameterType="com.ssafy.ssafit.runningrecord.domain.RunningRecord"
+            useGeneratedKeys="true"
+            keyProperty="id"
+            keyColumn="id">
+        INSERT INTO running_records (
+            member_id,
+            record_date,
+            distance_km,
+            duration_seconds,
+            pace_seconds_per_km,
+            memo
+        ) VALUES (
+            #{memberId},
+            #{recordDate},
+            #{distanceKm},
+            #{durationSeconds},
+            #{paceSecondsPerKm},
+            #{memo}
+        )
+    </insert>
+
+    <select id="selectListByMemberId" resultMap="runningRecordResultMap">
+        SELECT
+            <include refid="runningRecordColumns"/>
+        FROM running_records
+        WHERE member_id = #{memberId}
+          AND deleted_at IS NULL
+        ORDER BY record_date DESC, id DESC
+    </select>
+
+    <select id="selectById" resultMap="runningRecordResultMap">
+        SELECT
+            <include refid="runningRecordColumns"/>
+        FROM running_records
+        WHERE id = #{id}
+          AND deleted_at IS NULL
+    </select>
+
+    <update id="update"
+            parameterType="com.ssafy.ssafit.runningrecord.domain.RunningRecord">
+        UPDATE running_records
+        SET
+            record_date = #{recordDate},
+            distance_km = #{distanceKm},
+            duration_seconds = #{durationSeconds},
+            pace_seconds_per_km = #{paceSecondsPerKm},
+            memo = #{memo}
+        WHERE id = #{id}
+          AND deleted_at IS NULL
+    </update>
+
+    <update id="delete">
+        UPDATE running_records
+        SET deleted_at = CURRENT_TIMESTAMP(6)
+        WHERE id = #{id}
+          AND deleted_at IS NULL
+    </update>
+
+</mapper>

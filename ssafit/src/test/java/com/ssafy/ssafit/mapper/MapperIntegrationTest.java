@@ -46,6 +46,8 @@ import com.ssafy.ssafit.recommendation.service.RecommendationService;
 import com.ssafy.ssafit.runningprofile.domain.RunningIntensity;
 import com.ssafy.ssafit.runningprofile.domain.RunningProfile;
 import com.ssafy.ssafit.runningprofile.mapper.RunningProfileMapper;
+import com.ssafy.ssafit.runningrecord.domain.RunningRecord;
+import com.ssafy.ssafit.runningrecord.mapper.RunningRecordMapper;
 import com.ssafy.ssafit.spotify.domain.SpotifyConnection;
 import com.ssafy.ssafit.spotify.mapper.SpotifyConnectionMapper;
 
@@ -63,6 +65,9 @@ class MapperIntegrationTest {
 
     @Autowired
     private RunningProfileMapper runningProfileMapper;
+
+    @Autowired
+    private RunningRecordMapper runningRecordMapper;
 
     @Autowired
     private MusicMapper musicMapper;
@@ -129,6 +134,45 @@ class MapperIntegrationTest {
         assertThat(selected.getId()).isNotNull();
         assertThat(selected.getRunningIntensity()).isEqualTo(RunningIntensity.MODERATE);
         assertThat(selected.getTargetBpmMin()).isEqualTo(130);
+    }
+
+    @Test
+    void runningRecordMapperSupportsCrudAndSoftDelete() {
+        Member member = insertMember("running_record_member");
+        RunningRecord record = new RunningRecord();
+        record.setMemberId(member.getId());
+        record.setRecordDate(java.time.LocalDate.of(2026, 6, 20));
+        record.setDistanceKm(new java.math.BigDecimal("5.00"));
+        record.setDurationSeconds(1800);
+        record.setPaceSecondsPerKm(360);
+        record.setMemo("Mapper running record");
+
+        runningRecordMapper.insert(record);
+
+        assertThat(record.getId()).isNotNull();
+        RunningRecord selected = runningRecordMapper.selectById(record.getId())
+                .orElseThrow();
+        assertThat(selected.getMemberId()).isEqualTo(member.getId());
+        assertThat(selected.getDistanceKm())
+                .isEqualByComparingTo(new java.math.BigDecimal("5.00"));
+        assertThat(runningRecordMapper.selectListByMemberId(member.getId()))
+                .extracting(RunningRecord::getId)
+                .containsExactly(record.getId());
+
+        record.setDistanceKm(new java.math.BigDecimal("10.00"));
+        record.setDurationSeconds(3300);
+        record.setPaceSecondsPerKm(330);
+        runningRecordMapper.update(record);
+
+        assertThat(runningRecordMapper.selectById(record.getId())
+                .orElseThrow()
+                .getPaceSecondsPerKm()).isEqualTo(330);
+
+        runningRecordMapper.delete(record.getId());
+
+        assertThat(runningRecordMapper.selectById(record.getId())).isEmpty();
+        assertThat(runningRecordMapper.selectListByMemberId(member.getId())).isEmpty();
+        assertThat(countRows("running_records")).isEqualTo(1);
     }
 
     @Test
@@ -471,6 +515,9 @@ class MapperIntegrationTest {
     }
 
     private void deleteAllData() {
+        jdbcTemplate.update("DELETE FROM running_session_participants");
+        jdbcTemplate.update("DELETE FROM running_sessions");
+        jdbcTemplate.update("DELETE FROM running_records");
         jdbcTemplate.update("DELETE FROM spotify_connections");
         jdbcTemplate.update("DELETE FROM recommendation_logs");
         jdbcTemplate.update("DELETE FROM playlist_saves");
