@@ -162,6 +162,7 @@ AFTER spotify_export_status;
 
 ## Spotify 문서
 
+- [팀원 B 작업 인수인계서](docs/team-b-handover.md)
 - [팀원 B용 Service 연동 계약](docs/spotify-service-contract.md)
 - [실제 Spotify 계정 수동 통합 체크리스트](docs/spotify-manual-integration-checklist.md)
 
