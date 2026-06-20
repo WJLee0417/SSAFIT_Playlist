@@ -136,12 +136,15 @@ class PlaylistSaveServiceTest {
     void savedListIsReturnedForCurrentMember() {
         Playlist first = playlist(1L, null, PlaylistType.OFFICIAL, PlaylistVisibility.PUBLIC);
         Playlist second = playlist(2L, 20L, PlaylistType.USER, PlaylistVisibility.PUBLIC);
+        first.setSaved(true);
+        second.setSaved(true);
         when(playlistSaveMapper.selectSavedList(10L))
                 .thenReturn(List.of(first, second));
 
         List<Playlist> result = playlistSaveService.getMySavedList(10L);
 
         assertThat(result).containsExactly(first, second);
+        assertThat(result).allMatch(Playlist::isSaved);
     }
 
     @Test

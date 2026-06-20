@@ -25,6 +25,7 @@ public class Playlist {
     private SpotifyExportStatus spotifyExportStatus;
     private String spotifyExportErrorCode;
     private LocalDateTime spotifyExportedAt;
+    private boolean saved;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private LocalDateTime deletedAt;

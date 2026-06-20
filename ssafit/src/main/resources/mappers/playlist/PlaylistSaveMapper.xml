@@ -15,7 +15,9 @@
         <result property="spotifyPlaylistId" column="spotify_playlist_id"/>
         <result property="spotifyPlaylistUrl" column="spotify_playlist_url"/>
         <result property="spotifyExportStatus" column="spotify_export_status"/>
+        <result property="spotifyExportErrorCode" column="spotify_export_error_code"/>
         <result property="spotifyExportedAt" column="spotify_exported_at"/>
+        <result property="saved" column="saved"/>
         <result property="createdAt" column="created_at"/>
         <result property="updatedAt" column="updated_at"/>
         <result property="deletedAt" column="deleted_at"/>
@@ -62,7 +64,9 @@
             p.spotify_playlist_id,
             p.spotify_playlist_url,
             p.spotify_export_status,
+            p.spotify_export_error_code,
             p.spotify_exported_at,
+            TRUE AS saved,
             p.created_at,
             p.updated_at,
             p.deleted_at

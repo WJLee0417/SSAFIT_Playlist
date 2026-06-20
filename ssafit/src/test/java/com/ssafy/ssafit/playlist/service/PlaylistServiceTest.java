@@ -67,9 +67,13 @@ class PlaylistServiceTest {
     @Test
     void listDelegatesVisiblePolicyToMapper() {
         Playlist visible = playlist(1L, 20L, PlaylistType.USER, PlaylistVisibility.PUBLIC);
+        visible.setSaved(true);
         when(playlistMapper.selectList(10L, null)).thenReturn(List.of(visible));
 
-        assertThat(playlistService.getList(10L, null)).containsExactly(visible);
+        List<Playlist> result = playlistService.getList(10L, null);
+
+        assertThat(result).containsExactly(visible);
+        assertThat(result.getFirst().isSaved()).isTrue();
     }
 
     @Test

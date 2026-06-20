@@ -347,6 +347,11 @@ Request DTO를 둘지는 팀 규칙에 맞추되, Controller에서 Service 조�
 - `PlaylistItemResponse`
 - `PlaylistSaveResponse`
 
+`PlaylistResponse`에는 현재 로그인 조회자의 참조 저장 여부를 나타내는
+`saved` boolean 필드를 포함한다. 일반 목록에서는 로그인 회원의
+`playlist_saves` 존재 여부가 반영되고, 비로그인 조회는 `false`, 내 저장 목록은
+항상 `true`다.
+
 ### 자동 큐레이션
 
 - `PlaylistRecommendRequest`

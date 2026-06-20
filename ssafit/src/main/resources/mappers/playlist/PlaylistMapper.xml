@@ -22,6 +22,12 @@
         <result property="deletedAt" column="deleted_at"/>
     </resultMap>
 
+    <resultMap id="playlistListResultMap"
+               type="com.ssafy.ssafit.playlist.domain.Playlist"
+               extends="playlistResultMap">
+        <result property="saved" column="saved"/>
+    </resultMap>
+
     <sql id="playlistColumns">
         p.id,
         p.owner_id,
@@ -64,9 +70,22 @@
         )
     </insert>
 
-    <select id="selectList" resultMap="playlistResultMap">
+    <select id="selectList" resultMap="playlistListResultMap">
         SELECT
-            <include refid="playlistColumns"/>
+            <include refid="playlistColumns"/>,
+            <choose>
+                <when test="viewerMemberId != null">
+                    EXISTS (
+                        SELECT 1
+                        FROM playlist_saves ps
+                        WHERE ps.playlist_id = p.id
+                          AND ps.member_id = #{viewerMemberId}
+                    )
+                </when>
+                <otherwise>
+                    FALSE
+                </otherwise>
+            </choose> AS saved
         FROM playlists p
         WHERE p.deleted_at IS NULL
           AND (

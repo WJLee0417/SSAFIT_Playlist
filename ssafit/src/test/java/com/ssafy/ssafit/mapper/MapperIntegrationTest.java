@@ -211,16 +211,29 @@ class MapperIntegrationTest {
         save.setPlaylistId(publicPlaylist.getId());
         playlistSaveMapper.insert(save);
 
-        assertThat(playlistMapper.selectList(viewer.getId(), null))
+        List<Playlist> viewerPlaylists =
+                playlistMapper.selectList(viewer.getId(), null);
+        assertThat(viewerPlaylists)
                 .extracting(Playlist::getTitle)
                 .contains("Public Join Playlist")
                 .doesNotContain("Private Join Playlist");
+        assertThat(viewerPlaylists.stream()
+                .filter(playlist -> playlist.getId().equals(publicPlaylist.getId()))
+                .findFirst()
+                .orElseThrow()
+                .isSaved()).isTrue();
+        assertThat(playlistMapper.selectList(null, null).stream()
+                .filter(playlist -> playlist.getId().equals(publicPlaylist.getId()))
+                .findFirst()
+                .orElseThrow()
+                .isSaved()).isFalse();
         assertThat(playlistItemMapper.selectByPlaylistId(publicPlaylist.getId()))
                 .extracting(PlaylistItem::getMusicId)
                 .containsExactly(spotifyMusic.getId(), seedMusic.getId());
         assertThat(playlistItemMapper.selectSpotifyUrisByPlaylistId(publicPlaylist.getId()))
                 .containsExactly("spotify:track:mapper-join");
         assertThat(playlistSaveMapper.selectSavedList(viewer.getId()))
+                .allMatch(Playlist::isSaved)
                 .extracting(Playlist::getTitle)
                 .containsExactly("Public Join Playlist");
     }
