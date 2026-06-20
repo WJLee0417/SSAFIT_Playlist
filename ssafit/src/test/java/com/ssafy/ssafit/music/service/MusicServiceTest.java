@@ -15,6 +15,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DuplicateKeyException;
 
 import com.ssafy.ssafit.common.exception.CustomException;
 import com.ssafy.ssafit.common.exception.ErrorCode;
@@ -129,6 +130,7 @@ class MusicServiceTest {
         assertThat(saved.getId()).isEqualTo(10L);
         assertThat(saved.getSourceType()).isEqualTo(MusicSourceType.SPOTIFY);
         assertThat(saved.getSpotifyTrackId()).isEqualTo("track-1");
+        assertThat(saved.getSpotifyUri()).isEqualTo("spotify:track:track-1");
         assertThat(saved.getAlbumName()).isEqualTo("Running Album");
         assertThat(saved.getImageUrl()).isEqualTo("https://image.example/cover.jpg");
         verify(musicMapper).insertFromSpotify(saved);
@@ -167,6 +169,38 @@ class MusicServiceTest {
         assertThat(saved.getBpm()).isEqualTo(150);
         verify(musicMapper).updateSpotifyMetadata(existing);
         verify(musicMapper, never()).insertFromSpotify(org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
+    void saveSelectedSpotifyTrackUsesNormalizedTrackIdForLookup() {
+        SpotifyTrackMetadata metadata = validMetadata();
+        metadata.setSpotifyTrackId("  track-1  ");
+        Music existing = completeExistingMusic();
+        when(musicMapper.selectBySpotifyTrackId("track-1"))
+                .thenReturn(Optional.of(existing));
+
+        assertThat(musicService.saveSelectedSpotifyTrack(metadata)).isSameAs(existing);
+
+        verify(musicMapper).selectBySpotifyTrackId("track-1");
+        verify(musicMapper, never()).insertFromSpotify(org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
+    void duplicateInsertRaceReusesAndEnrichesStoredMusic() {
+        SpotifyTrackMetadata metadata = validMetadata();
+        Music concurrentlyInserted = completeExistingMusic();
+        concurrentlyInserted.setAlbumName(null);
+        when(musicMapper.selectBySpotifyTrackId("track-1"))
+                .thenReturn(Optional.empty())
+                .thenReturn(Optional.of(concurrentlyInserted));
+        when(musicMapper.insertFromSpotify(org.mockito.ArgumentMatchers.any()))
+                .thenThrow(new DuplicateKeyException("duplicate spotify track"));
+
+        Music saved = musicService.saveSelectedSpotifyTrack(metadata);
+
+        assertThat(saved).isSameAs(concurrentlyInserted);
+        assertThat(saved.getAlbumName()).isEqualTo("Running Album");
+        verify(musicMapper).updateSpotifyMetadata(concurrentlyInserted);
     }
 
     @Test

@@ -30,15 +30,24 @@ public class SpotifyService {
             throw new CustomException(ErrorCode.INVALID_REQUEST);
         }
         int normalizedLimit = normalizeLimit(limit);
-        String clientAccessToken = spotifyApiClient.issueClientAccessToken();
-        List<SpotifyTrack> tracks = spotifyApiClient.searchTracks(
-                clientAccessToken,
-                query.trim(),
-                normalizedLimit);
+        List<SpotifyTrack> tracks;
+        try {
+            String clientAccessToken = spotifyApiClient.issueClientAccessToken();
+            if (!StringUtils.hasText(clientAccessToken)) {
+                throw new CustomException(ErrorCode.SPOTIFY_SEARCH_FAILED);
+            }
+            tracks = spotifyApiClient.searchTracks(
+                    clientAccessToken,
+                    query.trim(),
+                    normalizedLimit);
+        } catch (RuntimeException exception) {
+            throw new CustomException(ErrorCode.SPOTIFY_SEARCH_FAILED);
+        }
         if (tracks == null || tracks.isEmpty()) {
-            throw new CustomException(ErrorCode.SPOTIFY_TRACK_NOT_FOUND);
+            return List.of();
         }
         return tracks.stream()
+                .filter(this::hasSpotifyIdentity)
                 .map(this::toMetadata)
                 .toList();
     }
@@ -48,32 +57,38 @@ public class SpotifyService {
     }
 
     private SpotifyTrackMetadata toMetadata(SpotifyTrack track) {
-        if (track == null
-                || !StringUtils.hasText(track.getId())
-                || !StringUtils.hasText(track.getUri())
-                || !StringUtils.hasText(track.getTitle())
-                || !StringUtils.hasText(track.getArtist())) {
-            throw new CustomException(ErrorCode.SPOTIFY_API_ERROR);
+        if (!hasSpotifyIdentity(track)) {
+            return null;
         }
         return new SpotifyTrackMetadata(
-                track.getId(),
-                track.getUri(),
-                track.getExternalUrl(),
-                track.getTitle(),
-                track.getArtist(),
-                track.getAlbumName(),
-                track.getImageUrl(),
+                track.getId().trim(),
+                track.getUri().trim(),
+                trimToNull(track.getExternalUrl()),
+                trimToNull(track.getTitle()),
+                trimToNull(track.getArtist()),
+                trimToNull(track.getAlbumName()),
+                trimToNull(track.getImageUrl()),
                 null,
                 null);
+    }
+
+    private boolean hasSpotifyIdentity(SpotifyTrack track) {
+        return track != null
+                && StringUtils.hasText(track.getId())
+                && StringUtils.hasText(track.getUri());
+    }
+
+    private String trimToNull(String value) {
+        return StringUtils.hasText(value) ? value.trim() : null;
     }
 
     private int normalizeLimit(Integer limit) {
         if (limit == null) {
             return DEFAULT_SEARCH_LIMIT;
         }
-        if (limit < 1 || limit > MAX_SEARCH_LIMIT) {
+        if (limit < 1) {
             throw new CustomException(ErrorCode.INVALID_REQUEST);
         }
-        return limit;
+        return Math.min(limit, MAX_SEARCH_LIMIT);
     }
 }

@@ -24,6 +24,7 @@ public enum ErrorCode {
     INVALID_BPM_VALUE(HttpStatus.BAD_REQUEST, "BPM 값은 60에서 220 사이여야 합니다."),
     INVALID_BPM_RANGE(HttpStatus.BAD_REQUEST, "BPM 범위가 올바르지 않습니다."),
     SPOTIFY_TRACK_NOT_FOUND(HttpStatus.NOT_FOUND, "Spotify 트랙 정보를 찾을 수 없습니다."),
+    SPOTIFY_SEARCH_FAILED(HttpStatus.BAD_GATEWAY, "Spotify 곡 검색에 실패했습니다."),
     SPOTIFY_AUTH_REQUIRED(HttpStatus.UNAUTHORIZED, "Spotify 계정 연결이 필요합니다."),
     SPOTIFY_AUTH_DENIED(HttpStatus.FORBIDDEN, "Spotify 인증 권한이 거부되었습니다."),
     SPOTIFY_OAUTH_STATE_MISMATCH(HttpStatus.UNAUTHORIZED, "Spotify OAuth 요청 검증에 실패했습니다."),

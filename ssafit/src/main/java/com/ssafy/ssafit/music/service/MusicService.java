@@ -58,8 +58,9 @@ public class MusicService {
         validateSpotifyMetadata(metadata);
         validateBpm(metadata.getBpm());
 
+        String spotifyTrackId = metadata.getSpotifyTrackId().trim();
         Optional<Music> existing = musicMapper.selectBySpotifyTrackId(
-                metadata.getSpotifyTrackId());
+                spotifyTrackId);
         if (existing.isPresent()) {
             return enrichExistingMusic(existing.get(), metadata);
         }
@@ -69,7 +70,8 @@ public class MusicService {
             musicMapper.insertFromSpotify(music);
             return music;
         } catch (DuplicateKeyException exception) {
-            return musicMapper.selectBySpotifyTrackId(metadata.getSpotifyTrackId())
+            return musicMapper.selectBySpotifyTrackId(spotifyTrackId)
+                    .map(value -> enrichExistingMusic(value, metadata))
                     .orElseThrow(() -> exception);
         }
     }
