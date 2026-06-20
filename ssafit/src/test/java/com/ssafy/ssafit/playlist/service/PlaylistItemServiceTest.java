@@ -177,12 +177,27 @@ class PlaylistItemServiceTest {
     @Test
     void spotifyUrisAreReturnedInMapperOrder() {
         stubOwnedPlaylist();
+        when(playlistItemMapper.countByPlaylistId(1L)).thenReturn(2);
+        when(playlistItemMapper.countSpotifyUrisByPlaylistId(1L)).thenReturn(2);
         when(playlistItemMapper.selectSpotifyUrisByPlaylistId(1L))
                 .thenReturn(List.of("spotify:track:a", "spotify:track:b"));
 
         List<String> uris = playlistItemService.getSpotifyUris(10L, 1L);
 
         assertThat(uris).containsExactly("spotify:track:a", "spotify:track:b");
+    }
+
+    @Test
+    void spotifyExportRejectsPlaylistContainingMissingUri() {
+        stubOwnedPlaylist();
+        when(playlistItemMapper.countByPlaylistId(1L)).thenReturn(2);
+        when(playlistItemMapper.countSpotifyUrisByPlaylistId(1L)).thenReturn(1);
+
+        assertError(
+                ErrorCode.SPOTIFY_URI_NOT_FOUND,
+                () -> playlistItemService.getSpotifyUris(10L, 1L));
+
+        verify(playlistItemMapper, never()).selectSpotifyUrisByPlaylistId(1L);
     }
 
     @Test

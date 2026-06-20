@@ -151,6 +151,7 @@ CREATE TABLE playlists (
     spotify_playlist_id VARCHAR(100) NULL,
     spotify_playlist_url VARCHAR(500) NULL,
     spotify_export_status VARCHAR(20) NOT NULL DEFAULT 'NOT_EXPORTED',
+    spotify_export_error_code VARCHAR(50) NULL,
     spotify_exported_at DATETIME(6) NULL,
     created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
     updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6)
@@ -202,6 +203,17 @@ CREATE TABLE playlists (
             OR (
                 spotify_export_status <> 'SUCCESS'
                 AND spotify_exported_at IS NULL
+            )
+        ),
+    CONSTRAINT ck_playlists_export_error
+        CHECK (
+            (
+                spotify_export_status = 'FAILED'
+                AND spotify_export_error_code IS NOT NULL
+            )
+            OR (
+                spotify_export_status <> 'FAILED'
+                AND spotify_export_error_code IS NULL
             )
         ),
     INDEX idx_playlists_owner (owner_id),

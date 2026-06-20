@@ -94,7 +94,12 @@ public class PlaylistItemService {
     public List<String> getSpotifyUris(Long loginMemberId, Long playlistId) {
         validateAuthenticated(loginMemberId);
         validateOwnedPlaylist(loginMemberId, playlistId);
-        // 비 Spotify 곡 또는 URI가 준비되지 않은 일반 곡은 Export 대상에서 제외한다.
+        int itemCount = playlistItemMapper.countByPlaylistId(playlistId);
+        int spotifyUriCount =
+                playlistItemMapper.countSpotifyUrisByPlaylistId(playlistId);
+        if (itemCount == 0 || itemCount != spotifyUriCount) {
+            throw new CustomException(ErrorCode.SPOTIFY_URI_NOT_FOUND);
+        }
         return playlistItemMapper.selectSpotifyUrisByPlaylistId(playlistId);
     }
 

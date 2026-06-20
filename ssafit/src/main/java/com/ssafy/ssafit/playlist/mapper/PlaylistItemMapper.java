@@ -37,4 +37,8 @@ public interface PlaylistItemMapper {
 
     List<String> selectSpotifyUrisByPlaylistId(
             @Param("playlistId") Long playlistId);
+
+    int countByPlaylistId(@Param("playlistId") Long playlistId);
+
+    int countSpotifyUrisByPlaylistId(@Param("playlistId") Long playlistId);
 }

@@ -37,6 +37,7 @@ public class PlaylistService {
         playlist.setSpotifyPlaylistId(null);
         playlist.setSpotifyPlaylistUrl(null);
         playlist.setSpotifyExportStatus(SpotifyExportStatus.NOT_EXPORTED);
+        playlist.setSpotifyExportErrorCode(null);
         playlist.setSpotifyExportedAt(null);
         playlist.setDeletedAt(null);
         playlistMapper.insert(playlist);
@@ -71,6 +72,7 @@ public class PlaylistService {
         changes.setSpotifyPlaylistId(existing.getSpotifyPlaylistId());
         changes.setSpotifyPlaylistUrl(existing.getSpotifyPlaylistUrl());
         changes.setSpotifyExportStatus(existing.getSpotifyExportStatus());
+        changes.setSpotifyExportErrorCode(existing.getSpotifyExportErrorCode());
         changes.setSpotifyExportedAt(existing.getSpotifyExportedAt());
         changes.setCreatedAt(existing.getCreatedAt());
         changes.setDeletedAt(existing.getDeletedAt());
@@ -100,10 +102,52 @@ public class PlaylistService {
             Long playlistId,
             SpotifyExportStatus status) {
         Playlist playlist = getExportTarget(loginMemberId, playlistId);
-        if (status == null || status == SpotifyExportStatus.SUCCESS) {
+        if (status == null
+                || status == SpotifyExportStatus.SUCCESS
+                || status == SpotifyExportStatus.FAILED) {
             throw new CustomException(ErrorCode.INVALID_REQUEST);
         }
-        playlistMapper.updateSpotifyExportStatus(playlist.getId(), status);
+        int updated = playlistMapper.updateSpotifyExportStatus(playlist.getId(), status);
+        if (updated == 0) {
+            throw new CustomException(ErrorCode.SPOTIFY_EXPORT_FAILED);
+        }
+    }
+
+    @Transactional
+    public Playlist saveSpotifyExportPending(
+            Long loginMemberId,
+            Long playlistId,
+            String spotifyPlaylistId,
+            String spotifyPlaylistUrl) {
+        Playlist playlist = getExportTarget(loginMemberId, playlistId);
+        validateSpotifyPlaylistIdentity(spotifyPlaylistId, spotifyPlaylistUrl);
+        playlist.setSpotifyPlaylistId(spotifyPlaylistId.trim());
+        playlist.setSpotifyPlaylistUrl(spotifyPlaylistUrl.trim());
+        playlist.setSpotifyExportStatus(SpotifyExportStatus.PENDING);
+        playlist.setSpotifyExportErrorCode(null);
+        playlist.setSpotifyExportedAt(null);
+        playlistMapper.updateSpotifyExportPending(playlist);
+        return playlist;
+    }
+
+    @Transactional
+    public Playlist saveSpotifyExportFailure(
+            Long loginMemberId,
+            Long playlistId,
+            String spotifyPlaylistId,
+            String spotifyPlaylistUrl,
+            ErrorCode errorCode) {
+        Playlist playlist = getExportTarget(loginMemberId, playlistId);
+        playlist.setSpotifyPlaylistId(trimToNull(spotifyPlaylistId));
+        playlist.setSpotifyPlaylistUrl(trimToNull(spotifyPlaylistUrl));
+        playlist.setSpotifyExportStatus(SpotifyExportStatus.FAILED);
+        playlist.setSpotifyExportErrorCode(
+                errorCode == null
+                        ? ErrorCode.SPOTIFY_EXPORT_FAILED.name()
+                        : errorCode.name());
+        playlist.setSpotifyExportedAt(null);
+        playlistMapper.updateSpotifyExportFailure(playlist);
+        return playlist;
     }
 
     @Transactional
@@ -113,15 +157,27 @@ public class PlaylistService {
             String spotifyPlaylistId,
             String spotifyPlaylistUrl) {
         Playlist playlist = getExportTarget(loginMemberId, playlistId);
-        if (isBlank(spotifyPlaylistId) || isBlank(spotifyPlaylistUrl)) {
-            throw new CustomException(ErrorCode.INVALID_REQUEST);
-        }
+        validateSpotifyPlaylistIdentity(spotifyPlaylistId, spotifyPlaylistUrl);
 
         playlist.setSpotifyPlaylistId(spotifyPlaylistId.trim());
         playlist.setSpotifyPlaylistUrl(spotifyPlaylistUrl.trim());
         playlist.setSpotifyExportStatus(SpotifyExportStatus.SUCCESS);
+        playlist.setSpotifyExportErrorCode(null);
+        playlist.setSpotifyExportedAt(java.time.LocalDateTime.now());
         playlistMapper.updateSpotifyExportResult(playlist);
         return playlist;
+    }
+
+    private void validateSpotifyPlaylistIdentity(
+            String spotifyPlaylistId,
+            String spotifyPlaylistUrl) {
+        if (isBlank(spotifyPlaylistId) || isBlank(spotifyPlaylistUrl)) {
+            throw new CustomException(ErrorCode.INVALID_REQUEST);
+        }
+    }
+
+    private String trimToNull(String value) {
+        return isBlank(value) ? null : value.trim();
     }
 
     private Playlist getPlaylist(Long playlistId) {

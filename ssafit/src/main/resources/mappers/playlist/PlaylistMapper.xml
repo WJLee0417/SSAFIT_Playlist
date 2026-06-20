@@ -15,6 +15,7 @@
         <result property="spotifyPlaylistId" column="spotify_playlist_id"/>
         <result property="spotifyPlaylistUrl" column="spotify_playlist_url"/>
         <result property="spotifyExportStatus" column="spotify_export_status"/>
+        <result property="spotifyExportErrorCode" column="spotify_export_error_code"/>
         <result property="spotifyExportedAt" column="spotify_exported_at"/>
         <result property="createdAt" column="created_at"/>
         <result property="updatedAt" column="updated_at"/>
@@ -32,6 +33,7 @@
         p.spotify_playlist_id,
         p.spotify_playlist_url,
         p.spotify_export_status,
+        p.spotify_export_error_code,
         p.spotify_exported_at,
         p.created_at,
         p.updated_at,
@@ -144,7 +146,34 @@
             spotify_playlist_id = #{spotifyPlaylistId},
             spotify_playlist_url = #{spotifyPlaylistUrl},
             spotify_export_status = 'SUCCESS',
-            spotify_exported_at = CURRENT_TIMESTAMP(6)
+            spotify_export_error_code = NULL,
+            spotify_exported_at = #{spotifyExportedAt}
+        WHERE id = #{id}
+          AND deleted_at IS NULL
+    </update>
+
+    <update id="updateSpotifyExportPending"
+            parameterType="com.ssafy.ssafit.playlist.domain.Playlist">
+        UPDATE playlists
+        SET
+            spotify_playlist_id = #{spotifyPlaylistId},
+            spotify_playlist_url = #{spotifyPlaylistUrl},
+            spotify_export_status = 'PENDING',
+            spotify_export_error_code = NULL,
+            spotify_exported_at = NULL
+        WHERE id = #{id}
+          AND deleted_at IS NULL
+    </update>
+
+    <update id="updateSpotifyExportFailure"
+            parameterType="com.ssafy.ssafit.playlist.domain.Playlist">
+        UPDATE playlists
+        SET
+            spotify_playlist_id = #{spotifyPlaylistId},
+            spotify_playlist_url = #{spotifyPlaylistUrl},
+            spotify_export_status = 'FAILED',
+            spotify_export_error_code = #{spotifyExportErrorCode},
+            spotify_exported_at = NULL
         WHERE id = #{id}
           AND deleted_at IS NULL
     </update>
@@ -153,9 +182,15 @@
         UPDATE playlists
         SET
             spotify_export_status = #{status},
+            spotify_export_error_code = NULL,
             spotify_exported_at = NULL
         WHERE id = #{id}
           AND deleted_at IS NULL
+          <if test="status.name() == 'PENDING'">
+            AND spotify_export_status IN ('NOT_EXPORTED', 'FAILED')
+            AND spotify_playlist_id IS NULL
+            AND spotify_playlist_url IS NULL
+          </if>
     </update>
 
     <select id="selectExportTargetPlaylist" resultMap="playlistResultMap">

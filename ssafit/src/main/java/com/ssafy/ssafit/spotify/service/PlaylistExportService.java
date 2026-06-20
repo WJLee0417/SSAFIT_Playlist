@@ -30,23 +30,27 @@ public class PlaylistExportService {
 
     public Playlist export(Long loginMemberId, Long playlistId) {
         Playlist playlist = playlistService.getExportTarget(loginMemberId, playlistId);
-        validateNotExported(playlist);
+        validateExportable(playlist);
         SpotifyConnection connection = spotifyOAuthService.getValidConnection(loginMemberId);
         List<String> uris = playlistItemService.getSpotifyUris(loginMemberId, playlistId);
-        if (uris.isEmpty()) {
-            throw new CustomException(ErrorCode.SPOTIFY_URI_NOT_FOUND);
-        }
 
         playlistService.updateSpotifyExportStatus(
                 loginMemberId,
                 playlistId,
                 SpotifyExportStatus.PENDING);
+        SpotifyPlaylistResult spotifyPlaylist = null;
         try {
-            SpotifyPlaylistResult spotifyPlaylist = spotifyApiClient.createPlaylist(
+            spotifyPlaylist = spotifyApiClient.createPlaylist(
                     connection.getAccessToken(),
                     playlist.getTitle(),
                     playlist.getDescription(),
                     playlist.getVisibility() == PlaylistVisibility.PUBLIC);
+            validateSpotifyPlaylist(spotifyPlaylist);
+            playlistService.saveSpotifyExportPending(
+                    loginMemberId,
+                    playlistId,
+                    spotifyPlaylist.getId(),
+                    spotifyPlaylist.getExternalUrl());
             addTracksInBatches(
                     connection.getAccessToken(),
                     spotifyPlaylist.getId(),
@@ -57,10 +61,12 @@ public class PlaylistExportService {
                     spotifyPlaylist.getId(),
                     spotifyPlaylist.getExternalUrl());
         } catch (RuntimeException exception) {
-            playlistService.updateSpotifyExportStatus(
+            playlistService.saveSpotifyExportFailure(
                     loginMemberId,
                     playlistId,
-                    SpotifyExportStatus.FAILED);
+                    spotifyPlaylist == null ? null : spotifyPlaylist.getId(),
+                    spotifyPlaylist == null ? null : spotifyPlaylist.getExternalUrl(),
+                    ErrorCode.SPOTIFY_EXPORT_FAILED);
             throw new CustomException(ErrorCode.SPOTIFY_EXPORT_FAILED);
         }
     }
@@ -78,10 +84,24 @@ public class PlaylistExportService {
         }
     }
 
-    private void validateNotExported(Playlist playlist) {
-        if (playlist.getSpotifyExportStatus() == SpotifyExportStatus.SUCCESS
-                || playlist.getSpotifyPlaylistId() != null) {
+    private void validateExportable(Playlist playlist) {
+        if (playlist.getSpotifyExportStatus() == SpotifyExportStatus.SUCCESS) {
             throw new CustomException(ErrorCode.SPOTIFY_ALREADY_EXPORTED);
+        }
+        if (playlist.getSpotifyExportStatus() == SpotifyExportStatus.PENDING
+                || playlist.getSpotifyPlaylistId() != null
+                || playlist.getSpotifyPlaylistUrl() != null) {
+            throw new CustomException(ErrorCode.SPOTIFY_EXPORT_FAILED);
+        }
+    }
+
+    private void validateSpotifyPlaylist(SpotifyPlaylistResult spotifyPlaylist) {
+        if (spotifyPlaylist == null
+                || spotifyPlaylist.getId() == null
+                || spotifyPlaylist.getId().isBlank()
+                || spotifyPlaylist.getExternalUrl() == null
+                || spotifyPlaylist.getExternalUrl().isBlank()) {
+            throw new CustomException(ErrorCode.SPOTIFY_EXPORT_FAILED);
         }
     }
 }

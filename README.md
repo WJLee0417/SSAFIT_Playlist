@@ -111,6 +111,28 @@ URI를 등록합니다.
 http://localhost:8080/api/spotify/oauth/callback
 ```
 
+## Spotify Export 상태 정책
+
+- Export는 `NOT_EXPORTED → PENDING → SUCCESS` 순서로 진행합니다.
+- 외부 API 실패 시 `PENDING → FAILED`로 변경하고
+  `spotify_export_error_code`에는 민감정보가 없는 ErrorCode 이름만 저장합니다.
+- Spotify Playlist 생성 후 수록곡 추가가 실패하면 생성된 Playlist ID와 URL을
+  보존합니다.
+- `FAILED` 상태에서 Spotify Playlist ID가 없을 때만 자동 재시도할 수 있습니다.
+- Spotify Playlist ID가 남은 부분 실패는 중복 플레이리스트와 중복 수록곡 생성을
+  막기 위해 자동 재시도하지 않습니다.
+- `SUCCESS` 상태를 다시 Export하면 `SPOTIFY_ALREADY_EXPORTED`가 발생합니다.
+- URI가 없는 수록곡이 하나라도 있으면 일부 곡을 조용히 제외하지 않고 Export를
+  중단합니다.
+
+기존 로컬 DB에는 다음 컬럼을 추가해야 합니다.
+
+```sql
+ALTER TABLE playlists
+ADD COLUMN spotify_export_error_code VARCHAR(50) NULL
+AFTER spotify_export_status;
+```
+
 ## 실행 확인
 
 Windows:

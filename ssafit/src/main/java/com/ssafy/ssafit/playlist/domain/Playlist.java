@@ -23,6 +23,7 @@ public class Playlist {
     private String spotifyPlaylistId;
     private String spotifyPlaylistUrl;
     private SpotifyExportStatus spotifyExportStatus;
+    private String spotifyExportErrorCode;
     private LocalDateTime spotifyExportedAt;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

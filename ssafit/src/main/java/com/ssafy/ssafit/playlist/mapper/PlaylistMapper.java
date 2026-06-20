@@ -30,6 +30,10 @@ public interface PlaylistMapper {
 
     int updateSpotifyExportResult(Playlist playlist);
 
+    int updateSpotifyExportPending(Playlist playlist);
+
+    int updateSpotifyExportFailure(Playlist playlist);
+
     int updateSpotifyExportStatus(
             @Param("id") Long id,
             @Param("status") SpotifyExportStatus status);

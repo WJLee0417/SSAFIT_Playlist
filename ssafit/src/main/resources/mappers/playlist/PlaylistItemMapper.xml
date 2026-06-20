@@ -110,4 +110,19 @@
         ORDER BY pi.order_no ASC, pi.id ASC
     </select>
 
+    <select id="countByPlaylistId" resultType="int">
+        SELECT COUNT(*)
+        FROM playlist_items
+        WHERE playlist_id = #{playlistId}
+    </select>
+
+    <select id="countSpotifyUrisByPlaylistId" resultType="int">
+        SELECT COUNT(*)
+        FROM playlist_items pi
+        INNER JOIN music m ON m.id = pi.music_id
+        WHERE pi.playlist_id = #{playlistId}
+          AND m.spotify_uri IS NOT NULL
+          AND m.spotify_uri != ''
+    </select>
+
 </mapper>

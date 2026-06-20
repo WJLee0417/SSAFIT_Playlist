@@ -140,6 +140,8 @@ class PlaylistServiceTest {
         Playlist playlist = playlist(1L, 10L, PlaylistType.USER, PlaylistVisibility.PRIVATE);
         when(playlistMapper.selectExportTargetPlaylist(1L))
                 .thenReturn(Optional.of(playlist));
+        when(playlistMapper.updateSpotifyExportStatus(
+                1L, SpotifyExportStatus.PENDING)).thenReturn(1);
 
         playlistService.updateSpotifyExportStatus(
                 10L,
@@ -148,6 +150,22 @@ class PlaylistServiceTest {
 
         verify(playlistMapper)
                 .updateSpotifyExportStatus(1L, SpotifyExportStatus.PENDING);
+    }
+
+    @Test
+    void pendingTransitionRejectsConcurrentExportClaim() {
+        Playlist playlist = playlist(1L, 10L, PlaylistType.USER, PlaylistVisibility.PRIVATE);
+        when(playlistMapper.selectExportTargetPlaylist(1L))
+                .thenReturn(Optional.of(playlist));
+        when(playlistMapper.updateSpotifyExportStatus(
+                1L, SpotifyExportStatus.PENDING)).thenReturn(0);
+
+        assertError(
+                ErrorCode.SPOTIFY_EXPORT_FAILED,
+                () -> playlistService.updateSpotifyExportStatus(
+                        10L,
+                        1L,
+                        SpotifyExportStatus.PENDING));
     }
 
     @Test
@@ -177,7 +195,47 @@ class PlaylistServiceTest {
                 "https://open.spotify.com/playlist/spotify-id");
 
         assertThat(result.getSpotifyExportStatus()).isEqualTo(SpotifyExportStatus.SUCCESS);
+        assertThat(result.getSpotifyExportedAt()).isNotNull();
+        assertThat(result.getSpotifyExportErrorCode()).isNull();
         verify(playlistMapper).updateSpotifyExportResult(playlist);
+    }
+
+    @Test
+    void partialSpotifyResultCanBeStoredAsPending() {
+        Playlist playlist = playlist(1L, 10L, PlaylistType.USER, PlaylistVisibility.PRIVATE);
+        when(playlistMapper.selectExportTargetPlaylist(1L))
+                .thenReturn(Optional.of(playlist));
+
+        Playlist result = playlistService.saveSpotifyExportPending(
+                10L,
+                1L,
+                "spotify-id",
+                "https://open.spotify.com/playlist/spotify-id");
+
+        assertThat(result.getSpotifyPlaylistId()).isEqualTo("spotify-id");
+        assertThat(result.getSpotifyExportStatus()).isEqualTo(SpotifyExportStatus.PENDING);
+        verify(playlistMapper).updateSpotifyExportPending(playlist);
+    }
+
+    @Test
+    void exportFailureStoresSafeErrorCodeAndExternalIdentity() {
+        Playlist playlist = playlist(1L, 10L, PlaylistType.USER, PlaylistVisibility.PRIVATE);
+        when(playlistMapper.selectExportTargetPlaylist(1L))
+                .thenReturn(Optional.of(playlist));
+
+        Playlist result = playlistService.saveSpotifyExportFailure(
+                10L,
+                1L,
+                "spotify-id",
+                "https://open.spotify.com/playlist/spotify-id",
+                ErrorCode.SPOTIFY_EXPORT_FAILED);
+
+        assertThat(result.getSpotifyExportStatus()).isEqualTo(SpotifyExportStatus.FAILED);
+        assertThat(result.getSpotifyExportErrorCode())
+                .isEqualTo("SPOTIFY_EXPORT_FAILED");
+        assertThat(result.getSpotifyPlaylistId()).isEqualTo("spotify-id");
+        assertThat(result.getSpotifyExportedAt()).isNull();
+        verify(playlistMapper).updateSpotifyExportFailure(playlist);
     }
 
     private Playlist playlist(
