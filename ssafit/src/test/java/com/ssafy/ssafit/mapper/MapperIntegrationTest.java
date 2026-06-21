@@ -2,6 +2,7 @@ package com.ssafy.ssafit.mapper;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.SoftAssertions.assertSoftly;
 
 import java.util.Arrays;
 import java.util.List;
@@ -20,6 +21,7 @@ import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.dao.DataAccessException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockHttpSession;
@@ -69,7 +71,9 @@ import com.ssafy.ssafit.spotify.mapper.SpotifyConnectionMapper;
 
 @SpringBootTest
 @ActiveProfiles("mapper-test")
-@EnabledIfEnvironmentVariable(named = "SSAFIT_TEST_DB_URL", matches = ".+")
+@EnabledIfEnvironmentVariable(
+        named = "SSAFIT_TEST_DB_URL",
+        matches = "(?i)^jdbc:mysql://[^/]+/[^?]*(test|local_test)[^?]*(\\?.*)?$")
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class MapperIntegrationTest {
 
@@ -120,6 +124,14 @@ class MapperIntegrationTest {
 
     @BeforeAll
     void cleanBeforeTests() {
+        String databaseName = jdbcTemplate.queryForObject(
+                "SELECT DATABASE()",
+                String.class);
+        if (databaseName == null
+                || !databaseName.toLowerCase().contains("test")) {
+            throw new IllegalStateException(
+                    "Mapper integration tests require a dedicated test database.");
+        }
         deleteAllData();
     }
 
@@ -189,6 +201,8 @@ class MapperIntegrationTest {
         assertThat(selected.getMemberId()).isEqualTo(member.getId());
         assertThat(selected.getDistanceKm())
                 .isEqualByComparingTo(new java.math.BigDecimal("5.00"));
+        assertThat(selected.getCreatedAt()).isNotNull();
+        assertThat(selected.getUpdatedAt()).isNotNull();
         assertThat(runningRecordMapper.selectListByMemberId(member.getId()))
                 .extracting(RunningRecord::getId)
                 .containsExactly(record.getId(), olderRecord.getId());
@@ -352,12 +366,18 @@ class MapperIntegrationTest {
             assertThat(ready.await(5, TimeUnit.SECONDS)).isTrue();
             start.countDown();
 
-            assertThat(Arrays.asList(
+            List<ErrorCode> results = Arrays.asList(
                     firstResult.get(10, TimeUnit.SECONDS),
-                    secondResult.get(10, TimeUnit.SECONDS)))
-                    .containsExactlyInAnyOrder(null, ErrorCode.SESSION_FULL);
-            assertThat(runningSessionParticipantMapper.countParticipants(
-                    runningSession.getId())).isEqualTo(1);
+                    secondResult.get(10, TimeUnit.SECONDS));
+            int participantCount =
+                    runningSessionParticipantMapper.countParticipants(
+                            runningSession.getId());
+
+            assertSoftly(softly -> {
+                softly.assertThat(results)
+                        .containsExactlyInAnyOrder(null, ErrorCode.SESSION_FULL);
+                softly.assertThat(participantCount).isEqualTo(1);
+            });
         } finally {
             executor.shutdownNow();
         }
@@ -487,6 +507,31 @@ class MapperIntegrationTest {
                 Long.MAX_VALUE,
                 music.getId()))
                 .isInstanceOf(DataIntegrityViolationException.class);
+        assertThatThrownBy(() -> jdbcTemplate.update(
+                """
+                INSERT INTO running_records (
+                    member_id,
+                    record_date,
+                    distance_km,
+                    duration_seconds,
+                    pace_seconds_per_km
+                ) VALUES (?, CURRENT_DATE, 0, 1800, 360)
+                """,
+                member.getId()))
+                .isInstanceOf(DataAccessException.class);
+        assertThatThrownBy(() -> jdbcTemplate.update(
+                """
+                INSERT INTO running_sessions (
+                    host_member_id,
+                    title,
+                    meeting_place,
+                    scheduled_at,
+                    capacity,
+                    status
+                ) VALUES (?, NULL, 'Seoul', CURRENT_TIMESTAMP, 1, 'OPEN')
+                """,
+                member.getId()))
+                .isInstanceOf(DataAccessException.class);
     }
 
     @Test
