@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ssafy.ssafit.runningsession.mapper.RunningSessionParticipantMapper">
+
+    <resultMap id="runningSessionParticipantResultMap"
+               type="com.ssafy.ssafit.runningsession.domain.RunningSessionParticipant">
+        <id property="id" column="id"/>
+        <result property="sessionId" column="session_id"/>
+        <result property="memberId" column="member_id"/>
+        <result property="joinedAt" column="joined_at"/>
+    </resultMap>
+
+    <sql id="runningSessionParticipantColumns">
+        id,
+        session_id,
+        member_id,
+        joined_at
+    </sql>
+
+    <insert id="insert"
+            parameterType="com.ssafy.ssafit.runningsession.domain.RunningSessionParticipant"
+            useGeneratedKeys="true"
+            keyProperty="id"
+            keyColumn="id">
+        INSERT INTO running_session_participants (
+            session_id,
+            member_id
+        ) VALUES (
+            #{sessionId},
+            #{memberId}
+        )
+    </insert>
+
+    <delete id="delete">
+        DELETE FROM running_session_participants
+        WHERE session_id = #{sessionId}
+          AND member_id = #{memberId}
+    </delete>
+
+    <select id="existsParticipant" resultType="boolean">
+        SELECT EXISTS (
+            SELECT 1
+            FROM running_session_participants
+            WHERE session_id = #{sessionId}
+              AND member_id = #{memberId}
+        )
+    </select>
+
+    <select id="countParticipants" resultType="int">
+        SELECT COUNT(*)
+        FROM running_session_participants
+        WHERE session_id = #{sessionId}
+    </select>
+
+    <select id="selectParticipants"
+            resultMap="runningSessionParticipantResultMap">
+        SELECT
+            <include refid="runningSessionParticipantColumns"/>
+        FROM running_session_participants
+        WHERE session_id = #{sessionId}
+        ORDER BY joined_at ASC, id ASC
+    </select>
+
+    <select id="selectBySessionIdAndMemberId"
+            resultMap="runningSessionParticipantResultMap">
+        SELECT
+            <include refid="runningSessionParticipantColumns"/>
+        FROM running_session_participants
+        WHERE session_id = #{sessionId}
+          AND member_id = #{memberId}
+    </select>
+
+</mapper>

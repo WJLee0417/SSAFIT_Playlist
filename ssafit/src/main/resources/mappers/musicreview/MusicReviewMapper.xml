@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ssafy.ssafit.musicreview.mapper.MusicReviewMapper">
+
+    <resultMap id="musicReviewResultMap"
+               type="com.ssafy.ssafit.musicreview.domain.MusicReview">
+        <id property="id" column="id"/>
+        <result property="memberId" column="member_id"/>
+        <result property="musicId" column="music_id"/>
+        <result property="preferenceScore" column="preference_score"/>
+        <result property="runningFitScore" column="running_fit_score"/>
+        <result property="reviewContent" column="review_content"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="updatedAt" column="updated_at"/>
+    </resultMap>
+
+    <resultMap id="musicReviewAverageResultMap"
+               type="com.ssafy.ssafit.musicreview.domain.MusicReviewAverage">
+        <id property="musicId" column="music_id"/>
+        <result property="averagePreferenceScore" column="average_preference_score"/>
+        <result property="averageRunningFitScore" column="average_running_fit_score"/>
+        <result property="reviewCount" column="review_count"/>
+    </resultMap>
+
+    <sql id="musicReviewColumns">
+        id,
+        member_id,
+        music_id,
+        preference_score,
+        running_fit_score,
+        review_content,
+        created_at,
+        updated_at
+    </sql>
+
+    <insert id="insert"
+            parameterType="com.ssafy.ssafit.musicreview.domain.MusicReview"
+            useGeneratedKeys="true"
+            keyProperty="id"
+            keyColumn="id">
+        INSERT INTO music_reviews (
+            member_id,
+            music_id,
+            preference_score,
+            running_fit_score,
+            review_content
+        ) VALUES (
+            #{memberId},
+            #{musicId},
+            #{preferenceScore},
+            #{runningFitScore},
+            #{reviewContent}
+        )
+    </insert>
+
+    <update id="update"
+            parameterType="com.ssafy.ssafit.musicreview.domain.MusicReview">
+        UPDATE music_reviews
+        SET
+            preference_score = #{preferenceScore},
+            running_fit_score = #{runningFitScore},
+            review_content = #{reviewContent}
+        WHERE id = #{id}
+    </update>
+
+    <delete id="delete">
+        DELETE FROM music_reviews
+        WHERE id = #{id}
+    </delete>
+
+    <select id="existsByMemberAndMusic" resultType="boolean">
+        SELECT EXISTS (
+            SELECT 1
+            FROM music_reviews
+            WHERE member_id = #{memberId}
+              AND music_id = #{musicId}
+        )
+    </select>
+
+    <select id="selectById" resultMap="musicReviewResultMap">
+        SELECT
+            <include refid="musicReviewColumns"/>
+        FROM music_reviews
+        WHERE id = #{id}
+    </select>
+
+    <select id="selectByMusicId" resultMap="musicReviewResultMap">
+        SELECT
+            <include refid="musicReviewColumns"/>
+        FROM music_reviews
+        WHERE music_id = #{musicId}
+        ORDER BY created_at DESC, id DESC
+    </select>
+
+    <select id="selectAverageScores" resultMap="musicReviewAverageResultMap">
+        SELECT
+            #{musicId} AS music_id,
+            AVG(preference_score) AS average_preference_score,
+            AVG(running_fit_score) AS average_running_fit_score,
+            COUNT(*) AS review_count
+        FROM music_reviews
+        WHERE music_id = #{musicId}
+    </select>
+
+</mapper>

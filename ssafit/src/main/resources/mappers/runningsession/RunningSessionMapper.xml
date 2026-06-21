@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ssafy.ssafit.runningsession.mapper.RunningSessionMapper">
+
+    <resultMap id="runningSessionResultMap"
+               type="com.ssafy.ssafit.runningsession.domain.RunningSession">
+        <id property="id" column="id"/>
+        <result property="hostMemberId" column="host_member_id"/>
+        <result property="title" column="title"/>
+        <result property="description" column="description"/>
+        <result property="meetingPlace" column="meeting_place"/>
+        <result property="scheduledAt" column="scheduled_at"/>
+        <result property="capacity" column="capacity"/>
+        <result property="status" column="status"/>
+        <result property="cancelledAt" column="cancelled_at"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="updatedAt" column="updated_at"/>
+    </resultMap>
+
+    <sql id="runningSessionColumns">
+        id,
+        host_member_id,
+        title,
+        description,
+        meeting_place,
+        scheduled_at,
+        capacity,
+        status,
+        cancelled_at,
+        created_at,
+        updated_at
+    </sql>
+
+    <insert id="insert"
+            parameterType="com.ssafy.ssafit.runningsession.domain.RunningSession"
+            useGeneratedKeys="true"
+            keyProperty="id"
+            keyColumn="id">
+        INSERT INTO running_sessions (
+            host_member_id,
+            title,
+            description,
+            meeting_place,
+            scheduled_at,
+            capacity,
+            status
+        ) VALUES (
+            #{hostMemberId},
+            #{title},
+            #{description},
+            #{meetingPlace},
+            #{scheduledAt},
+            #{capacity},
+            #{status}
+        )
+    </insert>
+
+    <select id="selectList" resultMap="runningSessionResultMap">
+        SELECT
+            <include refid="runningSessionColumns"/>
+        FROM running_sessions
+        ORDER BY scheduled_at ASC, id ASC
+    </select>
+
+    <select id="selectDetail" resultMap="runningSessionResultMap">
+        SELECT
+            <include refid="runningSessionColumns"/>
+        FROM running_sessions
+        WHERE id = #{sessionId}
+    </select>
+
+    <select id="selectByIdForUpdate" resultMap="runningSessionResultMap">
+        SELECT
+            <include refid="runningSessionColumns"/>
+        FROM running_sessions
+        WHERE id = #{sessionId}
+        FOR UPDATE
+    </select>
+
+    <update id="update"
+            parameterType="com.ssafy.ssafit.runningsession.domain.RunningSession">
+        UPDATE running_sessions
+        SET
+            title = #{title},
+            description = #{description},
+            meeting_place = #{meetingPlace},
+            scheduled_at = #{scheduledAt},
+            capacity = #{capacity}
+        WHERE id = #{id}
+          AND status != 'CANCELLED'
+    </update>
+
+    <update id="updateStatus">
+        UPDATE running_sessions
+        SET status = #{status}
+        WHERE id = #{sessionId}
+          AND status != 'CANCELLED'
+    </update>
+
+    <update id="cancel">
+        UPDATE running_sessions
+        SET
+            status = 'CANCELLED',
+            cancelled_at = CURRENT_TIMESTAMP(6)
+        WHERE id = #{sessionId}
+          AND status != 'CANCELLED'
+    </update>
+
+    <select id="selectHostId" resultType="long">
+        SELECT host_member_id
+        FROM running_sessions
+        WHERE id = #{sessionId}
+    </select>
+
+</mapper>
