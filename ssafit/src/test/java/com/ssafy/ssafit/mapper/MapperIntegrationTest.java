@@ -4,8 +4,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.SoftAssertions.assertSoftly;
 
-import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -341,46 +342,61 @@ class MapperIntegrationTest {
 
     @Test
     void concurrentJoinRequestsDoNotExceedCapacity() throws Exception {
-        Member host = insertMember("concurrent_host");
-        Member first = insertMember("concurrent_first");
-        Member second = insertMember("concurrent_second");
-        RunningSession runningSession = insertRunningSession(host.getId(), 1);
-        MockHttpSession firstSession = loginSession(first.getId());
-        MockHttpSession secondSession = loginSession(second.getId());
-        CountDownLatch ready = new CountDownLatch(2);
-        CountDownLatch start = new CountDownLatch(1);
-        ExecutorService executor = Executors.newFixedThreadPool(2);
+        assertConcurrencyEnvironment();
 
-        try {
-            Future<ErrorCode> firstResult = executor.submit(() -> joinAfterSignal(
-                    firstSession,
+        for (int attempt = 1; attempt <= 10; attempt++) {
+            Member host = insertMember("concurrent_host_" + attempt);
+            Member first = insertMember("concurrent_first_" + attempt);
+            Member second = insertMember("concurrent_second_" + attempt);
+            RunningSession runningSession = insertRunningSession(host.getId(), 1);
+
+            List<ErrorCode> results = joinConcurrently(
                     runningSession.getId(),
-                    ready,
-                    start));
-            Future<ErrorCode> secondResult = executor.submit(() -> joinAfterSignal(
-                    secondSession,
-                    runningSession.getId(),
-                    ready,
-                    start));
-
-            assertThat(ready.await(5, TimeUnit.SECONDS)).isTrue();
-            start.countDown();
-
-            List<ErrorCode> results = Arrays.asList(
-                    firstResult.get(10, TimeUnit.SECONDS),
-                    secondResult.get(10, TimeUnit.SECONDS));
-            int participantCount =
-                    runningSessionParticipantMapper.countParticipants(
+                    List.of(first, second));
+            List<RunningSessionParticipant> participants =
+                    runningSessionParticipantMapper.selectParticipants(
                             runningSession.getId());
 
             assertSoftly(softly -> {
+                softly.assertThat(results.stream().filter(Objects::isNull).count())
+                        .isEqualTo(1);
                 softly.assertThat(results)
-                        .containsExactlyInAnyOrder(null, ErrorCode.SESSION_FULL);
-                softly.assertThat(participantCount).isEqualTo(1);
+                        .filteredOn(Objects::nonNull)
+                        .containsExactly(ErrorCode.SESSION_FULL);
+                softly.assertThat(participants).hasSize(1);
+                softly.assertThat(participants)
+                        .extracting(RunningSessionParticipant::getMemberId)
+                        .allMatch(memberId -> memberId.equals(first.getId())
+                                || memberId.equals(second.getId()));
             });
-        } finally {
-            executor.shutdownNow();
         }
+    }
+
+    @Test
+    void threeConcurrentJoinRequestsRespectCapacityTwo() throws Exception {
+        assertConcurrencyEnvironment();
+
+        Member host = insertMember("capacity_two_host");
+        Member first = insertMember("capacity_two_first");
+        Member second = insertMember("capacity_two_second");
+        Member third = insertMember("capacity_two_third");
+        RunningSession runningSession = insertRunningSession(host.getId(), 2);
+
+        List<ErrorCode> results = joinConcurrently(
+                runningSession.getId(),
+                List.of(first, second, third));
+        List<RunningSessionParticipant> participants =
+                runningSessionParticipantMapper.selectParticipants(
+                        runningSession.getId());
+
+        assertSoftly(softly -> {
+            softly.assertThat(results.stream().filter(Objects::isNull).count())
+                    .isEqualTo(2);
+            softly.assertThat(results)
+                    .filteredOn(Objects::nonNull)
+                    .containsExactly(ErrorCode.SESSION_FULL);
+            softly.assertThat(participants).hasSize(2);
+        });
     }
 
     @Test
@@ -752,6 +768,60 @@ class MapperIntegrationTest {
         } catch (CustomException exception) {
             return exception.getErrorCode();
         }
+    }
+
+    private List<ErrorCode> joinConcurrently(
+            Long runningSessionId,
+            List<Member> members) throws Exception {
+        CountDownLatch ready = new CountDownLatch(members.size());
+        CountDownLatch start = new CountDownLatch(1);
+        ExecutorService executor = Executors.newFixedThreadPool(members.size());
+        List<Future<ErrorCode>> futures = new ArrayList<>();
+
+        try {
+            for (Member member : members) {
+                futures.add(executor.submit(() -> joinAfterSignal(
+                        loginSession(member.getId()),
+                        runningSessionId,
+                        ready,
+                        start)));
+            }
+
+            assertThat(ready.await(5, TimeUnit.SECONDS)).isTrue();
+            start.countDown();
+
+            List<ErrorCode> results = new ArrayList<>();
+            for (Future<ErrorCode> future : futures) {
+                results.add(future.get(10, TimeUnit.SECONDS));
+            }
+            return results;
+        } finally {
+            executor.shutdown();
+            if (!executor.awaitTermination(5, TimeUnit.SECONDS)) {
+                executor.shutdownNow();
+                assertThat(executor.awaitTermination(5, TimeUnit.SECONDS)).isTrue();
+            }
+        }
+    }
+
+    private void assertConcurrencyEnvironment() {
+        assertThat(jdbcTemplate.queryForObject(
+                "SELECT DATABASE()",
+                String.class))
+                .containsIgnoringCase("test");
+        assertThat(jdbcTemplate.queryForObject(
+                "SELECT @@transaction_isolation",
+                String.class))
+                .isEqualToIgnoringCase("REPEATABLE-READ");
+        assertThat(jdbcTemplate.queryForObject(
+                """
+                SELECT ENGINE
+                FROM information_schema.TABLES
+                WHERE TABLE_SCHEMA = DATABASE()
+                  AND TABLE_NAME = 'running_sessions'
+                """,
+                String.class))
+                .isEqualToIgnoringCase("InnoDB");
     }
 
     private void insertItem(Long playlistId, Long musicId, int orderNo) {

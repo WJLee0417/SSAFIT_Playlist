@@ -42,7 +42,7 @@ $env:SSAFIT_TEST_DB_PASSWORD = '<REDACTED>'
 .\mvnw.cmd -Dtest=MapperIntegrationTest#concurrentJoinRequestsDoNotExceedCapacity test
 ```
 
-## 4. 테스트 결과
+## 4. P0 수정 전 결과
 
 - Tests run: 197
 - Failures: 1
@@ -206,7 +206,7 @@ MySQL CHECK 제약 위반은 오류 코드 `3819`로 정상 거부되었다. Spr
 
 실패한 동시성 테스트가 있었음에도 테스트 데이터는 정상 정리되었다.
 
-## 9. develop 병합 판단
+## 9. P0 수정 전 develop 병합 판단
 
 - 판정: 병합 보류
 
@@ -223,4 +223,99 @@ MySQL CHECK 제약 위반은 오류 코드 `3819`로 정상 거부되었다. Spr
 - 전체 BUILD SUCCESS: 미충족
 
 러닝 모임 참여 동시성 결함을 수정한 뒤 `REPEATABLE-READ` 상태의 실제 MySQL에서 전체 테스트를 다시 실행해야 한다. `Failures: 0`, `Errors: 0`, `Skipped: 0`, `BUILD SUCCESS`가 확인되기 전에는 develop 병합을 권장하지 않는다.
+
+## 10. P0 수정 후 결과
+
+수정 일시: 2026-06-21 11:05~11:09 KST
+
+수정 후에도 MySQL 서버 설정은 변경하지 않았다.
+
+- MySQL 버전: 8.0.32
+- 테스트 DB: `ssafit_test`
+- 트랜잭션 격리 수준: `REPEATABLE-READ`
+- `running_sessions` 엔진: InnoDB
+- 테스트 계정 권한: `ssafit_test.*`로 제한
+
+### 수정 내용
+
+`RunningSessionParticipantService.joinSession`의 DB 접근 순서를 다음과 같이 변경했다.
+
+```text
+수정 전
+1. AuthService.getLoginMember(): members 일반 SELECT
+2. running_sessions SELECT ... FOR UPDATE
+3. 상태 검증
+4. 중복 참여 일반 SELECT
+5. 참여자 수 일반 SELECT
+6. 참여 INSERT
+
+수정 후
+1. AuthService.getLoginMemberId(): Session 속성만 조회, DB 접근 없음
+2. running_sessions SELECT ... FOR UPDATE
+3. AuthService.getLoginMember(): 회원 존재 및 활성 상태 DB 검증
+4. 상태 검증
+5. 중복 참여 일반 SELECT
+6. 참여자 수 일반 SELECT
+7. 참여 INSERT
+```
+
+`SELECT ... FOR UPDATE`가 참여 트랜잭션의 첫 번째 DB 읽기가 되므로, 잠금을 기다린 두 번째 요청은 첫 요청의 커밋 후에 일관 읽기 스냅샷을 생성한다. 이후 참여자 수 조회에서 최신 커밋 결과를 확인한다.
+
+### 동시성 단일 테스트
+
+정원 1명, 동시 요청 2건 시나리오를 한 테스트에서 10회 반복했다.
+
+```text
+Tests run: 1
+Failures: 0
+Errors: 0
+Skipped: 0
+BUILD SUCCESS
+```
+
+각 반복에서 다음을 확인했다.
+
+- 성공: 정확히 1건
+- `SESSION_FULL`: 정확히 1건
+- 최종 참여자 수: 정확히 1명
+- 실패 요청의 참여 관계: 없음
+
+정원 2명, 동시 요청 3건 시나리오도 통과했다.
+
+- 성공: 정확히 2건
+- `SESSION_FULL`: 정확히 1건
+- 최종 참여자 수: 정확히 2명
+
+### 전체 테스트
+
+```text
+Tests run: 198
+Failures: 0
+Errors: 0
+Skipped: 0
+BUILD SUCCESS
+```
+
+- `MapperIntegrationTest`: 13건 실행, 13건 통과
+- `TestDatabaseSafetyTest`: 1건 실행, 1건 통과
+- 기존 Service 및 Spring Context 테스트: 회귀 없음
+
+테스트 종료 후 12개 대상 테이블의 전체 잔존 행 수 합계는 0이었다.
+
+## 11. P0 수정 후 develop 병합 판단
+
+- 판정: 병합 가능
+
+근거:
+
+- 실제 MySQL 8.0.32 사용
+- 테스트 DB `ssafit_test` 사용
+- MySQL 격리 수준 `REPEATABLE-READ` 유지
+- InnoDB 행 잠금 사용
+- 정원 1명/동시 2건 시나리오 10회 반복 통과
+- 정원 2명/동시 3건 시나리오 통과
+- Mapper 통합 테스트 Skip 0
+- 전체 테스트 `Failures: 0`, `Errors: 0`, `Skipped: 0`
+- `BUILD SUCCESS`
+- 테스트 데이터 정리 완료
 

@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -81,8 +82,9 @@ class RunningSessionParticipantServiceTest {
                 authService,
                 runningSessionMapper,
                 participantMapper);
-        order.verify(authService).getLoginMember(session);
+        order.verify(authService).getLoginMemberId(session);
         order.verify(runningSessionMapper).selectByIdForUpdate(100L);
+        order.verify(authService).getLoginMember(session);
         order.verify(participantMapper).existsParticipant(100L, 10L);
         order.verify(participantMapper).countParticipants(100L);
         order.verify(participantMapper).insert(joined);
@@ -177,7 +179,7 @@ class RunningSessionParticipantServiceTest {
 
     @Test
     void unauthenticatedMemberCannotJoin() {
-        when(authService.getLoginMember(session))
+        when(authService.getLoginMemberId(session))
                 .thenThrow(new CustomException(ErrorCode.AUTH_REQUIRED));
 
         assertError(
@@ -275,7 +277,8 @@ class RunningSessionParticipantServiceTest {
     private void mockLoginMember(Long memberId) {
         Member member = new Member();
         member.setId(memberId);
-        when(authService.getLoginMember(session)).thenReturn(member);
+        lenient().when(authService.getLoginMemberId(session)).thenReturn(memberId);
+        lenient().when(authService.getLoginMember(session)).thenReturn(member);
     }
 
     private RunningSession session(

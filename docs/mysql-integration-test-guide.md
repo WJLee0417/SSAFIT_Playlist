@@ -116,7 +116,7 @@ DB 이름이 `ssafit_playlist`처럼 `test`를 포함하지 않으면 테스트 
 
 ```text
 MapperIntegrationTest
-Tests run: 12
+Tests run: 13
 Failures: 0
 Errors: 0
 Skipped: 0
@@ -173,4 +173,3 @@ Docker 컨테이너가 더 이상 필요하지 않다면 테스트 완료 후 �
 ```powershell
 docker rm -f ssafit-mysql-integration-test
 ```
-

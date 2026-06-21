@@ -32,8 +32,9 @@ public class RunningSessionParticipantService {
     public RunningSessionParticipant joinSession(
             HttpSession session,
             Long sessionId) {
-        Long loginMemberId = getLoginMemberId(session);
+        Long loginMemberId = authService.getLoginMemberId(session);
         RunningSession runningSession = getSessionForUpdate(sessionId);
+        validateLoginMemberAfterLock(session, loginMemberId);
         validateOpen(runningSession);
 
         if (participantMapper.existsParticipant(sessionId, loginMemberId)) {
@@ -54,6 +55,17 @@ public class RunningSessionParticipantService {
             throw new CustomException(ErrorCode.DUPLICATE_SESSION_JOIN);
         }
         return participant;
+    }
+
+    private void validateLoginMemberAfterLock(
+            HttpSession session,
+            Long expectedMemberId) {
+        Member loginMember = authService.getLoginMember(session);
+        if (loginMember == null
+                || loginMember.getId() == null
+                || !expectedMemberId.equals(loginMember.getId())) {
+            throw new CustomException(ErrorCode.AUTH_REQUIRED);
+        }
     }
 
     @Transactional
