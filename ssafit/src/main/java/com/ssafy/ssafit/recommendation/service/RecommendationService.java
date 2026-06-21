@@ -92,7 +92,9 @@ public class RecommendationService {
                 genre,
                 bpmRange,
                 musicList);
-        recommendationLogMapper.insert(log);
+        if (recommendationLogMapper.insert(log) != 1) {
+            throw new CustomException(ErrorCode.INTERNAL_SERVER_ERROR);
+        }
         return new RecommendationResult(log, List.copyOf(musicList));
     }
 
@@ -122,10 +124,15 @@ public class RecommendationService {
                 title,
                 visibility,
                 log);
-        playlistMapper.insertCurationCopy(playlist);
+        if (playlistMapper.insertCurationCopy(playlist) != 1) {
+            throw new CustomException(ErrorCode.INTERNAL_SERVER_ERROR);
+        }
 
         List<PlaylistItem> items = buildPlaylistItems(playlist.getId(), musicIds);
-        playlistItemMapper.bulkInsertFromRecommendation(items);
+        int insertedItems = playlistItemMapper.bulkInsertFromRecommendation(items);
+        if (insertedItems != items.size()) {
+            throw new CustomException(ErrorCode.INTERNAL_SERVER_ERROR);
+        }
 
         int updated = recommendationLogMapper.updateSavedPlaylistId(
                 log.getId(),

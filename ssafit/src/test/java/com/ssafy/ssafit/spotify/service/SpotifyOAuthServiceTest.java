@@ -2,6 +2,7 @@ package com.ssafy.ssafit.spotify.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -85,6 +86,7 @@ class SpotifyOAuthServiceTest {
                 .thenReturn(new SpotifyUserProfile("spotify-user"));
         when(spotifyConnectionMapper.selectByMemberId(10L))
                 .thenReturn(Optional.empty());
+        when(spotifyConnectionMapper.insert(any())).thenReturn(1);
 
         SpotifyConnection connection = spotifyOAuthService.handleCallback(
                 10L,
@@ -113,6 +115,7 @@ class SpotifyOAuthServiceTest {
                 .thenReturn(new SpotifyUserProfile("spotify-user"));
         when(spotifyConnectionMapper.selectByMemberId(10L))
                 .thenReturn(Optional.of(existing));
+        when(spotifyConnectionMapper.updateConnection(existing)).thenReturn(1);
 
         SpotifyConnection result = spotifyOAuthService.handleCallback(
                 10L,
@@ -257,6 +260,7 @@ class SpotifyOAuthServiceTest {
                 .thenReturn(Optional.of(connection));
         when(spotifyApiClient.refreshAccessToken("old-refresh"))
                 .thenReturn(new SpotifyToken("new-access", null, 3600));
+        when(spotifyConnectionMapper.updateToken(connection)).thenReturn(1);
 
         SpotifyConnection result = spotifyOAuthService.getValidConnection(10L);
 
@@ -336,6 +340,7 @@ class SpotifyOAuthServiceTest {
                 .thenReturn(Optional.of(connection));
         when(spotifyApiClient.refreshAccessToken("old-refresh"))
                 .thenReturn(new SpotifyToken("new-access", "new-refresh", 3600));
+        when(spotifyConnectionMapper.updateToken(connection)).thenReturn(1);
 
         spotifyOAuthService.getValidConnection(10L);
 

@@ -40,7 +40,9 @@ public class PlaylistService {
         playlist.setSpotifyExportErrorCode(null);
         playlist.setSpotifyExportedAt(null);
         playlist.setDeletedAt(null);
-        playlistMapper.insert(playlist);
+        if (playlistMapper.insert(playlist) != 1) {
+            throw new CustomException(ErrorCode.INTERNAL_SERVER_ERROR);
+        }
         return playlist;
     }
 
@@ -76,7 +78,9 @@ public class PlaylistService {
         changes.setSpotifyExportedAt(existing.getSpotifyExportedAt());
         changes.setCreatedAt(existing.getCreatedAt());
         changes.setDeletedAt(existing.getDeletedAt());
-        playlistMapper.update(changes);
+        if (playlistMapper.update(changes) != 1) {
+            throw new CustomException(ErrorCode.PLAYLIST_NOT_FOUND);
+        }
         return changes;
     }
 
@@ -85,7 +89,9 @@ public class PlaylistService {
         validateAuthenticated(loginMemberId);
         Playlist playlist = getPlaylist(playlistId);
         validateOwner(loginMemberId, playlist);
-        playlistMapper.softDelete(playlistId);
+        if (playlistMapper.softDelete(playlistId) != 1) {
+            throw new CustomException(ErrorCode.PLAYLIST_NOT_FOUND);
+        }
     }
 
     public Playlist getExportTarget(Long loginMemberId, Long playlistId) {
@@ -108,7 +114,7 @@ public class PlaylistService {
             throw new CustomException(ErrorCode.INVALID_REQUEST);
         }
         int updated = playlistMapper.updateSpotifyExportStatus(playlist.getId(), status);
-        if (updated == 0) {
+        if (updated != 1) {
             throw new CustomException(ErrorCode.SPOTIFY_EXPORT_FAILED);
         }
     }
@@ -126,7 +132,9 @@ public class PlaylistService {
         playlist.setSpotifyExportStatus(SpotifyExportStatus.PENDING);
         playlist.setSpotifyExportErrorCode(null);
         playlist.setSpotifyExportedAt(null);
-        playlistMapper.updateSpotifyExportPending(playlist);
+        if (playlistMapper.updateSpotifyExportPending(playlist) != 1) {
+            throw new CustomException(ErrorCode.SPOTIFY_EXPORT_FAILED);
+        }
         return playlist;
     }
 
@@ -146,7 +154,9 @@ public class PlaylistService {
                         ? ErrorCode.SPOTIFY_EXPORT_FAILED.name()
                         : errorCode.name());
         playlist.setSpotifyExportedAt(null);
-        playlistMapper.updateSpotifyExportFailure(playlist);
+        if (playlistMapper.updateSpotifyExportFailure(playlist) != 1) {
+            throw new CustomException(ErrorCode.SPOTIFY_EXPORT_FAILED);
+        }
         return playlist;
     }
 
@@ -164,7 +174,9 @@ public class PlaylistService {
         playlist.setSpotifyExportStatus(SpotifyExportStatus.SUCCESS);
         playlist.setSpotifyExportErrorCode(null);
         playlist.setSpotifyExportedAt(java.time.LocalDateTime.now());
-        playlistMapper.updateSpotifyExportResult(playlist);
+        if (playlistMapper.updateSpotifyExportResult(playlist) != 1) {
+            throw new CustomException(ErrorCode.SPOTIFY_EXPORT_FAILED);
+        }
         return playlist;
     }
 

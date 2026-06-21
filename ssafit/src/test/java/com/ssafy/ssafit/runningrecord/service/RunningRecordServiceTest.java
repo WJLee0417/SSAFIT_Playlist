@@ -148,6 +148,7 @@ class RunningRecordServiceTest {
         changes.setDurationSeconds(3300);
         when(runningRecordMapper.selectById(100L))
                 .thenReturn(Optional.of(existing));
+        when(runningRecordMapper.update(changes)).thenReturn(1);
 
         RunningRecord updated =
                 runningRecordService.updateMyRecord(session, changes);
@@ -189,15 +190,43 @@ class RunningRecordServiceTest {
     }
 
     @Test
+    void updateMyRecordRejectsConcurrentSoftDelete() {
+        mockLoginMember(10L);
+        RunningRecord existing = validRecord(100L, 10L);
+        RunningRecord changes = validRecord(100L, 10L);
+        when(runningRecordMapper.selectById(100L))
+                .thenReturn(Optional.of(existing));
+        when(runningRecordMapper.update(changes)).thenReturn(0);
+
+        assertError(
+                ErrorCode.RUNNING_RECORD_NOT_FOUND,
+                () -> runningRecordService.updateMyRecord(session, changes));
+    }
+
+    @Test
     void deleteMyRecordSucceedsForOwner() {
         mockLoginMember(10L);
         RunningRecord existing = validRecord(100L, 10L);
         when(runningRecordMapper.selectById(100L))
                 .thenReturn(Optional.of(existing));
+        when(runningRecordMapper.delete(100L)).thenReturn(1);
 
         runningRecordService.deleteMyRecord(session, 100L);
 
         verify(runningRecordMapper).delete(100L);
+    }
+
+    @Test
+    void deleteMyRecordRejectsConcurrentSoftDelete() {
+        mockLoginMember(10L);
+        RunningRecord existing = validRecord(100L, 10L);
+        when(runningRecordMapper.selectById(100L))
+                .thenReturn(Optional.of(existing));
+        when(runningRecordMapper.delete(100L)).thenReturn(0);
+
+        assertError(
+                ErrorCode.RUNNING_RECORD_NOT_FOUND,
+                () -> runningRecordService.deleteMyRecord(session, 100L));
     }
 
     @Test

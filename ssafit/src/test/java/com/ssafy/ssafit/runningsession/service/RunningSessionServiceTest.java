@@ -252,7 +252,26 @@ class RunningSessionServiceTest {
                 () -> runningSessionService.changeMySessionStatus(
                         session,
                         100L,
-                        RunningSessionStatus.CANCELLED));
+                RunningSessionStatus.CANCELLED));
+    }
+
+    @Test
+    void changeMySessionStatusRejectsConcurrentStateChange() {
+        mockLoginMember(10L);
+        RunningSession existing =
+                validSession(100L, 10L, RunningSessionStatus.OPEN);
+        when(runningSessionMapper.selectDetail(100L))
+                .thenReturn(Optional.of(existing));
+        when(runningSessionMapper.updateStatus(
+                100L,
+                RunningSessionStatus.CLOSED)).thenReturn(0);
+
+        assertError(
+                ErrorCode.SESSION_CLOSED,
+                () -> runningSessionService.changeMySessionStatus(
+                        session,
+                        100L,
+                        RunningSessionStatus.CLOSED));
     }
 
     @Test

@@ -50,7 +50,9 @@ public class RunningSessionParticipantService {
         participant.setSessionId(sessionId);
         participant.setMemberId(loginMemberId);
         try {
-            participantMapper.insert(participant);
+            if (participantMapper.insert(participant) != 1) {
+                throw new CustomException(ErrorCode.INTERNAL_SERVER_ERROR);
+            }
         } catch (DuplicateKeyException exception) {
             throw new CustomException(ErrorCode.DUPLICATE_SESSION_JOIN);
         }
@@ -78,7 +80,7 @@ public class RunningSessionParticipantService {
         }
 
         int deleted = participantMapper.delete(sessionId, loginMemberId);
-        if (deleted == 0) {
+        if (deleted != 1) {
             throw new CustomException(ErrorCode.ACCESS_DENIED);
         }
     }

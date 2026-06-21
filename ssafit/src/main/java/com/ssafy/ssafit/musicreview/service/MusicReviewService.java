@@ -44,7 +44,9 @@ public class MusicReviewService {
 
         musicReview.setMemberId(loginMemberId);
         try {
-            musicReviewMapper.insert(musicReview);
+            if (musicReviewMapper.insert(musicReview) != 1) {
+                throw new CustomException(ErrorCode.INTERNAL_SERVER_ERROR);
+            }
         } catch (DuplicateKeyException exception) {
             throw new CustomException(ErrorCode.DUPLICATE_MUSIC_REVIEW);
         }
@@ -65,7 +67,9 @@ public class MusicReviewService {
         musicReview.setMemberId(existing.getMemberId());
         musicReview.setMusicId(existing.getMusicId());
         musicReview.setCreatedAt(existing.getCreatedAt());
-        musicReviewMapper.update(musicReview);
+        if (musicReviewMapper.update(musicReview) != 1) {
+            throw new CustomException(ErrorCode.MUSIC_REVIEW_NOT_FOUND);
+        }
         return musicReview;
     }
 
@@ -78,7 +82,9 @@ public class MusicReviewService {
 
         MusicReview existing = getReview(musicReviewId);
         validateAuthor(loginMemberId, existing.getMemberId());
-        musicReviewMapper.delete(musicReviewId);
+        if (musicReviewMapper.delete(musicReviewId) != 1) {
+            throw new CustomException(ErrorCode.MUSIC_REVIEW_NOT_FOUND);
+        }
     }
 
     public List<MusicReview> getReviewsByMusicId(Long musicId) {

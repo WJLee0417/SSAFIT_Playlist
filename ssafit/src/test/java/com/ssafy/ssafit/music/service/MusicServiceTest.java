@@ -160,6 +160,7 @@ class MusicServiceTest {
         existing.setBpm(null);
         when(musicMapper.selectBySpotifyTrackId("track-1"))
                 .thenReturn(Optional.of(existing));
+        when(musicMapper.updateSpotifyMetadata(existing)).thenReturn(1);
 
         Music saved = musicService.saveSelectedSpotifyTrack(metadata);
 
@@ -195,6 +196,7 @@ class MusicServiceTest {
                 .thenReturn(Optional.of(concurrentlyInserted));
         when(musicMapper.insertFromSpotify(org.mockito.ArgumentMatchers.any()))
                 .thenThrow(new DuplicateKeyException("duplicate spotify track"));
+        when(musicMapper.updateSpotifyMetadata(concurrentlyInserted)).thenReturn(1);
 
         Music saved = musicService.saveSelectedSpotifyTrack(metadata);
 

@@ -85,6 +85,7 @@ class RunningProfileServiceTest {
 
         when(memberMapper.selectById(1L)).thenReturn(Optional.of(new Member()));
         when(runningProfileMapper.selectByMemberId(1L)).thenReturn(Optional.of(existing));
+        when(runningProfileMapper.update(changed)).thenReturn(1);
 
         RunningProfile saved = runningProfileService.saveOrUpdate(1L, changed);
 

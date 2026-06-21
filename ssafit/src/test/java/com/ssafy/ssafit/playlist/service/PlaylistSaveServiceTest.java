@@ -2,6 +2,7 @@ package com.ssafy.ssafit.playlist.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -47,6 +48,7 @@ class PlaylistSaveServiceTest {
         Playlist playlist = playlist(1L, 20L, PlaylistType.USER, PlaylistVisibility.PUBLIC);
         when(playlistMapper.selectDetail(1L)).thenReturn(Optional.of(playlist));
         when(playlistSaveMapper.existsByMemberAndPlaylist(10L, 1L)).thenReturn(false);
+        when(playlistSaveMapper.insert(any())).thenReturn(1);
 
         PlaylistSave saved = playlistSaveService.save(10L, 1L);
 
@@ -64,6 +66,7 @@ class PlaylistSaveServiceTest {
                 PlaylistVisibility.PUBLIC);
         when(playlistMapper.selectDetail(1L)).thenReturn(Optional.of(playlist));
         when(playlistSaveMapper.existsByMemberAndPlaylist(10L, 1L)).thenReturn(false);
+        when(playlistSaveMapper.insert(any())).thenReturn(1);
 
         PlaylistSave saved = playlistSaveService.save(10L, 1L);
 
@@ -102,6 +105,7 @@ class PlaylistSaveServiceTest {
         Playlist playlist = playlist(1L, 10L, PlaylistType.USER, PlaylistVisibility.PRIVATE);
         when(playlistMapper.selectDetail(1L)).thenReturn(Optional.of(playlist));
         when(playlistSaveMapper.existsByMemberAndPlaylist(10L, 1L)).thenReturn(false);
+        when(playlistSaveMapper.insert(any())).thenReturn(1);
 
         PlaylistSave saved = playlistSaveService.save(10L, 1L);
 
@@ -113,10 +117,23 @@ class PlaylistSaveServiceTest {
         Playlist playlist = playlist(1L, 20L, PlaylistType.USER, PlaylistVisibility.PUBLIC);
         when(playlistMapper.selectDetail(1L)).thenReturn(Optional.of(playlist));
         when(playlistSaveMapper.existsByMemberAndPlaylist(10L, 1L)).thenReturn(true);
+        when(playlistSaveMapper.delete(10L, 1L)).thenReturn(1);
 
         playlistSaveService.cancel(10L, 1L);
 
         verify(playlistSaveMapper).delete(10L, 1L);
+    }
+
+    @Test
+    void concurrentSaveCancellationIsNotReportedAsSuccess() {
+        Playlist playlist = playlist(1L, 20L, PlaylistType.USER, PlaylistVisibility.PUBLIC);
+        when(playlistMapper.selectDetail(1L)).thenReturn(Optional.of(playlist));
+        when(playlistSaveMapper.existsByMemberAndPlaylist(10L, 1L)).thenReturn(true);
+        when(playlistSaveMapper.delete(10L, 1L)).thenReturn(0);
+
+        assertError(
+                ErrorCode.ACCESS_DENIED,
+                () -> playlistSaveService.cancel(10L, 1L));
     }
 
     @Test

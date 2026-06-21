@@ -41,7 +41,9 @@ public class RunningSessionService {
         runningSession.setCancelledAt(null);
         runningSession.setCreatedAt(null);
         runningSession.setUpdatedAt(null);
-        runningSessionMapper.insert(runningSession);
+        if (runningSessionMapper.insert(runningSession) != 1) {
+            throw new CustomException(ErrorCode.INTERNAL_SERVER_ERROR);
+        }
         return runningSession;
     }
 
@@ -74,7 +76,7 @@ public class RunningSessionService {
         changes.setCancelledAt(existing.getCancelledAt());
         changes.setCreatedAt(existing.getCreatedAt());
         int updated = runningSessionMapper.update(changes);
-        if (updated == 0) {
+        if (updated != 1) {
             throw new CustomException(ErrorCode.SESSION_CLOSED);
         }
         return changes;
@@ -92,7 +94,7 @@ public class RunningSessionService {
         validateRecruitmentStatus(status);
 
         int updated = runningSessionMapper.updateStatus(sessionId, status);
-        if (updated == 0) {
+        if (updated != 1) {
             throw new CustomException(ErrorCode.SESSION_CLOSED);
         }
         runningSession.setStatus(status);
@@ -107,7 +109,7 @@ public class RunningSessionService {
         validateNotCancelled(runningSession);
 
         int updated = runningSessionMapper.cancel(sessionId);
-        if (updated == 0) {
+        if (updated != 1) {
             throw new CustomException(ErrorCode.SESSION_CLOSED);
         }
         runningSession.setStatus(RunningSessionStatus.CANCELLED);

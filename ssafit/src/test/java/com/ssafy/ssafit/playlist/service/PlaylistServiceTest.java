@@ -101,6 +101,7 @@ class PlaylistServiceTest {
         Playlist changes = playlist(1L, 999L, PlaylistType.OFFICIAL, PlaylistVisibility.PUBLIC);
         changes.setTitle("변경");
         when(playlistMapper.selectDetail(1L)).thenReturn(Optional.of(existing));
+        when(playlistMapper.update(changes)).thenReturn(1);
 
         Playlist updated = playlistService.update(10L, changes);
 
@@ -124,6 +125,7 @@ class PlaylistServiceTest {
     void ownerCanSoftDeletePlaylist() {
         Playlist playlist = playlist(1L, 10L, PlaylistType.USER, PlaylistVisibility.PRIVATE);
         when(playlistMapper.selectDetail(1L)).thenReturn(Optional.of(playlist));
+        when(playlistMapper.softDelete(1L)).thenReturn(1);
 
         playlistService.delete(10L, 1L);
 
@@ -191,6 +193,7 @@ class PlaylistServiceTest {
         Playlist playlist = playlist(1L, 10L, PlaylistType.USER, PlaylistVisibility.PRIVATE);
         when(playlistMapper.selectExportTargetPlaylist(1L))
                 .thenReturn(Optional.of(playlist));
+        when(playlistMapper.updateSpotifyExportResult(playlist)).thenReturn(1);
 
         Playlist result = playlistService.saveSpotifyExportResult(
                 10L,
@@ -209,6 +212,7 @@ class PlaylistServiceTest {
         Playlist playlist = playlist(1L, 10L, PlaylistType.USER, PlaylistVisibility.PRIVATE);
         when(playlistMapper.selectExportTargetPlaylist(1L))
                 .thenReturn(Optional.of(playlist));
+        when(playlistMapper.updateSpotifyExportPending(playlist)).thenReturn(1);
 
         Playlist result = playlistService.saveSpotifyExportPending(
                 10L,
@@ -226,6 +230,7 @@ class PlaylistServiceTest {
         Playlist playlist = playlist(1L, 10L, PlaylistType.USER, PlaylistVisibility.PRIVATE);
         when(playlistMapper.selectExportTargetPlaylist(1L))
                 .thenReturn(Optional.of(playlist));
+        when(playlistMapper.updateSpotifyExportFailure(playlist)).thenReturn(1);
 
         Playlist result = playlistService.saveSpotifyExportFailure(
                 10L,

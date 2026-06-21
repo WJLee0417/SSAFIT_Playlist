@@ -52,7 +52,9 @@ public class RunningProfileService {
     }
 
     private RunningProfile insertNew(RunningProfile runningProfile) {
-        runningProfileMapper.insert(runningProfile);
+        if (runningProfileMapper.insert(runningProfile) != 1) {
+            throw new CustomException(ErrorCode.INTERNAL_SERVER_ERROR);
+        }
         return runningProfile;
     }
 
@@ -61,7 +63,9 @@ public class RunningProfileService {
             RunningProfile runningProfile) {
         runningProfile.setId(existing.getId());
         runningProfile.setCreatedAt(existing.getCreatedAt());
-        runningProfileMapper.update(runningProfile);
+        if (runningProfileMapper.update(runningProfile) != 1) {
+            throw new CustomException(ErrorCode.PROFILE_NOT_FOUND);
+        }
         return runningProfile;
     }
 

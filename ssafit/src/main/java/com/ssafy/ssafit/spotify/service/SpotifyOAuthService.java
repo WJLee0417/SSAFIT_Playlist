@@ -107,7 +107,7 @@ public class SpotifyOAuthService {
     @Transactional
     public void disconnect(Long loginMemberId) {
         validateAuthenticated(loginMemberId);
-        if (spotifyConnectionMapper.deleteByMemberId(loginMemberId) == 0) {
+        if (spotifyConnectionMapper.deleteByMemberId(loginMemberId) != 1) {
             throw new CustomException(ErrorCode.SPOTIFY_AUTH_REQUIRED);
         }
     }
@@ -128,7 +128,9 @@ public class SpotifyOAuthService {
                     token.getAccessToken(),
                     token.getRefreshToken(),
                     expiresAt(token));
-            spotifyConnectionMapper.insert(connection);
+            if (spotifyConnectionMapper.insert(connection) != 1) {
+                throw new CustomException(ErrorCode.INTERNAL_SERVER_ERROR);
+            }
             return connection;
         }
 
@@ -143,7 +145,9 @@ public class SpotifyOAuthService {
             connection.setRefreshToken(token.getRefreshToken());
         }
         connection.setTokenExpiresAt(expiresAt(token));
-        spotifyConnectionMapper.updateConnection(connection);
+        if (spotifyConnectionMapper.updateConnection(connection) != 1) {
+            throw new CustomException(ErrorCode.SPOTIFY_AUTH_REQUIRED);
+        }
         return connection;
     }
 
@@ -169,7 +173,9 @@ public class SpotifyOAuthService {
         connection.setAccessToken(accessToken);
         connection.setRefreshToken(refreshToken);
         connection.setTokenExpiresAt(tokenExpiresAt);
-        spotifyConnectionMapper.updateToken(connection);
+        if (spotifyConnectionMapper.updateToken(connection) != 1) {
+            throw new CustomException(ErrorCode.SPOTIFY_AUTH_REQUIRED);
+        }
         return connection;
     }
 

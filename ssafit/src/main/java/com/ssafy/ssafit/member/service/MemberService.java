@@ -28,7 +28,9 @@ public class MemberService {
 
         member.setPasswordHash(passwordHashService.encode(rawPassword));
         member.setStatus(MemberStatus.ACTIVE);
-        memberMapper.insert(member);
+        if (memberMapper.insert(member) != 1) {
+            throw new CustomException(ErrorCode.INTERNAL_SERVER_ERROR);
+        }
         return member;
     }
 

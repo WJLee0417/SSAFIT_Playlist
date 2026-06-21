@@ -67,7 +67,9 @@ public class MusicService {
 
         Music music = toSpotifyMusic(metadata);
         try {
-            musicMapper.insertFromSpotify(music);
+            if (musicMapper.insertFromSpotify(music) != 1) {
+                throw new CustomException(ErrorCode.INTERNAL_SERVER_ERROR);
+            }
             return music;
         } catch (DuplicateKeyException exception) {
             return musicMapper.selectBySpotifyTrackId(spotifyTrackId)
@@ -199,7 +201,9 @@ public class MusicService {
         }
 
         if (changed) {
-            musicMapper.updateSpotifyMetadata(music);
+            if (musicMapper.updateSpotifyMetadata(music) != 1) {
+                throw new CustomException(ErrorCode.MUSIC_NOT_FOUND);
+            }
         }
         return music;
     }

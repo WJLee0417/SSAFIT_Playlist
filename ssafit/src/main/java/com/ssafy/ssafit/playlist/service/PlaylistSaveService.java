@@ -44,7 +44,9 @@ public class PlaylistSaveService {
         playlistSave.setMemberId(loginMemberId);
         playlistSave.setPlaylistId(playlistId);
         try {
-            playlistSaveMapper.insert(playlistSave);
+            if (playlistSaveMapper.insert(playlistSave) != 1) {
+                throw new CustomException(ErrorCode.INTERNAL_SERVER_ERROR);
+            }
         } catch (DuplicateKeyException exception) {
             throw new CustomException(ErrorCode.DUPLICATE_SAVE);
         }
@@ -59,7 +61,9 @@ public class PlaylistSaveService {
         if (!playlistSaveMapper.existsByMemberAndPlaylist(loginMemberId, playlistId)) {
             throw new CustomException(ErrorCode.ACCESS_DENIED);
         }
-        playlistSaveMapper.delete(loginMemberId, playlistId);
+        if (playlistSaveMapper.delete(loginMemberId, playlistId) != 1) {
+            throw new CustomException(ErrorCode.ACCESS_DENIED);
+        }
     }
 
     public List<Playlist> getMySavedList(Long loginMemberId) {

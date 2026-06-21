@@ -146,6 +146,7 @@ class RecommendationServiceTest {
                 .thenReturn(Optional.of(profile(null, null, null)));
         when(musicMapper.selectRecommendedMusic(any()))
                 .thenReturn(List.of(music(1L)));
+        when(recommendationLogMapper.insert(any())).thenReturn(1);
 
         RecommendationResult result = recommendationService.recommend(
                 10L,
@@ -164,6 +165,7 @@ class RecommendationServiceTest {
                 .thenReturn(Optional.of(profile(null, null, null)));
         when(musicMapper.selectRecommendedMusic(any()))
                 .thenReturn(List.of(music(1L)));
+        when(recommendationLogMapper.insert(any())).thenReturn(1);
 
         recommendationService.recommend(
                 10L,
@@ -209,6 +211,29 @@ class RecommendationServiceTest {
                 .extracting(PlaylistItem::getOrderNo)
                 .containsExactly(1, 2);
         verify(recommendationLogMapper).updateSavedPlaylistId(100L, 200L);
+    }
+
+    @Test
+    void partialBulkInsertPreventsRecommendationLogConnection() {
+        RecommendationLog log = log(100L, 10L, "{\"count\":2,\"musicIds\":[1,2]}");
+        when(recommendationLogMapper.selectById(100L)).thenReturn(Optional.of(log));
+        when(playlistMapper.insertCurationCopy(any())).thenAnswer(invocation -> {
+            Playlist playlist = invocation.getArgument(0);
+            playlist.setId(200L);
+            return 1;
+        });
+        when(playlistItemMapper.bulkInsertFromRecommendation(anyList())).thenReturn(1);
+
+        assertError(
+                ErrorCode.INTERNAL_SERVER_ERROR,
+                () -> recommendationService.saveRecommendation(
+                        10L,
+                        100L,
+                        "partial copy",
+                        PlaylistVisibility.PRIVATE));
+
+        verify(recommendationLogMapper, never())
+                .updateSavedPlaylistId(any(), any());
     }
 
     @Test

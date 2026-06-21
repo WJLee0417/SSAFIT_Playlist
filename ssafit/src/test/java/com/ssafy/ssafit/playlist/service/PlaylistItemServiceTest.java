@@ -121,10 +121,23 @@ class PlaylistItemServiceTest {
         PlaylistItem item = item(1000L, 1L, 100L, 1);
         when(playlistItemMapper.selectById(1000L)).thenReturn(Optional.of(item));
         stubOwnedPlaylist();
+        when(playlistItemMapper.delete(1000L)).thenReturn(1);
 
         playlistItemService.delete(10L, 1000L);
 
         verify(playlistItemMapper).delete(1000L);
+    }
+
+    @Test
+    void concurrentItemDeleteIsNotReportedAsSuccess() {
+        PlaylistItem item = item(1000L, 1L, 100L, 1);
+        when(playlistItemMapper.selectById(1000L)).thenReturn(Optional.of(item));
+        stubOwnedPlaylist();
+        when(playlistItemMapper.delete(1000L)).thenReturn(0);
+
+        assertError(
+                ErrorCode.PLAYLIST_ITEM_NOT_FOUND,
+                () -> playlistItemService.delete(10L, 1000L));
     }
 
     @Test
@@ -134,11 +147,26 @@ class PlaylistItemServiceTest {
         stubOwnedPlaylist();
         when(playlistItemMapper.existsByPlaylistAndOrder(1L, 2, 1000L))
                 .thenReturn(false);
+        when(playlistItemMapper.updateOrder(1000L, 2)).thenReturn(1);
 
         PlaylistItem updated = playlistItemService.updateOrder(10L, 1000L, 2);
 
         assertThat(updated.getOrderNo()).isEqualTo(2);
         verify(playlistItemMapper).updateOrder(1000L, 2);
+    }
+
+    @Test
+    void concurrentItemRemovalRejectsOrderUpdate() {
+        PlaylistItem item = item(1000L, 1L, 100L, 1);
+        when(playlistItemMapper.selectById(1000L)).thenReturn(Optional.of(item));
+        stubOwnedPlaylist();
+        when(playlistItemMapper.existsByPlaylistAndOrder(1L, 2, 1000L))
+                .thenReturn(false);
+        when(playlistItemMapper.updateOrder(1000L, 2)).thenReturn(0);
+
+        assertError(
+                ErrorCode.PLAYLIST_ITEM_NOT_FOUND,
+                () -> playlistItemService.updateOrder(10L, 1000L, 2));
     }
 
     @Test

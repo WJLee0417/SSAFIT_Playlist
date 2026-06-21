@@ -44,7 +44,9 @@ public class PlaylistItemService {
                 null);
 
         try {
-            playlistItemMapper.insert(playlistItem);
+            if (playlistItemMapper.insert(playlistItem) != 1) {
+                throw new CustomException(ErrorCode.INTERNAL_SERVER_ERROR);
+            }
         } catch (DuplicateKeyException exception) {
             throw resolveDuplicateError(playlistItem, null);
         }
@@ -56,7 +58,9 @@ public class PlaylistItemService {
         validateAuthenticated(loginMemberId);
         PlaylistItem playlistItem = getItem(playlistItemId);
         validateOwnedPlaylist(loginMemberId, playlistItem.getPlaylistId());
-        playlistItemMapper.delete(playlistItemId);
+        if (playlistItemMapper.delete(playlistItemId) != 1) {
+            throw new CustomException(ErrorCode.PLAYLIST_ITEM_NOT_FOUND);
+        }
     }
 
     @Transactional
@@ -77,7 +81,9 @@ public class PlaylistItemService {
         }
 
         try {
-            playlistItemMapper.updateOrder(playlistItemId, orderNo);
+            if (playlistItemMapper.updateOrder(playlistItemId, orderNo) != 1) {
+                throw new CustomException(ErrorCode.PLAYLIST_ITEM_NOT_FOUND);
+            }
         } catch (DuplicateKeyException exception) {
             throw new CustomException(ErrorCode.DUPLICATE_PLAYLIST_ORDER);
         }

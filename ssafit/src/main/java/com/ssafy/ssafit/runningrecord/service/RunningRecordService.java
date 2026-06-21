@@ -38,7 +38,9 @@ public class RunningRecordService {
         runningRecord.setCreatedAt(null);
         runningRecord.setUpdatedAt(null);
         runningRecord.setDeletedAt(null);
-        runningRecordMapper.insert(runningRecord);
+        if (runningRecordMapper.insert(runningRecord) != 1) {
+            throw new CustomException(ErrorCode.INTERNAL_SERVER_ERROR);
+        }
         return runningRecord;
     }
 
@@ -71,7 +73,9 @@ public class RunningRecordService {
         runningRecord.setPaceSecondsPerKm(calculatePaceSecondsPerKm(runningRecord));
         runningRecord.setCreatedAt(existing.getCreatedAt());
         runningRecord.setDeletedAt(existing.getDeletedAt());
-        runningRecordMapper.update(runningRecord);
+        if (runningRecordMapper.update(runningRecord) != 1) {
+            throw new CustomException(ErrorCode.RUNNING_RECORD_NOT_FOUND);
+        }
         return runningRecord;
     }
 
@@ -80,7 +84,9 @@ public class RunningRecordService {
         Long loginMemberId = getLoginMemberId(session);
         RunningRecord runningRecord = getRecord(runningRecordId);
         validateOwner(loginMemberId, runningRecord);
-        runningRecordMapper.delete(runningRecordId);
+        if (runningRecordMapper.delete(runningRecordId) != 1) {
+            throw new CustomException(ErrorCode.RUNNING_RECORD_NOT_FOUND);
+        }
     }
 
     private Long getLoginMemberId(HttpSession session) {

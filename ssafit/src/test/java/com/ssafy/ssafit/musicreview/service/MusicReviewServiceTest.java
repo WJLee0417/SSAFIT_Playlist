@@ -107,6 +107,7 @@ class MusicReviewServiceTest {
         existing.setCreatedAt(createdAt);
         MusicReview changed = review(100L, 999L, 5, 4);
         when(musicReviewMapper.selectById(100L)).thenReturn(Optional.of(existing));
+        when(musicReviewMapper.update(changed)).thenReturn(1);
 
         MusicReview updated = musicReviewService.update(10L, changed);
 
@@ -136,6 +137,7 @@ class MusicReviewServiceTest {
         MusicReview existing = review(100L, 1L, 3, 3);
         existing.setMemberId(10L);
         when(musicReviewMapper.selectById(100L)).thenReturn(Optional.of(existing));
+        when(musicReviewMapper.delete(100L)).thenReturn(1);
 
         musicReviewService.delete(10L, 100L);
 
