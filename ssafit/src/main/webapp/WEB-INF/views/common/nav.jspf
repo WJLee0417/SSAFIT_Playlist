@@ -1,0 +1,30 @@
+<%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
+<c:url var="homeUrl" value="/members/me"/>
+<c:url var="joinUrl" value="/join"/>
+<c:url var="loginUrl" value="/login"/>
+<c:url var="profileUrl" value="/members/me/running-profile"/>
+<header class="site-header">
+    <nav class="nav-shell" aria-label="주요 메뉴">
+        <a class="brand" href="${empty sessionScope.LOGIN_MEMBER_ID ? loginUrl : homeUrl}">
+            <span class="brand-mark">S</span>
+            <span>SSAFIT Playlist</span>
+        </a>
+        <div class="nav-links">
+            <c:choose>
+                <c:when test="${not empty sessionScope.LOGIN_MEMBER_ID}">
+                    <a href="${homeUrl}">마이페이지</a>
+                    <a href="${profileUrl}">러닝 프로필</a>
+                    <a href="http://localhost:5173/music">음악</a>
+                    <a href="http://localhost:5173/playlists">플레이리스트</a>
+                    <form class="nav-form" method="post" action="<c:url value='/logout'/>">
+                        <button class="link-button" type="submit">로그아웃</button>
+                    </form>
+                </c:when>
+                <c:otherwise>
+                    <a href="${loginUrl}">로그인</a>
+                    <a class="nav-cta" href="${joinUrl}">회원가입</a>
+                </c:otherwise>
+            </c:choose>
+        </div>
+    </nav>
+</header>
