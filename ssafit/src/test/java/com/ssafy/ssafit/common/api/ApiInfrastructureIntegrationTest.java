@@ -5,20 +5,32 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
+
+import com.ssafy.ssafit.common.auth.SessionMemberResolver;
+import com.ssafy.ssafit.common.exception.CustomException;
+import com.ssafy.ssafit.common.exception.ErrorCode;
+
+import jakarta.servlet.http.HttpSession;
 
 @SpringBootTest
 class ApiInfrastructureIntegrationTest {
 
     @Autowired
     private WebApplicationContext context;
+
+    @MockitoBean
+    private SessionMemberResolver sessionMemberResolver;
 
     private MockMvc mockMvc;
 
@@ -43,6 +55,9 @@ class ApiInfrastructureIntegrationTest {
 
     @Test
     void protectedApiReturnsDistinguishableAuthenticationError() throws Exception {
+        when(sessionMemberResolver.requireMemberId(any(HttpSession.class)))
+                .thenThrow(new CustomException(ErrorCode.AUTH_REQUIRED));
+
         mockMvc.perform(get("/api/spotify/me/connection"))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.code").value("AUTH_REQUIRED"))
