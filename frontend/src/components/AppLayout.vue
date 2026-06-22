@@ -6,6 +6,8 @@
         <RouterLink to="/music">음악</RouterLink>
         <RouterLink to="/playlists">플레이리스트</RouterLink>
         <RouterLink to="/playlists/saved">내 저장 목록</RouterLink>
+        <RouterLink to="/running-records">러닝 기록</RouterLink>
+        <RouterLink to="/running-sessions">러닝 모임</RouterLink>
         <RouterLink to="/recommendations">자동 큐레이션</RouterLink>
         <RouterLink to="/spotify/search">Spotify 검색</RouterLink>
       </nav>

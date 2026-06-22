@@ -28,7 +28,8 @@
             <div class="alert alert-success"><c:out value="${successMessage}"/></div>
         </c:if>
 
-        <form:form method="post" modelAttribute="loginForm" cssClass="stack-form">
+        <c:url var="loginAction" value="/login"/>
+        <form:form method="post" action="${loginAction}" modelAttribute="loginForm" cssClass="stack-form">
             <c:if test="${not empty returnTo}">
                 <input type="hidden" name="returnTo" value="<c:out value='${returnTo}'/>">
             </c:if>
