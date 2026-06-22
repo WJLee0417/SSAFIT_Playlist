@@ -8,7 +8,7 @@
 | 내부 음악 저장 | `POST /api/music/from-spotify` | Session 필요, `MusicResponse.id`가 내부 music ID |
 | 수록곡 추가 | `POST /api/playlists/{playlistId}/items` | 내부 `musicId`, `orderNo` 사용 |
 | OAuth URL 조회 | `GET /api/spotify/oauth/authorize` | 302가 아닌 JSON `authorizationUrl` |
-| OAuth Callback | `GET /api/spotify/oauth/callback` | Vue Redirect가 아닌 JSON `ConnectionResponse` |
+| OAuth Callback | `GET /api/spotify/oauth/callback` | Vue 완료 화면으로 302 Redirect |
 | 연결 상태 | `GET /api/spotify/me/connection` | 미연결도 200 `connected=false` |
 | 내보내기 | `POST /api/playlists/{playlistId}/export/spotify` | 곡별 성공/실패 수 없음 |
 
@@ -96,29 +96,31 @@ GET /api/spotify/oauth/authorize
 
 ### 3.3 Callback 이후 Vue 복귀
 
-Spotify 설정의 Redirect URI는 현재 `/api/spotify/oauth/callback`이다. Callback Controller는 `code`, `error`, `state`를 처리하고 연결 JSON을 반환하지만 Vue로 Redirect하지 않는다.
+Spotify 설정의 Redirect URI는 현재 `/api/spotify/oauth/callback`이다. Callback
+Controller는 `code`, `error`, `state`를 처리한 뒤 Vue 완료 화면으로 Redirect한다.
 
-따라서 현재 실제 흐름은 다음 지점에서 멈춘다.
+현재 흐름:
 
 ```text
 Spotify
 → Backend /api/spotify/oauth/callback
 → 연결 처리
-→ JSON ConnectionResponse 표시
+→ /oauth/spotify/complete 302 Redirect
+→ 연결 상태 재조회
 ```
 
-Vue 자동 복귀를 위해 팀원 A/B가 확정해야 하는 Adapter:
+실패 시 흐름:
 
 ```text
-Backend callback 성공/실패 처리
+Backend callback 실패
 → code/state/token을 URL에서 제거
-→ /oauth/spotify/complete 같은 고정 Vue 경로로 302 Redirect
-→ Vue가 sessionStorage의 내부 returnTo 복원
-→ GET /api/spotify/me/connection 재조회
-→ 실제 연결 결과 표시
+→ 공개 ErrorCode만 oauthError로 전달
+→ Vue가 query를 즉시 제거
+→ 연결 상태 재조회 및 재연결 안내
 ```
 
-Vue의 `/oauth/spotify/complete` 화면은 연결 상태 재조회와 안전한 내부 복귀를 이미 준비하지만, Backend Redirect adapter가 없으므로 실 OAuth 자동 복귀 완료로 간주하지 않는다.
+실 Spotify 계정이 없는 환경에서는 Redirect 코드와 오류 분기까지만 검증하며,
+실제 승인 및 Token 교환 성공은 완료로 간주하지 않는다.
 
 ## 4. Spotify 내보내기
 
@@ -184,12 +186,10 @@ Vue 상태, Router query, 화면, 문서에 다음 값을 저장하거나 출력
 
 ## 9. 팀원 A 확인 요청
 
-1. OAuth callback 성공·실패 후 Vue 완료 화면으로 Redirect하는 Adapter가 필요하다.
-2. Redirect 시 OAuth code, state, token을 Vue URL에 포함하지 않아야 한다.
-3. `SPOTIFY_PLAYLIST_ITEM_ADD_FAILED` 응답에 성공/실패 곡 수를 추가할지, MVP에서 제외할지 확정이 필요하다.
-4. 실패 후 Spotify ID/URL이 남은 내보내기의 삭제·복구·재시도 정책이 필요하다.
-5. 연결 상태 API에서 만료된 연결을 `connected=true`로 반환할지, 유효성 검사 후 만료 상태를 제공할지 확정이 필요하다.
-6. 검색 결과 BPM·장르를 계속 `null`로 둘지 보강 정책이 필요하다.
+1. `SPOTIFY_PLAYLIST_ITEM_ADD_FAILED` 응답에 성공/실패 곡 수를 추가할지, MVP에서 제외할지 확정이 필요하다.
+2. 실패 후 Spotify ID/URL이 남은 내보내기의 삭제·복구·재시도 정책이 필요하다.
+3. 연결 상태 API에서 만료된 연결을 `connected=true`로 반환할지, 유효성 검사 후 만료 상태를 제공할지 확정이 필요하다.
+4. 검색 결과 BPM·장르를 계속 `null`로 둘지 보강 정책이 필요하다.
 
 ## 10. 이번 작업 검증 결과
 
@@ -222,7 +222,7 @@ Vue 상태, Router query, 화면, 문서에 다음 값을 저장하거나 출력
 - 실제 Spotify 계정 승인·거부와 Authorization Code 교환
 - 실제 Refresh Token 갱신과 만료 처리
 - 실제 Spotify Playlist 생성 및 수록곡 추가
-- Callback 이후 Vue 자동 복귀: Backend Redirect adapter 미구현
+- Callback 이후 Vue Redirect: 코드/HTTP 검증 완료, 실 계정 승인 흐름은 미검증
 - 실제 Session Cookie와 MySQL을 사용하는 전체 브라우저 통합
 - 부분 성공 곡 수: 실제 Response DTO가 제공하지 않음
 

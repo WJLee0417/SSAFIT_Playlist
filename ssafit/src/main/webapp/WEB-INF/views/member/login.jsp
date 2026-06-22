@@ -29,6 +29,9 @@
         </c:if>
 
         <form:form method="post" modelAttribute="loginForm" cssClass="stack-form">
+            <c:if test="${not empty returnTo}">
+                <input type="hidden" name="returnTo" value="<c:out value='${returnTo}'/>">
+            </c:if>
             <form:errors path="*" element="div" cssClass="alert alert-error"/>
 
             <label for="loginId">로그인 ID</label>

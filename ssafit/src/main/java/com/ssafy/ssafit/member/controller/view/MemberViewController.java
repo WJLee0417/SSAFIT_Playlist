@@ -6,11 +6,13 @@ import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import com.ssafy.ssafit.common.auth.SessionMemberResolver;
 import com.ssafy.ssafit.common.exception.CustomException;
 import com.ssafy.ssafit.common.exception.ErrorCode;
+import com.ssafy.ssafit.common.web.FrontendReturnUrl;
 import com.ssafy.ssafit.member.domain.Member;
 import com.ssafy.ssafit.member.dto.MemberViewForms.JoinForm;
 import com.ssafy.ssafit.member.dto.MemberViewForms.LoginForm;
@@ -66,13 +68,17 @@ public class MemberViewController {
     }
 
     @GetMapping("/login")
-    public String loginForm(HttpSession session, Model model) {
+    public String loginForm(
+            @RequestParam(required = false) String returnTo,
+            HttpSession session,
+            Model model) {
         if (sessionMemberResolver.optionalMemberId(session) != null) {
-            return "redirect:/members/me";
+            return FrontendReturnUrl.safeRedirect(returnTo, "redirect:/members/me");
         }
         if (!model.containsAttribute("loginForm")) {
             model.addAttribute("loginForm", new LoginForm());
         }
+        model.addAttribute("returnTo", returnTo);
         return "member/login";
     }
 
@@ -80,7 +86,10 @@ public class MemberViewController {
     public String login(
             @Valid @ModelAttribute("loginForm") LoginForm form,
             BindingResult bindingResult,
-            HttpSession session) {
+            @RequestParam(required = false) String returnTo,
+            HttpSession session,
+            Model model) {
+        model.addAttribute("returnTo", returnTo);
         if (bindingResult.hasErrors()) {
             return "member/login";
         }
@@ -91,7 +100,7 @@ public class MemberViewController {
             bindingResult.reject("login.failed", exception.getErrorCode().getMessage());
             return "member/login";
         }
-        return "redirect:/members/me";
+        return FrontendReturnUrl.safeRedirect(returnTo, "redirect:/members/me");
     }
 
     @PostMapping("/logout")

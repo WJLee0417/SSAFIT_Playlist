@@ -6,11 +6,13 @@ import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import com.ssafy.ssafit.common.auth.SessionMemberResolver;
 import com.ssafy.ssafit.common.exception.CustomException;
 import com.ssafy.ssafit.common.exception.ErrorCode;
+import com.ssafy.ssafit.common.web.FrontendReturnUrl;
 import com.ssafy.ssafit.runningprofile.domain.RunningProfile;
 import com.ssafy.ssafit.runningprofile.dto.RunningProfileViewForm;
 import com.ssafy.ssafit.runningprofile.service.RunningProfileService;
@@ -27,15 +29,24 @@ public class RunningProfileViewController {
     private final SessionMemberResolver sessionMemberResolver;
 
     @GetMapping("/members/me/running-profile")
-    public String profileForm(HttpSession session, Model model) {
+    public String profileForm(
+            @RequestParam(required = false) String returnTo,
+            HttpSession session,
+            Model model) {
         Long memberId = sessionMemberResolver.optionalMemberId(session);
         if (memberId == null) {
-            return "redirect:/login";
+            return "redirect:/login"
+                    + (returnTo == null || returnTo.isBlank()
+                            ? ""
+                            : "?returnTo=" + java.net.URLEncoder.encode(
+                                    returnTo,
+                                    java.nio.charset.StandardCharsets.UTF_8));
         }
 
         if (!model.containsAttribute("profileForm")) {
             model.addAttribute("profileForm", loadForm(memberId));
         }
+        model.addAttribute("returnTo", returnTo);
         return "member/running-profile";
     }
 
@@ -43,8 +54,11 @@ public class RunningProfileViewController {
     public String saveProfile(
             @Valid @ModelAttribute("profileForm") RunningProfileViewForm form,
             BindingResult bindingResult,
+            @RequestParam(required = false) String returnTo,
             HttpSession session,
-            RedirectAttributes redirectAttributes) {
+            RedirectAttributes redirectAttributes,
+            Model model) {
+        model.addAttribute("returnTo", returnTo);
         Long memberId = sessionMemberResolver.optionalMemberId(session);
         if (memberId == null) {
             return "redirect:/login";
@@ -67,7 +81,9 @@ public class RunningProfileViewController {
         redirectAttributes.addFlashAttribute(
                 "successMessage",
                 "러닝 프로필을 저장했습니다.");
-        return "redirect:/members/me/running-profile";
+        return FrontendReturnUrl.safeRedirect(
+                returnTo,
+                "redirect:/members/me/running-profile");
     }
 
     private RunningProfileViewForm loadForm(Long memberId) {

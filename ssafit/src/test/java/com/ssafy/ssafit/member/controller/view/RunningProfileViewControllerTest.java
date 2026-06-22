@@ -106,6 +106,28 @@ class RunningProfileViewControllerTest {
     }
 
     @Test
+    void validProfileSaveReturnsToSafeVueUrl() throws Exception {
+        when(sessionMemberResolver.optionalMemberId(any(HttpSession.class)))
+                .thenReturn(10L);
+        when(runningProfileService.saveOrUpdate(
+                org.mockito.ArgumentMatchers.eq(10L),
+                any(RunningProfile.class)))
+                .thenReturn(profile());
+
+        mockMvc.perform(post("/members/me/running-profile")
+                        .param("runningIntensity", "MODERATE")
+                        .param("targetBpmMin", "120")
+                        .param("targetBpmMax", "160")
+                        .param("preferredGenre", "POP")
+                        .param(
+                                "returnTo",
+                                "http://localhost:5173/recommendations"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl(
+                        "http://localhost:5173/recommendations"));
+    }
+
+    @Test
     void invalidProfileValueRendersError() throws Exception {
         when(sessionMemberResolver.optionalMemberId(any(HttpSession.class)))
                 .thenReturn(10L);

@@ -27,9 +27,8 @@
       <RouterLink class="secondary-button" :to="returnTo">이전 화면으로 돌아가기</RouterLink>
     </section>
 
-    <p class="contract-note">
-      현재 Backend OAuth Callback은 Vue로 Redirect하지 않고 JSON을 반환합니다.
-      이 화면으로 자동 복귀하려면 Backend Redirect adapter 계약이 추가로 필요합니다.
+    <p v-if="oauthErrorMessage" class="save-status save-error">
+      {{ oauthErrorMessage }}
     </p>
   </AppLayout>
 </template>
@@ -54,6 +53,7 @@ const status = ref("loading");
 const error = ref(null);
 const connection = ref(null);
 const connecting = ref(false);
+const oauthErrorMessage = ref("");
 const returnTo = computed(() => {
   const candidate = Array.isArray(route.query.returnTo)
     ? route.query.returnTo[0]
@@ -101,6 +101,12 @@ onMounted(async () => {
     ? route.query.returnTo[0]
     : route.query.returnTo;
   const safeReturnTo = isSafeSpotifyReturnPath(candidate) ? candidate : null;
+  const oauthError = Array.isArray(route.query.oauthError)
+    ? route.query.oauthError[0]
+    : route.query.oauthError;
+  if (typeof oauthError === "string" && oauthError) {
+    oauthErrorMessage.value = spotifyErrorMessage({ errorCode: oauthError });
+  }
   const hasSensitiveQuery = ["code", "state", "token", "access_token", "refresh_token"]
     .some((key) => Object.prototype.hasOwnProperty.call(route.query, key));
   if (hasSensitiveQuery || Object.keys(route.query).some((key) => key !== "returnTo")) {

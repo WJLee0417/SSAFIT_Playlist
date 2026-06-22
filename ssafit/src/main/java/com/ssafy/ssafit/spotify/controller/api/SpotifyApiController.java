@@ -7,11 +7,13 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.servlet.view.RedirectView;
 
 import com.ssafy.ssafit.common.auth.SessionMemberResolver;
 import com.ssafy.ssafit.common.exception.CustomException;
 import com.ssafy.ssafit.common.exception.ErrorCode;
 import com.ssafy.ssafit.common.response.ApiResponse;
+import com.ssafy.ssafit.common.web.FrontendReturnUrl;
 import com.ssafy.ssafit.spotify.domain.SpotifyConnection;
 import com.ssafy.ssafit.spotify.dto.SpotifyApiDtos.AuthorizationResponse;
 import com.ssafy.ssafit.spotify.dto.SpotifyApiDtos.ConnectionResponse;
@@ -49,21 +51,26 @@ public class SpotifyApiController {
     }
 
     @GetMapping("/oauth/callback")
-    public ApiResponse<ConnectionResponse> callback(
+    public RedirectView callback(
             @RequestParam(required = false) String code,
             @RequestParam(required = false) String error,
             @RequestParam String state,
             HttpSession session) {
         Long memberId = sessionMemberResolver.requireMemberId(session);
-        SpotifyConnection connection = spotifyOAuthService.handleCallback(
-                memberId,
-                code,
-                error,
-                state,
-                session);
-        return ApiResponse.success(
-                "Spotify 계정을 연결했습니다.",
-                ConnectionResponse.connected(connection));
+        try {
+            spotifyOAuthService.handleCallback(
+                    memberId,
+                    code,
+                    error,
+                    state,
+                    session);
+            return new RedirectView(
+                    FrontendReturnUrl.spotifyCompletionRedirect(null));
+        } catch (CustomException exception) {
+            return new RedirectView(
+                    FrontendReturnUrl.spotifyCompletionRedirect(
+                            exception.getErrorCode().name()));
+        }
     }
 
     @GetMapping("/me/connection")

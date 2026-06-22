@@ -168,6 +168,41 @@ class MemberViewControllerTest {
     }
 
     @Test
+    void successfulLoginReturnsToSafeVueUrl() throws Exception {
+        when(authService.login(
+                any(HttpSession.class),
+                eq("runner"),
+                eq("password12")))
+                .thenReturn(member());
+
+        mockMvc.perform(post("/login")
+                        .param("loginId", "runner")
+                        .param("password", "password12")
+                        .param(
+                                "returnTo",
+                                "http://localhost:5173/playlists/10?tab=items"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl(
+                        "http://localhost:5173/playlists/10?tab=items"));
+    }
+
+    @Test
+    void successfulLoginRejectsExternalReturnUrl() throws Exception {
+        when(authService.login(
+                any(HttpSession.class),
+                eq("runner"),
+                eq("password12")))
+                .thenReturn(member());
+
+        mockMvc.perform(post("/login")
+                        .param("loginId", "runner")
+                        .param("password", "password12")
+                        .param("returnTo", "https://example.com/steal"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/members/me"));
+    }
+
+    @Test
     void guestCannotOpenMyPage() throws Exception {
         when(sessionMemberResolver.optionalMemberId(any(HttpSession.class)))
                 .thenReturn(null);

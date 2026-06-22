@@ -165,7 +165,7 @@ axios.create({
 | --- | --- | --- | --- | --- | --- | --- |
 | `/api/spotify/tracks/search` | GET | 불필요 | query `query`, 선택 `limit` | `List<TrackResponse>` | `SpotifyService.searchTracks` | `SPOTIFY_SEARCH_FAILED`, `INVALID_REQUEST` |
 | `/api/spotify/oauth/authorize` | GET | 필요 | 없음 | JSON `AuthorizationResponse(authorizationUrl)` | `buildAuthorizationUrl(HttpSession)` | `SPOTIFY_CONFIGURATION_ERROR`, `SPOTIFY_AUTH_URL_ERROR` |
-| `/api/spotify/oauth/callback` | GET | 필요 | query `code`, `error`, 필수 `state` | JSON `ConnectionResponse` | `handleCallback(...)` | `SPOTIFY_AUTH_DENIED`, `SPOTIFY_OAUTH_STATE_MISMATCH`, `SPOTIFY_OAUTH_CALLBACK_ERROR`, `SPOTIFY_TOKEN_EXPIRED` |
+| `/api/spotify/oauth/callback` | GET | 필요 | query `code`, `error`, 필수 `state` | Vue 완료 화면 302 Redirect | `handleCallback(...)` | 실패 시 공개 ErrorCode만 `oauthError`로 전달 |
 | `/api/spotify/me/connection` | GET | 필요 | 없음 | `ConnectionResponse` | `getConnection(Long)` | `AUTH_REQUIRED` |
 | `/api/spotify/me/connection` | DELETE | 필요 | 없음 | 없음 | `disconnect(Long)` | `SPOTIFY_AUTH_REQUIRED` |
 
@@ -179,7 +179,9 @@ axios.create({
 
 OAuth authorize Endpoint는 302 Redirect가 아니라 JSON으로 인증 URL을 반환한다. Vue는 해당 URL이 `https://accounts.spotify.com/authorize`인지 검증한 후 브라우저 전체 이동을 수행한다.
 
-OAuth callback도 Vue로 Redirect하지 않고 연결 결과 JSON을 반환한다. 따라서 `/oauth/spotify/complete` 자동 복귀는 현재 Backend 계약만으로 동작하지 않으며, callback 성공·실패 후 민감 query를 제거하고 내부 Vue 경로로 이동시키는 Backend Redirect adapter가 추가로 필요하다.
+OAuth callback은 성공 시 `/oauth/spotify/complete`, 실패 시 공개 가능한
+`oauthError`만 포함한 동일 완료 화면으로 Redirect한다. Authorization Code, state,
+token은 Vue URL에 전달하지 않는다. Vue 완료 화면은 연결 상태 API를 다시 조회한다.
 
 연결 정보가 없을 때 Service의 `SPOTIFY_AUTH_REQUIRED`를 Controller Adapter가 정상 응답 `connected=false`로 변환한다.
 

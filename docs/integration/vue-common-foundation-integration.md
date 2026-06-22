@@ -13,7 +13,7 @@
 | --- | --- | --- | --- |
 | 오류 코드 필드 | 일부 목표 문서에 `errorCode` 표기 | `ErrorResponse`는 `{code, message}` | `errorCode`와 `code`를 모두 읽고 `ApiError.errorCode`로 보존 |
 | JSP 로그인 복귀 | Vue의 기존 경로 복원 필요 | `/login`은 `returnTo`를 읽지 않고 성공 후 `/members/me`로 이동 | 로그인 URL에 `returnTo`를 전달하지만 자동 복귀는 JSP 후속 구현 필요 |
-| Spotify OAuth callback | OAuth 후 Vue 복귀 경로 필요 | `/api/spotify/oauth/callback`이 JSON `ConnectionResponse`를 반환 | Ajax 호출로 callback을 처리하지 않으며 `/oauth/spotify/complete?returnTo=...` 경로만 준비. Backend redirect adapter는 미구현 |
+| Spotify OAuth callback | OAuth 후 Vue 복귀 경로 필요 | `/api/spotify/oauth/callback`이 완료 화면으로 302 Redirect | Ajax callback을 사용하지 않고 완료 화면에서 연결 상태를 재조회 |
 | 인증 상태 확인 API | 별도 `/auth/session` 계약 없음 | 보호 API `GET /api/members/me`가 200 또는 401 반환 | Router Guard가 이 API 결과만 사용 |
 | Spotify 미연결 | 정책 확정 필요 항목으로 기록된 문서가 있음 | 200과 `connected=false`로 변환 | 정상 상태로 처리 |
 | 예상하지 못한 서버 오류 | 공통 JSON 여부 미확정 | `GlobalExceptionHandler`에 catch-all 500 처리 없음 | 응답 본문이 없더라도 HTTP status와 `UNKNOWN_ERROR`를 보존 |
@@ -38,7 +38,7 @@
 3. Spotify callback은 Axios로 호출하지 않으므로 Redirect/HTML 응답을 공통 API 오류로 오인하지 않는다.
 4. Vue에는 `/oauth/spotify/complete?returnTo=/원래경로`를 준비했고, 브라우저 이탈 전에는 인증 정보와 무관한 복귀 경로만 `sessionStorage`에 임시 보존한다.
 5. 완료 화면은 Router query를 우선하고 없으면 임시 보존 경로를 사용한 뒤 즉시 제거하며 연결 상태를 다시 조회한다.
-6. 현재 Backend callback은 JSON을 반환하므로 완료 화면으로 자동 이동시키는 Backend/JSP redirect adapter가 후속으로 필요하다.
+6. Backend callback은 code/state/token을 Vue URL에 전달하지 않고 완료 화면으로 Redirect한다.
 
 ## 5. 연동 검증 상태
 
