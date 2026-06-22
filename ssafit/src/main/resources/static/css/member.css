@@ -35,12 +35,31 @@ button, input { font: inherit; }
     align-items: center;
     justify-content: space-between;
 }
-.brand { display: inline-flex; align-items: center; gap: 10px; font-weight: 800; letter-spacing: -.02em; }
+.brand {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 10px;
+    font-weight: 800;
+    letter-spacing: -.02em;
+    white-space: nowrap;
+    word-break: keep-all;
+}
 .brand-mark {
     width: 34px; height: 34px; display: grid; place-items: center;
     border-radius: 11px; background: var(--ink); color: var(--lime);
 }
-.nav-links { display: flex; align-items: center; gap: 22px; font-size: 14px; font-weight: 650; }
+.nav-links {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 22px;
+    font-size: 14px;
+    font-weight: 650;
+    white-space: nowrap;
+    word-break: keep-all;
+}
+.nav-links a, .link-button { white-space: nowrap; word-break: keep-all; }
 .nav-links a:hover, .link-button:hover { color: var(--green); }
 .nav-cta { padding: 10px 16px; border-radius: 999px; color: white !important; background: var(--green); }
 .nav-form { margin: 0; }

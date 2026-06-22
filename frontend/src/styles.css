@@ -30,9 +30,25 @@ button, .primary-button { color: white; background: #226b45; }
   background: rgba(255,255,255,.94);
   border-bottom: 1px solid #dbe4dc;
 }
-.site-header nav { display: flex; flex-wrap: wrap; gap: 1rem; }
+.site-header nav {
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 1rem;
+  min-width: max-content;
+}
+.site-header nav a {
+  flex: 0 0 auto;
+  white-space: nowrap;
+  word-break: keep-all;
+}
 .site-header nav a.router-link-active { color: #226b45; font-weight: 700; }
-.brand { font-weight: 900; letter-spacing: -.03em; }
+.brand {
+  flex: 0 0 auto;
+  font-weight: 900;
+  letter-spacing: -.03em;
+  white-space: nowrap;
+}
 .page-shell { width: min(1120px, calc(100% - 2rem)); margin: 0 auto; padding: 3rem 0 5rem; }
 .page-heading { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 1.5rem; }
 h1 { margin: .2rem 0 1.25rem; font-size: clamp(2rem, 5vw, 3.5rem); line-height: 1.05; }
@@ -473,6 +489,14 @@ button:disabled { cursor: not-allowed; opacity: .5; }
 @media (max-width: 780px) {
   .site-header, .page-heading { align-items: flex-start; flex-direction: column; }
   .site-header { position: static; }
+  .site-header nav {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    padding-bottom: .25rem;
+    overflow-x: auto;
+    scrollbar-width: thin;
+  }
   .music-detail-header { grid-template-columns: 1fr; }
   .review-score-grid { grid-template-columns: 1fr; }
   .review-card-heading { flex-direction: column; }
