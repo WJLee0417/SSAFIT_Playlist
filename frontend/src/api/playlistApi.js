@@ -1,8 +1,16 @@
 import { apiClient } from "./http";
 
+function cleanParams(params) {
+  return Object.fromEntries(
+    Object.entries(params).filter(([, value]) => (
+      value !== undefined && value !== null && value !== ""
+    )),
+  );
+}
+
 export const playlistApi = {
   getList(params = {}) {
-    return apiClient.get("/playlists", { params });
+    return apiClient.get("/playlists", { params: cleanParams(params) });
   },
   getDetail(playlistId) {
     return apiClient.get(`/playlists/${playlistId}`);

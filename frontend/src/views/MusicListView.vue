@@ -1,50 +1,151 @@
 <template>
   <AppLayout>
     <div class="page-heading">
-      <div><span class="eyebrow">MUSIC</span><h1>음악 둘러보기</h1></div>
+      <div>
+        <span class="eyebrow">MUSIC</span>
+        <h1>음악 둘러보기</h1>
+      </div>
       <RouterLink class="secondary-button" to="/spotify/search">Spotify 검색</RouterLink>
     </div>
 
-    <form class="filter-bar" @submit.prevent="load">
-      <input v-model.trim="filters.keyword" aria-label="검색어" placeholder="제목 또는 아티스트" />
-      <input v-model.trim="filters.genre" aria-label="장르" placeholder="장르" />
-      <button type="submit">검색</button>
-    </form>
+    <MusicSearchBar
+      :model="filters"
+      :validation-message="validationMessage"
+      @search="applyFilters"
+      @sort-change="applySort"
+      @reset="resetFilters"
+    />
 
     <PageStatePanel
+      v-if="status !== 'idle'"
       :status="status"
       :error="error"
       empty-message="현재 조건에 맞는 음악이 없습니다."
-      @retry="load"
+      @retry="loadFromRoute"
     />
 
-    <section v-if="status === 'ready'" class="card-grid">
-      <RouterLink
-        v-for="music in data.items"
-        :key="music.id"
-        class="content-card"
-        :to="`/music/${music.id}`"
-      >
-        <span class="eyebrow">{{ music.genre || "장르 미정" }}</span>
-        <h2>{{ music.title }}</h2>
-        <p>{{ music.artist }}</p>
-        <small>{{ music.bpm ? `${music.bpm} BPM` : "BPM 정보 없음" }}</small>
-      </RouterLink>
-    </section>
+    <template v-if="status === 'ready'">
+      <p class="result-summary">총 {{ pageData.totalCount }}곡 · {{ pageData.page }}페이지</p>
+      <section class="card-grid">
+        <MusicCard
+          v-for="music in pageData.items"
+          :key="music.id"
+          :music="music"
+          :return-to="route.fullPath"
+        />
+      </section>
+      <nav v-if="pageData.totalPages > 1" class="pagination" aria-label="음악 목록 페이지">
+        <button
+          type="button"
+          class="secondary-button"
+          :disabled="pageData.page <= 1"
+          @click="movePage(pageData.page - 1)"
+        >
+          이전
+        </button>
+        <span>{{ pageData.page }} / {{ pageData.totalPages }}</span>
+        <button
+          type="button"
+          class="secondary-button"
+          :disabled="pageData.page >= pageData.totalPages"
+          @click="movePage(pageData.page + 1)"
+        >
+          다음
+        </button>
+      </nav>
+    </template>
   </AppLayout>
 </template>
 
 <script setup>
-import { onMounted, reactive } from "vue";
-import { RouterLink } from "vue-router";
+import { reactive, ref, watch } from "vue";
+import { RouterLink, useRoute, useRouter } from "vue-router";
 import { musicApi } from "../api/musicApi";
 import AppLayout from "../components/AppLayout.vue";
+import MusicCard from "../components/MusicCard.vue";
+import MusicSearchBar from "../components/MusicSearchBar.vue";
 import PageStatePanel from "../components/PageStatePanel.vue";
-import { usePageState } from "../utils/pageState";
+import {
+  DEFAULT_MUSIC_QUERY,
+  musicQueryFromRoute,
+  musicQueryToApi,
+  musicQueryToRoute,
+  normalizeMusicPage,
+  validateMusicQuery,
+} from "../utils/musicQuery";
 
-const filters = reactive({ keyword: "", genre: "", page: 1, size: 20 });
-const { data, status, error, run } = usePageState({ items: [] });
-const load = () => run(() => musicApi.getList(filters));
+const route = useRoute();
+const router = useRouter();
+const filters = reactive({ ...DEFAULT_MUSIC_QUERY });
+const pageData = ref(normalizeMusicPage(null, DEFAULT_MUSIC_QUERY));
+const status = ref("idle");
+const error = ref(null);
+const validationMessage = ref("");
+let requestSequence = 0;
 
-onMounted(load);
+function assignFilters(query) {
+  Object.assign(filters, musicQueryFromRoute(query));
+}
+
+async function loadFromRoute() {
+  const sequence = ++requestSequence;
+  assignFilters(route.query);
+  validationMessage.value = validateMusicQuery(filters);
+  if (validationMessage.value) {
+    status.value = "idle";
+    pageData.value = normalizeMusicPage(null, filters);
+    return;
+  }
+
+  status.value = "loading";
+  error.value = null;
+  try {
+    const response = await musicApi.getList(musicQueryToApi(filters));
+    if (sequence !== requestSequence) return;
+    pageData.value = normalizeMusicPage(response, filters);
+    status.value = pageData.value.items.length ? "ready" : "empty";
+  } catch (caught) {
+    if (sequence !== requestSequence) return;
+    error.value = caught;
+    status.value = "error";
+  }
+}
+
+function updateRoute(nextFilters, replace = false) {
+  const navigation = {
+    name: "music-list",
+    query: musicQueryToRoute(nextFilters),
+  };
+  return replace ? router.replace(navigation) : router.push(navigation);
+}
+
+function applyFilters() {
+  validationMessage.value = validateMusicQuery(filters);
+  if (validationMessage.value) {
+    status.value = "idle";
+    return;
+  }
+  updateRoute({ ...filters, page: 1 });
+}
+
+function applySort() {
+  validationMessage.value = validateMusicQuery(filters);
+  if (validationMessage.value) {
+    status.value = "idle";
+    return;
+  }
+  updateRoute({ ...filters, page: 1 });
+}
+
+function resetFilters() {
+  validationMessage.value = "";
+  updateRoute({ ...DEFAULT_MUSIC_QUERY, page: 1 });
+}
+
+function movePage(page) {
+  if (page < 1 || page > pageData.value.totalPages) return;
+  updateRoute({ ...filters, page });
+}
+
+watch(() => route.query, loadFromRoute, { immediate: true, deep: true });
 </script>
