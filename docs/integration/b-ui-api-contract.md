@@ -163,15 +163,37 @@ axios.create({
 
 | URI | Method | 인증 | Request DTO | Response DTO | 실제 Service | 대표 ErrorCode |
 | --- | --- | --- | --- | --- | --- | --- |
-| `/api/spotify/tracks/search` | GET | 불필요 | `query`, `limit` | `List<TrackResponse>` | `SpotifyService.searchTracks` | `SPOTIFY_SEARCH_FAILED`, `INVALID_REQUEST` |
-| `/api/spotify/oauth/authorize` | GET | 필요 | 없음 | `AuthorizationResponse` | `buildAuthorizationUrl(HttpSession)` | `SPOTIFY_CONFIGURATION_ERROR`, `SPOTIFY_AUTH_URL_ERROR` |
-| `/api/spotify/oauth/callback` | GET | 필요 | `code`, `error`, `state` | `ConnectionResponse` | `handleCallback(...)` | `SPOTIFY_AUTH_DENIED`, `SPOTIFY_OAUTH_STATE_MISMATCH`, `SPOTIFY_TOKEN_EXPIRED` |
+| `/api/spotify/tracks/search` | GET | 불필요 | query `query`, 선택 `limit` | `List<TrackResponse>` | `SpotifyService.searchTracks` | `SPOTIFY_SEARCH_FAILED`, `INVALID_REQUEST` |
+| `/api/spotify/oauth/authorize` | GET | 필요 | 없음 | JSON `AuthorizationResponse(authorizationUrl)` | `buildAuthorizationUrl(HttpSession)` | `SPOTIFY_CONFIGURATION_ERROR`, `SPOTIFY_AUTH_URL_ERROR` |
+| `/api/spotify/oauth/callback` | GET | 필요 | query `code`, `error`, 필수 `state` | JSON `ConnectionResponse` | `handleCallback(...)` | `SPOTIFY_AUTH_DENIED`, `SPOTIFY_OAUTH_STATE_MISMATCH`, `SPOTIFY_OAUTH_CALLBACK_ERROR`, `SPOTIFY_TOKEN_EXPIRED` |
 | `/api/spotify/me/connection` | GET | 필요 | 없음 | `ConnectionResponse` | `getConnection(Long)` | `AUTH_REQUIRED` |
 | `/api/spotify/me/connection` | DELETE | 필요 | 없음 | 없음 | `disconnect(Long)` | `SPOTIFY_AUTH_REQUIRED` |
+
+`TrackResponse` 필드:
+
+- `spotifyTrackId`, `spotifyUri`, `spotifyExternalUrl`
+- `title`, `artist`, `albumName`, `imageUrl`
+- `bpm`, `genre`
+
+현재 Spotify 검색 Service는 최대 10곡으로 제한하며 Spotify 검색 응답의 BPM과 장르는 보강하지 않아 `null`일 수 있다.
+
+OAuth authorize Endpoint는 302 Redirect가 아니라 JSON으로 인증 URL을 반환한다. Vue는 해당 URL이 `https://accounts.spotify.com/authorize`인지 검증한 후 브라우저 전체 이동을 수행한다.
+
+OAuth callback도 Vue로 Redirect하지 않고 연결 결과 JSON을 반환한다. 따라서 `/oauth/spotify/complete` 자동 복귀는 현재 Backend 계약만으로 동작하지 않으며, callback 성공·실패 후 민감 query를 제거하고 내부 Vue 경로로 이동시키는 Backend Redirect adapter가 추가로 필요하다.
 
 연결 정보가 없을 때 Service의 `SPOTIFY_AUTH_REQUIRED`를 Controller Adapter가 정상 응답 `connected=false`로 변환한다.
 
 `ConnectionResponse`에는 Access Token과 Refresh Token이 없다.
+
+`ConnectionResponse` 필드는 `connected`, `spotifyUserId`, `tokenExpiresAt`뿐이다.
+
+### Spotify 음악 DB 저장
+
+| URI | Method | 인증 | Request DTO | Response DTO | 실제 Service | 대표 ErrorCode |
+| --- | --- | --- | --- | --- | --- | --- |
+| `/api/music/from-spotify` | POST | 필요 | `SpotifyImportRequest` | `MusicResponse` | `SpotifyService.saveSelectedTrack` | `SPOTIFY_TRACK_NOT_FOUND`, `INVALID_BPM_VALUE`, `AUTH_REQUIRED` |
+
+`SpotifyImportRequest`는 Spotify 식별자와 표시 메타데이터를 받으며 `spotifyTrackId`, `spotifyUri`, `title`, `artist`는 필수다. 같은 `spotifyTrackId`가 이미 있으면 Service가 기존 음악을 조회해 보강하고 동일한 내부 `musicId`를 반환한다. 이 응답의 내부 `id`만 플레이리스트 수록곡 추가 API의 `musicId`로 사용한다.
 
 ## 13. Spotify Export API
 
@@ -180,6 +202,17 @@ axios.create({
 | `/api/playlists/{playlistId}/export/spotify` | POST | 필요 | 없음 | `PlaylistApiDtos.ExportResponse` | `PlaylistExportService.export` | `SPOTIFY_AUTH_REQUIRED`, `SPOTIFY_URI_NOT_FOUND`, `SPOTIFY_PLAYLIST_CREATE_FAILED`, `SPOTIFY_PLAYLIST_ITEM_ADD_FAILED`, `SPOTIFY_ALREADY_EXPORTED` |
 
 응답은 Service가 보장하는 Playlist ID, Spotify ID/URL, 상태, 오류 코드, 완료 시각만 제공한다. 곡별 성공/실패 수는 추정하지 않는다.
+
+`ExportResponse` 필드:
+
+- `playlistId`
+- `spotifyPlaylistId`
+- `spotifyPlaylistUrl`
+- `spotifyExportStatus`
+- `spotifyExportErrorCode`
+- `spotifyExportedAt`
+
+부분 성공 곡 수와 실패 곡 수는 응답에 없다. Spotify 플레이리스트 생성 후 곡 추가가 실패하면 Service는 `FAILED`, Spotify ID/URL, `SPOTIFY_PLAYLIST_ITEM_ADD_FAILED`를 저장한 뒤 오류 응답을 반환할 수 있다. 이 상태는 자동 재시도가 금지되며 저장된 상세 상태와 URL을 표시해야 한다.
 
 ## 14. Controller 패키지 규칙
 

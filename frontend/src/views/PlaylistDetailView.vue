@@ -82,35 +82,35 @@
         @remove="removeItem"
       />
 
-      <section class="spotify-extension-panel" data-spotify-extension>
+      <section v-if="canManage" class="spotify-track-add-panel">
         <div>
-          <span class="eyebrow">SPOTIFY · NEXT STEP</span>
-          <h2>Spotify 연결 지점</h2>
-          <p>다음 단계에서 Spotify 음악 검색·선택 저장·내보내기를 이 영역에 연결합니다.</p>
-          <dl class="playlist-meta">
-            <div><dt>상태</dt><dd>{{ playlist.spotifyExportStatus || "NOT_EXPORTED" }}</dd></div>
-            <div v-if="playlist.spotifyExportErrorCode">
-              <dt>오류 코드</dt><dd>{{ playlist.spotifyExportErrorCode }}</dd>
-            </div>
-          </dl>
-          <a
-            v-if="playlist.spotifyPlaylistUrl"
-            class="secondary-button inline-button"
-            :href="playlist.spotifyPlaylistUrl"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Spotify 플레이리스트 열기
-          </a>
+          <span class="eyebrow">SPOTIFY TRACKS</span>
+          <h2>Spotify 곡 추가</h2>
+          <p>검색 결과를 내부 음악으로 저장한 뒤 반환된 music ID로 수록곡에 추가합니다.</p>
         </div>
         <RouterLink
-          v-if="canManage && !isOfficial"
-          class="text-link"
-          :to="{ name: 'spotify-search', query: { playlistId, returnTo: route.fullPath } }"
+          class="primary-button"
+          :to="{
+            name: 'spotify-search',
+            query: {
+              playlistId,
+              nextOrder,
+              returnTo: route.fullPath,
+            },
+          }"
         >
-          다음 단계용 Spotify 검색 경로
+          Spotify 곡 검색
         </RouterLink>
       </section>
+
+      <SpotifyExportPanel
+        :key="`${playlist.id}-${playlist.spotifyExportStatus}-${playlist.spotifyPlaylistUrl || ''}`"
+        :playlist="playlist"
+        :playlist-id="playlistId"
+        :editable="canManage"
+        :return-to="route.fullPath"
+        @exported="handleSpotifyExported"
+      />
     </article>
   </AppLayout>
 </template>
@@ -126,6 +126,7 @@ import AppLayout from "../components/AppLayout.vue";
 import PageStatePanel from "../components/PageStatePanel.vue";
 import PlaylistItemList from "../components/PlaylistItemList.vue";
 import SaveStatus from "../components/SaveStatus.vue";
+import SpotifyExportPanel from "../components/SpotifyExportPanel.vue";
 import { buildJspLoginUrl } from "../utils/navigation";
 import { playlistErrorMessage } from "../utils/playlistError";
 
@@ -162,6 +163,12 @@ const canAttemptSave = computed(() => (
 ));
 const sourceLabel = computed(() => (
   playlist.value.sourceType === "CURATION_COPY" ? "큐레이션 복사본" : "사용자 플레이리스트"
+));
+const nextOrder = computed(() => (
+  items.value.reduce(
+    (maximum, item) => Math.max(maximum, Number(item.orderNo) || 0),
+    0,
+  ) + 1
 ));
 const backLocation = computed(() => {
   const candidate = route.query.returnTo;
@@ -301,6 +308,16 @@ async function deletePlaylist() {
     actionMessage.value = playlistErrorMessage(caught);
   } finally {
     actionBusy.value = false;
+  }
+}
+
+async function handleSpotifyExported(result) {
+  if (result?.refresh) {
+    await load();
+  }
+  if (result?.message) {
+    actionType.value = result.type || "success";
+    actionMessage.value = result.message;
   }
 }
 
