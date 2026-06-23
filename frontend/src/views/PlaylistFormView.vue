@@ -47,6 +47,7 @@ import { useRoute, useRouter } from "vue-router";
 import { authApi } from "../api/authApi";
 import { isApiError } from "../api/http";
 import { playlistApi } from "../api/playlistApi";
+import { playlistSaveApi } from "../api/playlistSaveApi";
 import AppLayout from "../components/AppLayout.vue";
 import PageStatePanel from "../components/PageStatePanel.vue";
 import SaveStatus from "../components/SaveStatus.vue";
@@ -127,6 +128,9 @@ async function save() {
     const playlist = isEdit.value
       ? await playlistApi.update(props.playlistId, payload())
       : await playlistApi.create(payload());
+    if (!isEdit.value) {
+      await playlistSaveApi.save(playlist.id);
+    }
     saveType.value = "success";
     saveMessage.value = "플레이리스트를 저장했습니다.";
     await router.push({
