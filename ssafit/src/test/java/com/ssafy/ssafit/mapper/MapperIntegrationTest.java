@@ -19,7 +19,6 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
-import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.dao.DataAccessException;
@@ -27,6 +26,8 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockHttpSession;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
 
 import com.ssafy.ssafit.common.auth.SessionConst;
 import com.ssafy.ssafit.common.exception.CustomException;
@@ -72,11 +73,18 @@ import com.ssafy.ssafit.spotify.mapper.SpotifyConnectionMapper;
 
 @SpringBootTest
 @ActiveProfiles("mapper-test")
-@EnabledIfEnvironmentVariable(
-        named = "SSAFIT_TEST_DB_URL",
-        matches = "(?i)^jdbc:mysql://[^/]+/[^?]*(test|local_test)[^?]*(\\?.*)?$")
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class MapperIntegrationTest {
+
+    private static final TestDatabaseGuard.TestDatabaseConfig TEST_DATABASE =
+            TestDatabaseGuard.requireFromEnvironment();
+
+    @DynamicPropertySource
+    static void configureTestDatabase(DynamicPropertyRegistry registry) {
+        registry.add("spring.datasource.url", TEST_DATABASE::jdbcUrl);
+        registry.add("spring.datasource.username", TEST_DATABASE::username);
+        registry.add("spring.datasource.password", TEST_DATABASE::password);
+    }
 
     @Autowired
     private JdbcTemplate jdbcTemplate;
@@ -133,6 +141,24 @@ class MapperIntegrationTest {
             throw new IllegalStateException(
                     "Mapper integration tests require a dedicated test database.");
         }
+        if (!databaseName.equalsIgnoreCase(TEST_DATABASE.databaseName())) {
+            throw new IllegalStateException(
+                    "Connected database '"
+                            + databaseName
+                            + "' does not match the validated JDBC database '"
+                            + TEST_DATABASE.databaseName()
+                            + "'.");
+        }
+        String currentUser = jdbcTemplate.queryForObject(
+                "SELECT CURRENT_USER()",
+                String.class);
+        if (currentUser == null
+                || currentUser.toLowerCase().startsWith("root@")) {
+            throw new IllegalStateException(
+                    "Mapper integration tests must use a dedicated non-root "
+                            + "test database account.");
+        }
+        assertDedicatedDatabasePrivileges();
         deleteAllData();
     }
 
@@ -195,6 +221,7 @@ class MapperIntegrationTest {
         olderRecord.setPaceSecondsPerKm(400);
         olderRecord.setMemo("Older mapper running record");
         runningRecordMapper.insert(olderRecord);
+        Member otherMember = insertMember("running_record_other_member");
 
         assertThat(record.getId()).isNotNull();
         RunningRecord selected = runningRecordMapper.selectById(record.getId())
@@ -207,6 +234,8 @@ class MapperIntegrationTest {
         assertThat(runningRecordMapper.selectListByMemberId(member.getId()))
                 .extracting(RunningRecord::getId)
                 .containsExactly(record.getId(), olderRecord.getId());
+        assertThat(runningRecordMapper.selectListByMemberId(otherMember.getId()))
+                .isEmpty();
 
         record.setDistanceKm(new java.math.BigDecimal("10.00"));
         record.setDurationSeconds(3300);
@@ -338,6 +367,37 @@ class MapperIntegrationTest {
 
         assertThat(runningSessionParticipantMapper.countParticipants(
                 runningSession.getId())).isEqualTo(1);
+
+        RunningSession fullSession = insertRunningSession(host.getId(), 1);
+        runningSessionParticipantService.joinSession(
+                loginSession(first.getId()),
+                fullSession.getId());
+        assertThatThrownBy(() -> runningSessionParticipantService.joinSession(
+                loginSession(second.getId()),
+                fullSession.getId()))
+                .isInstanceOfSatisfying(
+                        CustomException.class,
+                        exception -> assertThat(exception.getErrorCode())
+                                .isEqualTo(ErrorCode.SESSION_FULL));
+
+        RunningSession closedSession = insertRunningSession(host.getId(), 2);
+        runningSessionMapper.updateStatus(
+                closedSession.getId(),
+                RunningSessionStatus.CLOSED);
+        assertThatThrownBy(() -> runningSessionParticipantService.joinSession(
+                loginSession(second.getId()),
+                closedSession.getId()))
+                .isInstanceOfSatisfying(
+                        CustomException.class,
+                        exception -> assertThat(exception.getErrorCode())
+                                .isEqualTo(ErrorCode.SESSION_CLOSED));
+
+        assertThat(runningSessionParticipantMapper.selectParticipants(
+                runningSession.getId()))
+                .allSatisfy(participant -> {
+                    assertThat(participant.getMemberId()).isNotNull();
+                    assertThat(participant.getJoinedAt()).isNotNull();
+                });
     }
 
     @Test
@@ -850,6 +910,30 @@ class MapperIntegrationTest {
 
     private int countRows(String table) {
         return jdbcTemplate.queryForObject("SELECT COUNT(*) FROM " + table, Integer.class);
+    }
+
+    private void assertDedicatedDatabasePrivileges() {
+        String expectedDatabase = TEST_DATABASE.databaseName().toLowerCase();
+        List<String> grants = jdbcTemplate.queryForList(
+                "SHOW GRANTS FOR CURRENT_USER()",
+                String.class);
+
+        for (String grant : grants) {
+            String normalized = grant.toLowerCase()
+                    .replace("`", "")
+                    .replace("\\", "");
+            boolean usageGrant = normalized.contains("grant usage on *.*");
+            boolean dedicatedDatabaseGrant =
+                    normalized.contains("on " + expectedDatabase + ".*");
+            if (!usageGrant && !dedicatedDatabaseGrant) {
+                throw new IllegalStateException(
+                        "Mapper integration test account has privileges outside "
+                                + "the dedicated database '"
+                                + TEST_DATABASE.databaseName()
+                                + "': "
+                                + grant);
+            }
+        }
     }
 
     private void deleteAllData() {

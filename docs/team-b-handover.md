@@ -18,7 +18,7 @@
 
 ### 팀원 A가 완료한 영역
 
-- Java 21, Spring Boot 4.0.6, Maven Wrapper 프로젝트
+- Java 25, Spring Boot 4.0.6, Maven Wrapper 프로젝트
 - MySQL 8 DDL과 제약조건
 - Domain과 Enum
 - MyBatis Mapper Interface/XML

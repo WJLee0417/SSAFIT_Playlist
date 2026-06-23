@@ -8,7 +8,7 @@ H2, SQLite 및 Mock DB는 사용하지 않는다. 운영 DB, 공용 개발 DB �
 
 ## 2. 사전 요구사항
 
-- Java 21
+- Java 25
 - MySQL 8
 - Maven Wrapper
 - 별도의 테스트 DB와 테스트 전용 계정
@@ -49,10 +49,11 @@ FLUSH PRIVILEGES;
 | 변수 | 필수 여부 | 설명 |
 | --- | --- | --- |
 | `SSAFIT_TEST_DB_URL` | 필수 | 실제 MySQL 테스트 DB JDBC URL |
-| `SSAFIT_TEST_DB_USERNAME` | 권장 | 테스트 전용 DB 계정 |
-| `SSAFIT_TEST_DB_PASSWORD` | 권장 | 테스트 전용 DB 비밀번호 |
+| `SSAFIT_TEST_DB_USERNAME` | 필수 | 테스트 전용 DB 계정 |
+| `SSAFIT_TEST_DB_PASSWORD` | 필수 | 테스트 전용 DB 비밀번호 |
 
-username과 password에는 테스트 설정의 기본값이 있지만, 실제 실행에서는 명시적으로 설정하는 것을 권장한다.
+세 환경변수 중 하나라도 없으면 Mapper 통합 테스트는 스킵되지 않고 명확한
+오류로 실패한다. 접속 정보의 기본값과 하드코딩된 비밀번호는 사용하지 않는다.
 
 권장 URL:
 
@@ -103,12 +104,23 @@ Docker 사용 시 JDBC URL의 포트는 `33306`으로 설정한다.
 
 현재 테스트에는 다음 안전장치가 적용되어 있다.
 
-1. `SSAFIT_TEST_DB_URL`의 DB 이름에 `test` 또는 `local_test`가 있어야 `MapperIntegrationTest`가 활성화된다.
-2. `TestDatabaseSafetyTest`는 환경변수에 지정된 DB 이름에 `test`가 없으면 빌드를 실패시킨다.
-3. `MapperIntegrationTest`는 실제 연결 후 `SELECT DATABASE()` 결과에 `test`가 있는지 다시 확인한다.
-4. 테스트 데이터 삭제는 위 검증 후에만 실행한다.
+1. Spring Context와 DataSource 생성 전에 세 환경변수의 존재를 검증한다.
+2. JDBC URL이 MySQL 형식이고 DB 이름에 `test`가 있는지 연결 전에 검증한다.
+3. `MapperIntegrationTest`는 실제 연결 후 `SELECT DATABASE()` 결과가 URL에서
+   검증한 DB 이름과 정확히 일치하는지 다시 확인한다.
+4. root 계정 연결은 거부한다.
+5. `SHOW GRANTS` 결과에 전용 테스트 DB 외 권한이 있으면 실행을 거부한다.
+6. 테스트 프로필은 전용 DB 내부의 알려진 테이블만 재생성한다.
+7. 각 테스트 전후와 전체 클래스 전후에 FK 역순으로 테스트 데이터를 삭제한다.
 
 DB 이름이 `ssafit_playlist`처럼 `test`를 포함하지 않으면 테스트 실행을 중단해야 한다.
+
+예상 오류:
+
+```text
+Refusing to run Mapper integration tests against database 'ssafit_playlist'.
+The database name in SSAFIT_TEST_DB_URL must contain 'test'.
+```
 
 ## 9. 테스트 실행 결과 확인
 
@@ -120,6 +132,18 @@ Tests run: 13
 Failures: 0
 Errors: 0
 Skipped: 0
+```
+
+통합 테스트만 실행:
+
+```powershell
+.\mvnw.cmd -Dtest=MapperIntegrationTest test
+```
+
+전체 테스트 실행:
+
+```powershell
+.\mvnw.cmd clean test
 ```
 
 전체 결과도 `Failures: 0`, `Errors: 0`, `Skipped: 0`, `BUILD SUCCESS`여야 한다.
@@ -149,7 +173,10 @@ WHERE TABLE_SCHEMA = DATABASE();
 
 ## 11. 테스트 데이터 정리
 
-`MapperIntegrationTest`는 `@BeforeAll`, `@BeforeEach`, `@AfterEach`, `@AfterAll`에서 테스트 테이블의 데이터를 FK 역순으로 삭제한다.
+`schema-reset.sql`은 테스트 Application Context 시작 시 알려진 테스트 테이블을
+FK 역순으로 삭제한 후 운영 스키마 원본인 `schema.sql`을 다시 실행한다.
+`MapperIntegrationTest`는 추가로 `@BeforeAll`, `@BeforeEach`, `@AfterEach`,
+`@AfterAll`에서 테스트 테이블의 데이터를 FK 역순으로 삭제한다.
 
 테스트 종료 후 다음 SQL로 잔존 데이터를 확인할 수 있다.
 

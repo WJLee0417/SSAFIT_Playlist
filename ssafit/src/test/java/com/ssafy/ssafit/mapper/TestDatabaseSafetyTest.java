@@ -1,8 +1,7 @@
 package com.ssafy.ssafit.mapper;
 
 import static org.assertj.core.api.Assertions.assertThat;
-
-import java.net.URI;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import org.junit.jupiter.api.Test;
 
@@ -15,15 +14,29 @@ class TestDatabaseSafetyTest {
             return;
         }
 
-        assertThat(jdbcUrl)
-                .as("Mapper integration tests require a MySQL JDBC URL")
-                .startsWith("jdbc:mysql://");
+        TestDatabaseGuard.TestDatabaseConfig config =
+                TestDatabaseGuard.validate(jdbcUrl, "test-user", "test-password");
+        assertThat(config.databaseName()).containsIgnoringCase("test");
+    }
 
-        URI mysqlUri = URI.create(jdbcUrl.substring("jdbc:".length()));
-        String databaseName = mysqlUri.getPath().replaceFirst("^/", "");
+    @Test
+    void developmentDatabaseUrlIsRejectedBeforeConnection() {
+        assertThatThrownBy(() -> TestDatabaseGuard.validate(
+                "jdbc:mysql://127.0.0.1:3306/ssafit_playlist",
+                "ssafit",
+                "password"))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("Refusing to run Mapper integration tests")
+                .hasMessageContaining("must contain 'test'");
+    }
 
-        assertThat(databaseName.toLowerCase())
-                .as("Refusing to use a database without 'test' in its name")
-                .contains("test");
+    @Test
+    void nonMysqlUrlIsRejectedBeforeConnection() {
+        assertThatThrownBy(() -> TestDatabaseGuard.validate(
+                "jdbc:h2:mem:ssafit_test",
+                "ssafit_test",
+                "password"))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("must be a MySQL JDBC URL");
     }
 }

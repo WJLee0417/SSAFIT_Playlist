@@ -9,7 +9,8 @@ Java: 25
 IDE: STS 5.1.1
 ```
 
-현재 프로젝트의 `pom.xml`은 Java 21로 설정되어 있다. 이 문서는 우선 새 PC의 JDK와 IDE를 준비하는 방법을 설명하며, 프로젝트의 Java 기준 버전을 실제로 25로 변경하는 작업은 팀 합의 후 별도 커밋으로 진행한다.
+현재 프로젝트의 `pom.xml`은 Java 25로 설정되어 있다. Maven을 실행하는 JVM도
+Java 25여야 하며, 다른 버전에서는 `validate` 단계에서 컴파일 전에 빌드가 중단된다.
 
 ## 2. 사전 준비
 
@@ -71,7 +72,8 @@ Preferences
 → Compiler compliance level
 ```
 
-프로젝트의 `pom.xml`이 Java 25로 변경되기 전까지는 프로젝트 컴파일 기준이 Java 21로 유지될 수 있다. IDE 전역 JDK와 Maven 프로젝트의 컴파일 대상 버전은 서로 다른 개념이다.
+IDE 전역 JDK와 Maven 프로젝트의 컴파일 대상 버전, Maven 실행 JDK는 서로 다른
+개념이다. 세 항목을 모두 Java 25로 맞춘다.
 
 ## 5. STS 실행 JDK 확인
 
@@ -178,18 +180,11 @@ Maven 설정과 IDE 설정이 다르면 Maven 설정을 우선 기준으로 삼�
 현재 `ssafit/pom.xml`에는 다음 설정이 존재한다.
 
 ```xml
-<java.version>21</java.version>
-```
-
-따라서 JDK 25로 Maven을 실행하더라도 컴파일 대상은 Java 21이다.
-
-프로젝트 기준 버전을 Java 25로 변경하기로 합의한 경우 별도 작업에서 다음 항목을 수정하고 전체 테스트를 실행해야 한다.
-
-```xml
 <java.version>25</java.version>
 ```
 
-Java 버전 변경 커밋에서는 최소한 다음을 확인한다.
+Maven Enforcer는 Maven 실행 JVM을 Java 25(25.x)로 제한한다. Java 버전 설정을
+확인할 때 최소한 다음을 함께 확인한다.
 
 - Spring Boot 및 MyBatis 의존성 호환성
 - Maven Compiler Plugin 동작
@@ -260,6 +255,14 @@ Set-Location ssafit
 
 출력의 Java version이 25인지 확인한다.
 
+`java -version`은 현재 PowerShell의 `PATH`가 선택한 Java를 보여 주고,
+`.\mvnw.cmd -version`은 Maven Wrapper가 실제로 사용하는 Java를 보여 준다.
+두 결과가 다르면 `JAVA_HOME`, `PATH` 순서와 IDE Maven JDK 설정을 확인한다.
+
+IntelliJ IDEA에서는 Project SDK만 바꾸는 것으로 충분하지 않다. Maven Runner와
+Maven Importer JDK를 모두 Java 25로 지정한다. STS에서도 Installed JRE와 Project
+JRE 외에 Maven 실행 JRE가 Java 25인지 확인한다.
+
 기본 테스트:
 
 ```powershell
@@ -304,10 +307,8 @@ BUILD SUCCESS
 
 ## 15. 주의사항
 
-- JDK 25 설치만으로 프로젝트의 컴파일 기준이 자동으로 Java 25가 되지는 않는다.
-- `pom.xml`의 Java 21 설정을 임의로 변경하지 않는다.
-- Java 25 기준 변경은 의존성 호환성과 전체 테스트를 포함한 별도 커밋으로 처리한다.
+- JDK 25 설치만으로 Maven 실행 JVM이 자동으로 Java 25가 되지는 않는다.
+- `pom.xml`의 Java 25 설정과 Enforcer 검증을 임의로 낮추지 않는다.
 - STS의 Project JRE, Maven 실행 JDK, 터미널 `JAVA_HOME`이 서로 다를 수 있으므로 각각 확인한다.
 - 테스트 DB 이름에 `test`가 없으면 Mapper 통합 테스트를 실행하지 않는다.
 - 민감한 환경변수와 DB 비밀번호를 Git에 커밋하지 않는다.
-

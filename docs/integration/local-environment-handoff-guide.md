@@ -31,7 +31,7 @@ git push origin feature/b-ui-api
 다음 도구를 설치한다.
 
 - Git
-- JDK 21
+- JDK 25
 - MySQL 8
 - Node.js
 - pnpm
@@ -46,7 +46,9 @@ node --version
 pnpm --version
 ```
 
-Backend 기준 Java 버전은 21이다. IDE의 Project SDK, Maven 실행 JDK, 터미널의 `JAVA_HOME`도 같은 버전을 사용하도록 맞춘다.
+Backend 기준 Java 버전은 25다. IDE의 Project SDK, Maven 실행 JDK, 터미널의
+`JAVA_HOME`도 Java 25로 맞춘다. `java -version`과 Backend 디렉터리의
+`.\mvnw.cmd -version`을 각각 실행해 셸 Java와 Maven 실행 Java를 모두 확인한다.
 
 ## 3. 저장소 복제 및 브랜치 준비
 
@@ -228,7 +230,7 @@ docs/integration/b-ui-api-contract.md
 - [ ] `feature/b-ui-api` 브랜치인지 확인했다.
 - [ ] 작업 트리가 clean 상태다.
 - [ ] 원격 최신 커밋을 `--ff-only`로 반영했다.
-- [ ] JDK 21과 Maven 실행 JDK가 일치한다.
+- [ ] JDK 25와 Maven 실행 JDK가 일치한다.
 - [ ] MySQL 8과 `ssafit_playlist` DB가 준비되었다.
 - [ ] 필요한 Spotify 환경변수를 로컬에만 설정했다.
 - [ ] Backend 전체 테스트가 통과했다.

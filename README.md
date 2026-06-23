@@ -3,7 +3,7 @@
 ## 개발 환경
 
 - STS 5.0.1
-- Java 21
+- Java 25
 - Spring Boot 4.0.6
 - Maven Wrapper
 - MySQL 8
@@ -17,6 +17,48 @@ Maven 프로젝트는 저장소의 `ssafit` 디렉터리에 있습니다.
 
 ```bash
 cd ssafit
+```
+
+## Java 25 및 Maven 실행 환경
+
+Backend는 Java 25 문법과 Java 25 컴파일 대상을 사용합니다. JDK 설치 여부와 별개로,
+Maven Wrapper를 실행하는 JVM도 반드시 Java 25여야 합니다. Java 25가 아닌 JVM에서는
+Maven `validate` 단계에서 소스 컴파일 전에 빌드가 중단됩니다.
+
+Windows PowerShell에서 현재 터미널 세션에 JDK 25를 지정하는 예시:
+
+```powershell
+$env:JAVA_HOME = 'C:\Program Files\Java\jdk-25'
+$env:Path = "$env:JAVA_HOME\bin;$env:Path"
+
+java -version
+Set-Location .\ssafit
+.\mvnw.cmd -version
+```
+
+두 버전 확인 결과 모두 `25`를 표시해야 합니다. 특히 `.\mvnw.cmd -version`의
+`Java version`, `runtime` 항목이 Maven이 실제로 사용하는 JVM입니다.
+
+- `JAVA_HOME`은 JDK 25 설치 디렉터리를 가리켜야 합니다.
+- `PATH`에서는 `%JAVA_HOME%\bin`이 낮은 Java 버전보다 먼저 와야 합니다.
+- STS에서는 Installed JRE, Project JRE와 Maven 실행 JRE를 Java 25로 지정합니다.
+- IntelliJ IDEA에서는 Project SDK뿐 아니라 Maven Runner와 Maven Importer JDK도
+  Java 25로 지정합니다.
+- IDE 터미널의 Java와 IDE가 내부적으로 Maven을 실행하는 Java는 다를 수 있으므로,
+  IDE Maven 실행 로그 또는 Maven 설정 화면에서도 Java 25를 확인합니다.
+
+Backend와 Frontend 실행 환경은 서로 독립적입니다.
+
+```powershell
+# Backend: JDK 25 필요
+Set-Location .\ssafit
+.\mvnw.cmd test
+.\mvnw.cmd spring-boot:run
+
+# Frontend: 별도 PowerShell에서 Node.js/pnpm 사용
+Set-Location .\frontend
+pnpm install --frozen-lockfile
+pnpm dev
 ```
 
 ## 공통 구현 기준

@@ -1,0 +1,2 @@
+org.springframework.boot.EnvironmentPostProcessor=\
+com.ssafy.ssafit.e2e.E2eDatabaseSafetyEnvironmentPostProcessor
