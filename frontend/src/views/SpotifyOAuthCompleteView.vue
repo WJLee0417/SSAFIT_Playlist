@@ -1,7 +1,7 @@
 <template>
   <AppLayout>
     <PageStatePanel
-      v-if="status !== 'ready' && status !== 'disconnected'"
+      v-if="status !== 'ready' && status !== 'disconnected' && status !== 'expired'"
       :status="status"
       :error="displayError"
       error-title="Spotify 연결을 확인하지 못했습니다"
@@ -21,6 +21,15 @@
         현재 연결 상태 API에서 연결 정보를 확인하지 못했습니다.
         인증을 다시 시작하거나 이전 화면으로 돌아갈 수 있습니다.
       </p>
+      <button type="button" :disabled="connecting" @click="connect">
+        {{ connecting ? "Spotify로 이동 중..." : "Spotify 다시 연결" }}
+      </button>
+      <RouterLink class="secondary-button" :to="returnTo">이전 화면으로 돌아가기</RouterLink>
+    </section>
+
+    <section v-else-if="status === 'expired'" class="state-panel state-error">
+      <h1>Spotify 재연결이 필요합니다</h1>
+      <p>저장된 연결의 토큰을 갱신하지 못했습니다. Spotify 인증을 다시 진행해 주세요.</p>
       <button type="button" :disabled="connecting" @click="connect">
         {{ connecting ? "Spotify로 이동 중..." : "Spotify 다시 연결" }}
       </button>
@@ -76,7 +85,9 @@ async function checkConnection() {
   try {
     const response = await spotifyApi.getConnection();
     connection.value = response;
-    status.value = response?.connected ? "ready" : "disconnected";
+    status.value = response?.state === "RECONNECT_REQUIRED"
+      ? "expired"
+      : (response?.connected ? "ready" : "disconnected");
   } catch (caught) {
     error.value = caught;
     status.value = spotifyErrorState(caught);

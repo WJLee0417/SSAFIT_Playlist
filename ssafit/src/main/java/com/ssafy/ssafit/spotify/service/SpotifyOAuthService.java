@@ -2,6 +2,7 @@ package com.ssafy.ssafit.spotify.service;
 
 import java.time.LocalDateTime;
 import java.util.Optional;
+import java.util.function.Function;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -64,37 +65,89 @@ public class SpotifyOAuthService {
         stateManager.validateAndConsume(session, returnedState);
         if (StringUtils.hasText(error)) {
             if ("access_denied".equals(error)) {
-                throw new CustomException(ErrorCode.SPOTIFY_AUTH_DENIED);
+                throw new CustomException(
+                        ErrorCode.SPOTIFY_AUTHORIZATION_CANCELLED);
             }
-            throw new CustomException(ErrorCode.SPOTIFY_OAUTH_CALLBACK_ERROR);
+            throw new CustomException(ErrorCode.SPOTIFY_AUTHORIZATION_FAILED);
         }
         if (!StringUtils.hasText(authorizationCode)) {
-            throw new CustomException(ErrorCode.SPOTIFY_AUTH_REQUIRED);
+            throw new CustomException(ErrorCode.SPOTIFY_AUTHORIZATION_FAILED);
         }
 
-        SpotifyToken token = spotifyApiClient.exchangeAuthorizationCode(
-                authorizationCode.trim());
-        validateToken(token);
-        SpotifyUserProfile profile = spotifyApiClient.getCurrentUser(
-                token.getAccessToken());
+        SpotifyToken token;
+        try {
+            token = spotifyApiClient.exchangeAuthorizationCode(
+                    authorizationCode.trim());
+            validateToken(token);
+        } catch (RuntimeException exception) {
+            throw new CustomException(ErrorCode.SPOTIFY_AUTHORIZATION_FAILED);
+        }
+        CallbackIdentity callbackIdentity =
+                resolveCallbackIdentityWithSingleRetry(token);
+        token = callbackIdentity.token();
+        SpotifyUserProfile profile = callbackIdentity.profile();
         if (profile == null || !StringUtils.hasText(profile.getId())) {
-            throw new CustomException(ErrorCode.SPOTIFY_API_ERROR);
+            throw new CustomException(ErrorCode.SPOTIFY_AUTHORIZATION_FAILED);
         }
 
         return saveConnection(loginMemberId, profile.getId(), token);
     }
 
+    private CallbackIdentity resolveCallbackIdentityWithSingleRetry(
+            SpotifyToken token) {
+        try {
+            return new CallbackIdentity(
+                    token,
+                    spotifyApiClient.getCurrentUser(token.getAccessToken()));
+        } catch (CustomException exception) {
+            if (exception.getErrorCode()
+                    != ErrorCode.SPOTIFY_AUTHORIZATION_FAILED) {
+                throw exception;
+            }
+        }
+
+        if (!StringUtils.hasText(token.getRefreshToken())) {
+            throw new CustomException(ErrorCode.SPOTIFY_TOKEN_REFRESH_FAILED);
+        }
+
+        SpotifyToken refreshed;
+        try {
+            refreshed = spotifyApiClient.refreshAccessToken(
+                    token.getRefreshToken());
+            validateToken(refreshed);
+        } catch (RuntimeException exception) {
+            throw new CustomException(ErrorCode.SPOTIFY_TOKEN_REFRESH_FAILED);
+        }
+        if (!StringUtils.hasText(refreshed.getRefreshToken())) {
+            refreshed.setRefreshToken(token.getRefreshToken());
+        }
+
+        try {
+            return new CallbackIdentity(
+                    refreshed,
+                    spotifyApiClient.getCurrentUser(
+                            refreshed.getAccessToken()));
+        } catch (CustomException exception) {
+            if (exception.getErrorCode()
+                    == ErrorCode.SPOTIFY_AUTHORIZATION_FAILED) {
+                throw new CustomException(
+                        ErrorCode.SPOTIFY_TOKEN_REFRESH_FAILED);
+            }
+            throw exception;
+        }
+    }
+
     public SpotifyConnection getConnection(Long loginMemberId) {
         validateAuthenticated(loginMemberId);
         return spotifyConnectionMapper.selectByMemberId(loginMemberId)
-                .orElseThrow(() -> new CustomException(ErrorCode.SPOTIFY_AUTH_REQUIRED));
+                .orElseThrow(() -> new CustomException(ErrorCode.SPOTIFY_NOT_CONNECTED));
     }
 
     @Transactional
     public SpotifyConnection getValidConnection(Long loginMemberId) {
         SpotifyConnection connection = getConnection(loginMemberId);
         if (connection.getTokenExpiresAt() == null) {
-            throw new CustomException(ErrorCode.SPOTIFY_AUTH_REQUIRED);
+            throw new CustomException(ErrorCode.SPOTIFY_TOKEN_REFRESH_FAILED);
         }
         if (StringUtils.hasText(connection.getAccessToken())
                 && connection.getTokenExpiresAt()
@@ -104,11 +157,42 @@ public class SpotifyOAuthService {
         return refreshConnection(connection);
     }
 
+    /**
+     * 사용자 토큰이 필요한 Spotify API를 실행한다.
+     * 첫 호출이 401 성격의 인증 실패이면 refresh 후 동일 작업을 정확히 한 번만 재시도한다.
+     */
+    @Transactional
+    public <T> T executeWithValidConnection(
+            Long loginMemberId,
+            Function<SpotifyConnection, T> operation) {
+        SpotifyConnection connection = getValidConnection(loginMemberId);
+        try {
+            return operation.apply(connection);
+        } catch (CustomException exception) {
+            if (exception.getErrorCode()
+                    != ErrorCode.SPOTIFY_AUTHORIZATION_FAILED) {
+                throw exception;
+            }
+        }
+
+        SpotifyConnection refreshed = refreshConnection(connection);
+        try {
+            return operation.apply(refreshed);
+        } catch (CustomException exception) {
+            if (exception.getErrorCode()
+                    == ErrorCode.SPOTIFY_AUTHORIZATION_FAILED) {
+                throw new CustomException(
+                        ErrorCode.SPOTIFY_TOKEN_REFRESH_FAILED);
+            }
+            throw exception;
+        }
+    }
+
     @Transactional
     public void disconnect(Long loginMemberId) {
         validateAuthenticated(loginMemberId);
         if (spotifyConnectionMapper.deleteByMemberId(loginMemberId) != 1) {
-            throw new CustomException(ErrorCode.SPOTIFY_AUTH_REQUIRED);
+            throw new CustomException(ErrorCode.SPOTIFY_NOT_CONNECTED);
         }
     }
 
@@ -120,7 +204,8 @@ public class SpotifyOAuthService {
                 spotifyConnectionMapper.selectByMemberId(loginMemberId);
         if (existing.isEmpty()) {
             if (!StringUtils.hasText(token.getRefreshToken())) {
-                throw new CustomException(ErrorCode.SPOTIFY_AUTH_REQUIRED);
+                throw new CustomException(
+                        ErrorCode.SPOTIFY_AUTHORIZATION_FAILED);
             }
             SpotifyConnection connection = connection(
                     loginMemberId,
@@ -137,7 +222,7 @@ public class SpotifyOAuthService {
         SpotifyConnection connection = existing.get();
         boolean accountChanged = !spotifyUserId.equals(connection.getSpotifyUserId());
         if (accountChanged && !StringUtils.hasText(token.getRefreshToken())) {
-            throw new CustomException(ErrorCode.SPOTIFY_AUTH_REQUIRED);
+            throw new CustomException(ErrorCode.SPOTIFY_AUTHORIZATION_FAILED);
         }
         connection.setSpotifyUserId(spotifyUserId);
         connection.setAccessToken(token.getAccessToken());
@@ -146,21 +231,21 @@ public class SpotifyOAuthService {
         }
         connection.setTokenExpiresAt(expiresAt(token));
         if (spotifyConnectionMapper.updateConnection(connection) != 1) {
-            throw new CustomException(ErrorCode.SPOTIFY_AUTH_REQUIRED);
+            throw new CustomException(ErrorCode.SPOTIFY_AUTHORIZATION_FAILED);
         }
         return connection;
     }
 
     private SpotifyConnection refreshConnection(SpotifyConnection connection) {
         if (!StringUtils.hasText(connection.getRefreshToken())) {
-            throw new CustomException(ErrorCode.SPOTIFY_TOKEN_EXPIRED);
+            throw new CustomException(ErrorCode.SPOTIFY_TOKEN_REFRESH_FAILED);
         }
         SpotifyToken refreshed;
         try {
             refreshed = spotifyApiClient.refreshAccessToken(
                     connection.getRefreshToken());
         } catch (RuntimeException exception) {
-            throw new CustomException(ErrorCode.SPOTIFY_TOKEN_EXPIRED);
+            throw new CustomException(ErrorCode.SPOTIFY_TOKEN_REFRESH_FAILED);
         }
         validateToken(refreshed);
 
@@ -174,7 +259,7 @@ public class SpotifyOAuthService {
         connection.setRefreshToken(refreshToken);
         connection.setTokenExpiresAt(tokenExpiresAt);
         if (spotifyConnectionMapper.updateToken(connection) != 1) {
-            throw new CustomException(ErrorCode.SPOTIFY_AUTH_REQUIRED);
+            throw new CustomException(ErrorCode.SPOTIFY_TOKEN_REFRESH_FAILED);
         }
         return connection;
     }
@@ -203,7 +288,7 @@ public class SpotifyOAuthService {
 
     private void validateToken(SpotifyToken token) {
         if (token == null || !StringUtils.hasText(token.getAccessToken())) {
-            throw new CustomException(ErrorCode.SPOTIFY_TOKEN_EXPIRED);
+            throw new CustomException(ErrorCode.SPOTIFY_TOKEN_REFRESH_FAILED);
         }
     }
 
@@ -219,5 +304,10 @@ public class SpotifyOAuthService {
         if (loginMemberId == null) {
             throw new CustomException(ErrorCode.AUTH_REQUIRED);
         }
+    }
+
+    private record CallbackIdentity(
+            SpotifyToken token,
+            SpotifyUserProfile profile) {
     }
 }

@@ -11,7 +11,9 @@
         <result property="albumName" column="album_name"/>
         <result property="imageUrl" column="image_url"/>
         <result property="genre" column="genre"/>
-        <result property="bpm" column="bpm"/>
+        <result property="musicBpm" column="bpm"/>
+        <result property="durationMs" column="duration_ms"/>
+        <result property="musicEnergyLevel" column="music_energy_level"/>
         <result property="sourceType" column="source_type"/>
         <result property="spotifyTrackId" column="spotify_track_id"/>
         <result property="spotifyUri" column="spotify_uri"/>
@@ -28,6 +30,8 @@
         m.image_url,
         m.genre,
         m.bpm,
+        m.duration_ms,
+        m.music_energy_level,
         m.source_type,
         m.spotify_track_id,
         m.spotify_uri,
@@ -145,11 +149,48 @@
         OFFSET #{offset}
     </select>
 
+    <select id="selectRecommendationCandidates" resultMap="musicResultMap">
+        SELECT
+            <include refid="musicColumns"/>
+        FROM music m
+        <where>
+            <if test="genre != null and genre != ''">
+                AND m.genre = #{genre}
+            </if>
+        </where>
+        ORDER BY m.created_at DESC, m.id ASC
+        LIMIT #{limit}
+    </select>
+
+    <select id="selectPreferenceScores"
+            resultType="com.ssafy.ssafit.music.domain.MusicPreferenceScore">
+        SELECT
+            m.id AS musicId,
+            COALESCE(
+                MAX(CASE
+                    WHEN r.member_id = #{memberId} THEN r.preference_score
+                    ELSE NULL
+                END),
+                AVG(r.preference_score),
+                3.0
+            ) AS preferenceScore
+        FROM music m
+        LEFT JOIN music_reviews r ON r.music_id = m.id
+        GROUP BY m.id
+    </select>
+
     <select id="selectBySpotifyTrackId" resultMap="musicResultMap">
         SELECT
             <include refid="musicColumns"/>
         FROM music m
         WHERE m.spotify_track_id = #{spotifyTrackId}
+    </select>
+
+    <select id="selectBySpotifyUri" resultMap="musicResultMap">
+        SELECT
+            <include refid="musicColumns"/>
+        FROM music m
+        WHERE m.spotify_uri = #{spotifyUri}
     </select>
 
     <insert id="insertFromSpotify"
@@ -164,6 +205,8 @@
             image_url,
             genre,
             bpm,
+            duration_ms,
+            music_energy_level,
             source_type,
             spotify_track_id,
             spotify_uri,
@@ -174,7 +217,9 @@
             #{albumName},
             #{imageUrl},
             #{genre},
-            #{bpm},
+            #{musicBpm},
+            #{durationMs},
+            #{musicEnergyLevel},
             #{sourceType},
             #{spotifyTrackId},
             #{spotifyUri},
@@ -191,11 +236,56 @@
             album_name = #{albumName},
             image_url = #{imageUrl},
             genre = #{genre},
-            bpm = #{bpm},
+            bpm = #{musicBpm},
+            duration_ms = #{durationMs},
+            music_energy_level = #{musicEnergyLevel},
+            spotify_track_id = #{spotifyTrackId},
             spotify_uri = #{spotifyUri},
             spotify_external_url = #{spotifyExternalUrl}
         WHERE id = #{id}
-          AND spotify_track_id = #{spotifyTrackId}
+    </update>
+
+    <insert id="insertInternal"
+            parameterType="com.ssafy.ssafit.music.domain.Music"
+            useGeneratedKeys="true"
+            keyProperty="id"
+            keyColumn="id">
+        INSERT INTO music (
+            title,
+            artist,
+            album_name,
+            image_url,
+            genre,
+            bpm,
+            duration_ms,
+            music_energy_level,
+            source_type
+        ) VALUES (
+            #{title},
+            #{artist},
+            #{albumName},
+            #{imageUrl},
+            #{genre},
+            #{musicBpm},
+            #{durationMs},
+            #{musicEnergyLevel},
+            #{sourceType}
+        )
+    </insert>
+
+    <update id="updateInternal"
+            parameterType="com.ssafy.ssafit.music.domain.Music">
+        UPDATE music
+        SET
+            title = #{title},
+            artist = #{artist},
+            album_name = #{albumName},
+            image_url = #{imageUrl},
+            genre = #{genre},
+            bpm = #{musicBpm},
+            duration_ms = #{durationMs},
+            music_energy_level = #{musicEnergyLevel}
+        WHERE id = #{id}
     </update>
 
 </mapper>

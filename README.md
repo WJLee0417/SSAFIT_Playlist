@@ -142,7 +142,7 @@ COLLATE utf8mb4_general_ci;
 ```text
 SPOTIFY_CLIENT_ID=<Spotify Developer Dashboard에서 발급>
 SPOTIFY_CLIENT_SECRET=<Spotify Developer Dashboard에서 발급>
-SPOTIFY_REDIRECT_URI=http://localhost:8080/api/spotify/oauth/callback
+SPOTIFY_REDIRECT_URI=http://127.0.0.1:8080/api/spotify/oauth/callback
 ```
 
 - 실제 값은 IDE Run Configuration, OS 환경 변수 또는 별도 비밀 저장소에만 둡니다.
@@ -157,7 +157,7 @@ Spotify Developer Dashboard에는 `SPOTIFY_REDIRECT_URI`와 완전히 동일한 
 URI를 등록합니다.
 
 ```text
-http://localhost:8080/api/spotify/oauth/callback
+http://127.0.0.1:8080/api/spotify/oauth/callback
 ```
 
 프로토콜, 호스트, 포트, 경로와 마지막 슬래시까지 모두 일치해야 합니다.

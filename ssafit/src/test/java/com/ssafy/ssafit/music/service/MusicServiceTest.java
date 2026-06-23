@@ -221,7 +221,7 @@ class MusicServiceTest {
         metadata.setBpm(221);
 
         assertError(
-                ErrorCode.INVALID_BPM_VALUE,
+                ErrorCode.INVALID_MUSIC_BPM_VALUE,
                 () -> musicService.saveSelectedSpotifyTrack(metadata));
     }
 

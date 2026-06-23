@@ -109,6 +109,7 @@
         :playlist-id="playlistId"
         :editable="canManage"
         :return-to="route.fullPath"
+        :items="items"
         @exported="handleSpotifyExported"
       />
     </article>

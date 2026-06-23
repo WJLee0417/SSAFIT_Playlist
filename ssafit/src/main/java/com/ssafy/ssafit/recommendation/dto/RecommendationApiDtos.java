@@ -3,11 +3,16 @@ package com.ssafy.ssafit.recommendation.dto;
 import java.time.LocalDateTime;
 import java.util.List;
 
-import com.ssafy.ssafit.music.dto.MusicApiDtos.MusicResponse;
+import com.ssafy.ssafit.music.domain.MusicEnergyLevel;
+import com.ssafy.ssafit.music.domain.MusicSourceType;
 import com.ssafy.ssafit.playlist.domain.PlaylistVisibility;
 import com.ssafy.ssafit.playlist.dto.PlaylistApiDtos.PlaylistResponse;
 import com.ssafy.ssafit.recommendation.domain.RecommendationLog;
+import com.ssafy.ssafit.recommendation.domain.RecommendedMusic;
 import com.ssafy.ssafit.recommendation.domain.RecommendationResult;
+import com.ssafy.ssafit.recommendation.domain.IntensitySource;
+import com.ssafy.ssafit.recommendation.domain.RunningIntensityGoal;
+import com.ssafy.ssafit.recommendation.domain.TempoMatchMode;
 import com.ssafy.ssafit.runningprofile.domain.RunningIntensity;
 
 import jakarta.validation.constraints.Max;
@@ -22,8 +27,11 @@ public final class RecommendationApiDtos {
 
     public record RecommendRequest(
             @NotNull RunningIntensity intensity,
+            @Min(60) @Max(240) Integer targetCadenceSpm,
+            RunningIntensityGoal runningIntensityGoal,
             @Size(max = 100) String genre,
-            @Min(1) @Max(50) Integer size) {
+            @Min(1) @Max(50) Integer size,
+            @Min(1) @Max(50) Integer limit) {
     }
 
     public record SaveRequest(
@@ -62,7 +70,13 @@ public final class RecommendationApiDtos {
 
     public record ResultResponse(
             LogResponse log,
-            List<MusicResponse> music) {
+            List<RecommendedMusicResponse> music,
+            Integer resolvedTargetCadenceSpm,
+            String cadenceExplanation,
+            RunningIntensityGoal resolvedIntensityGoal,
+            IntensitySource intensitySource,
+            Double averageHeartRateBpm,
+            String intensityExplanation) {
 
         public ResultResponse {
             music = music == null ? List.of() : List.copyOf(music);
@@ -72,8 +86,63 @@ public final class RecommendationApiDtos {
             return new ResultResponse(
                     LogResponse.from(result.getRecommendationLog()),
                     result.getMusicList().stream()
-                            .map(MusicResponse::from)
-                            .toList());
+                            .map(RecommendedMusicResponse::from)
+                            .toList(),
+                    result.getResolvedTargetCadenceSpm(),
+                    result.getCadenceExplanation(),
+                    result.getResolvedIntensityGoal(),
+                    result.getIntensitySource(),
+                    result.getAverageHeartRateBpm(),
+                    result.getIntensityExplanation());
+        }
+    }
+
+    public record RecommendedMusicResponse(
+            Long id,
+            String title,
+            String artist,
+            String albumName,
+            String imageUrl,
+            String genre,
+            Integer musicBpm,
+            Integer durationMs,
+            MusicEnergyLevel musicEnergyLevel,
+            MusicSourceType sourceType,
+            String spotifyTrackId,
+            String spotifyUri,
+            String spotifyExternalUrl,
+            LocalDateTime createdAt,
+            LocalDateTime updatedAt,
+            Double cadenceScore,
+            Double intensityScore,
+            Double preferenceScore,
+            Double finalScore,
+            TempoMatchMode tempoMatchMode,
+            String recommendationReason) {
+
+        public static RecommendedMusicResponse from(RecommendedMusic result) {
+            return new RecommendedMusicResponse(
+                    result.music().getId(),
+                    result.music().getTitle(),
+                    result.music().getArtist(),
+                    result.music().getAlbumName(),
+                    result.music().getImageUrl(),
+                    result.music().getGenre(),
+                    result.music().getMusicBpm(),
+                    result.music().getDurationMs(),
+                    result.music().getMusicEnergyLevel(),
+                    result.music().getSourceType(),
+                    result.music().getSpotifyTrackId(),
+                    result.music().getSpotifyUri(),
+                    result.music().getSpotifyExternalUrl(),
+                    result.music().getCreatedAt(),
+                    result.music().getUpdatedAt(),
+                    result.cadenceScore(),
+                    result.intensityScore(),
+                    result.preferenceScore(),
+                    result.finalScore(),
+                    result.tempoMatchMode(),
+                    result.recommendationReason());
         }
     }
 

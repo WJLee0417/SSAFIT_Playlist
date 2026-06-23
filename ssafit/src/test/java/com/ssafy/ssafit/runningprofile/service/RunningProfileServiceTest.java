@@ -108,6 +108,83 @@ class RunningProfileServiceTest {
                 () -> runningProfileService.saveOrUpdate(1L, profile));
     }
 
+    @Test
+    void saveOrUpdateAcceptsCadenceBoundaryValuesAndPersistsThem() {
+        RunningProfile profile = validProfile(1L);
+        profile.setTargetCadenceMin(60);
+        profile.setTargetCadenceMax(240);
+        when(memberMapper.selectById(1L)).thenReturn(Optional.of(new Member()));
+        when(runningProfileMapper.selectByMemberId(1L)).thenReturn(Optional.empty());
+        when(runningProfileMapper.insert(profile)).thenReturn(1);
+
+        RunningProfile saved = runningProfileService.saveOrUpdate(1L, profile);
+
+        assertThat(saved.getTargetCadenceMin()).isEqualTo(60);
+        assertThat(saved.getTargetCadenceMax()).isEqualTo(240);
+        verify(runningProfileMapper).insert(profile);
+    }
+
+    @Test
+    void saveOrUpdateAllowsLegacyRequestWithoutCadence() {
+        RunningProfile profile = validProfile(1L);
+        when(memberMapper.selectById(1L)).thenReturn(Optional.of(new Member()));
+        when(runningProfileMapper.selectByMemberId(1L)).thenReturn(Optional.empty());
+        when(runningProfileMapper.insert(profile)).thenReturn(1);
+
+        RunningProfile saved = runningProfileService.saveOrUpdate(1L, profile);
+
+        assertThat(saved.getTargetCadenceMin()).isNull();
+        assertThat(saved.getTargetCadenceMax()).isNull();
+    }
+
+    @Test
+    void saveOrUpdateRejectsOnlyMinimumCadence() {
+        RunningProfile profile = validProfile(1L);
+        profile.setTargetCadenceMin(165);
+        when(memberMapper.selectById(1L)).thenReturn(Optional.of(new Member()));
+
+        assertError(
+                ErrorCode.INVALID_CADENCE_RANGE,
+                () -> runningProfileService.saveOrUpdate(1L, profile));
+    }
+
+    @Test
+    void saveOrUpdateRejectsOnlyMaximumCadence() {
+        RunningProfile profile = validProfile(1L);
+        profile.setTargetCadenceMax(180);
+        when(memberMapper.selectById(1L)).thenReturn(Optional.of(new Member()));
+
+        assertError(
+                ErrorCode.INVALID_CADENCE_RANGE,
+                () -> runningProfileService.saveOrUpdate(1L, profile));
+    }
+
+    @Test
+    void saveOrUpdateRejectsReversedCadenceRange() {
+        RunningProfile profile = validProfile(1L);
+        profile.setTargetCadenceMin(181);
+        profile.setTargetCadenceMax(180);
+        when(memberMapper.selectById(1L)).thenReturn(Optional.of(new Member()));
+
+        assertError(
+                ErrorCode.INVALID_CADENCE_RANGE,
+                () -> runningProfileService.saveOrUpdate(1L, profile));
+    }
+
+    @Test
+    void saveOrUpdateRejectsCadenceOutsideBoundaries() {
+        when(memberMapper.selectById(1L)).thenReturn(Optional.of(new Member()));
+
+        for (int invalid : new int[] {59, 241}) {
+            RunningProfile profile = validProfile(1L);
+            profile.setTargetCadenceMin(invalid);
+            profile.setTargetCadenceMax(180);
+            assertError(
+                    ErrorCode.INVALID_CADENCE_VALUE,
+                    () -> runningProfileService.saveOrUpdate(1L, profile));
+        }
+    }
+
     private RunningProfile validProfile(Long memberId) {
         RunningProfile profile = new RunningProfile();
         profile.setMemberId(memberId);

@@ -36,6 +36,7 @@ import com.ssafy.ssafit.member.domain.Member;
 import com.ssafy.ssafit.member.domain.MemberStatus;
 import com.ssafy.ssafit.member.mapper.MemberMapper;
 import com.ssafy.ssafit.music.domain.Music;
+import com.ssafy.ssafit.music.domain.MusicEnergyLevel;
 import com.ssafy.ssafit.music.domain.MusicSearchCondition;
 import com.ssafy.ssafit.music.domain.MusicSortType;
 import com.ssafy.ssafit.music.domain.MusicSourceType;
@@ -185,6 +186,8 @@ class MapperIntegrationTest {
         profile.setRunningIntensity(RunningIntensity.MODERATE);
         profile.setTargetBpmMin(130);
         profile.setTargetBpmMax(160);
+        profile.setTargetCadenceMin(165);
+        profile.setTargetCadenceMax(180);
         profile.setPreferredGenre("POP");
 
         runningProfileMapper.insert(profile);
@@ -198,6 +201,17 @@ class MapperIntegrationTest {
         assertThat(selected.getId()).isNotNull();
         assertThat(selected.getRunningIntensity()).isEqualTo(RunningIntensity.MODERATE);
         assertThat(selected.getTargetBpmMin()).isEqualTo(130);
+        assertThat(selected.getTargetCadenceMin()).isEqualTo(165);
+        assertThat(selected.getTargetCadenceMax()).isEqualTo(180);
+
+        profile.setTargetCadenceMin(170);
+        profile.setTargetCadenceMax(184);
+        assertThat(runningProfileMapper.update(profile)).isEqualTo(1);
+        RunningProfile updated = runningProfileMapper
+                .selectByMemberId(member.getId())
+                .orElseThrow();
+        assertThat(updated.getTargetCadenceMin()).isEqualTo(170);
+        assertThat(updated.getTargetCadenceMax()).isEqualTo(184);
     }
 
     @Test
@@ -209,6 +223,8 @@ class MapperIntegrationTest {
         record.setDistanceKm(new java.math.BigDecimal("5.00"));
         record.setDurationSeconds(1800);
         record.setPaceSecondsPerKm(360);
+        record.setAverageCadence(172);
+        record.setAverageHeartRateBpm(154);
         record.setMemo("Mapper running record");
 
         runningRecordMapper.insert(record);
@@ -229,6 +245,8 @@ class MapperIntegrationTest {
         assertThat(selected.getMemberId()).isEqualTo(member.getId());
         assertThat(selected.getDistanceKm())
                 .isEqualByComparingTo(new java.math.BigDecimal("5.00"));
+        assertThat(selected.getAverageCadence()).isEqualTo(172);
+        assertThat(selected.getAverageHeartRateBpm()).isEqualTo(154);
         assertThat(selected.getCreatedAt()).isNotNull();
         assertThat(selected.getUpdatedAt()).isNotNull();
         assertThat(runningRecordMapper.selectListByMemberId(member.getId()))
@@ -240,11 +258,22 @@ class MapperIntegrationTest {
         record.setDistanceKm(new java.math.BigDecimal("10.00"));
         record.setDurationSeconds(3300);
         record.setPaceSecondsPerKm(330);
+        record.setAverageCadence(176);
+        record.setAverageHeartRateBpm(158);
         runningRecordMapper.update(record);
 
-        assertThat(runningRecordMapper.selectById(record.getId())
+        RunningRecord updatedRecord = runningRecordMapper
+                .selectById(record.getId())
+                .orElseThrow();
+        assertThat(updatedRecord.getPaceSecondsPerKm()).isEqualTo(330);
+        assertThat(updatedRecord.getAverageCadence()).isEqualTo(176);
+        assertThat(updatedRecord.getAverageHeartRateBpm()).isEqualTo(158);
+        assertThat(runningRecordMapper.selectById(olderRecord.getId())
                 .orElseThrow()
-                .getPaceSecondsPerKm()).isEqualTo(330);
+                .getAverageCadence()).isNull();
+        assertThat(runningRecordMapper.selectById(olderRecord.getId())
+                .orElseThrow()
+                .getAverageHeartRateBpm()).isNull();
 
         runningRecordMapper.delete(record.getId());
 
@@ -485,6 +514,37 @@ class MapperIntegrationTest {
         assertThat(musicMapper.selectMusicList(keyword))
                 .extracting(Music::getTitle)
                 .containsExactly("MarathonPulse Alpha");
+    }
+
+    @Test
+    void musicMapperPersistsNullableEnergyAndSpotifyMetadataIndependently() {
+        Music spotifyMusic = new Music();
+        spotifyMusic.setTitle("Energy Metadata Song");
+        spotifyMusic.setArtist("Mapper Test Artist");
+        spotifyMusic.setMusicBpm(86);
+        spotifyMusic.setMusicEnergyLevel(MusicEnergyLevel.PEAK);
+        spotifyMusic.setSourceType(MusicSourceType.SPOTIFY);
+        spotifyMusic.setSpotifyTrackId("energy-metadata-track");
+        spotifyMusic.setSpotifyUri("spotify:track:energy-metadata-track");
+        spotifyMusic.setSpotifyExternalUrl(
+                "https://open.spotify.com/track/energy-metadata-track");
+
+        assertThat(musicMapper.insertFromSpotify(spotifyMusic)).isEqualTo(1);
+        Music selected = musicMapper.selectMusicDetail(spotifyMusic.getId())
+                .orElseThrow();
+        assertThat(selected.getMusicBpm()).isEqualTo(86);
+        assertThat(selected.getMusicEnergyLevel()).isEqualTo(MusicEnergyLevel.PEAK);
+        assertThat(selected.getSpotifyTrackId()).isEqualTo("energy-metadata-track");
+        assertThat(selected.getSpotifyUri())
+                .isEqualTo("spotify:track:energy-metadata-track");
+
+        selected.setMusicBpm(172);
+        selected.setMusicEnergyLevel(null);
+        assertThat(musicMapper.updateSpotifyMetadata(selected)).isEqualTo(1);
+        Music updated = musicMapper.selectMusicDetail(selected.getId())
+                .orElseThrow();
+        assertThat(updated.getMusicBpm()).isEqualTo(172);
+        assertThat(updated.getMusicEnergyLevel()).isNull();
     }
 
     @Test

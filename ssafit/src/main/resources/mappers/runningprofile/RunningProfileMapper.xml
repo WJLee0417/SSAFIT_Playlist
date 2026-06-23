@@ -11,6 +11,8 @@
         <result property="runningIntensity" column="running_intensity"/>
         <result property="targetBpmMin" column="target_bpm_min"/>
         <result property="targetBpmMax" column="target_bpm_max"/>
+        <result property="targetCadenceMin" column="target_cadence_min"/>
+        <result property="targetCadenceMax" column="target_cadence_max"/>
         <result property="preferredGenre" column="preferred_genre"/>
         <result property="createdAt" column="created_at"/>
         <result property="updatedAt" column="updated_at"/>
@@ -22,6 +24,8 @@
         running_intensity,
         target_bpm_min,
         target_bpm_max,
+        target_cadence_min,
+        target_cadence_max,
         preferred_genre,
         created_at,
         updated_at
@@ -44,12 +48,16 @@
             running_intensity,
             target_bpm_min,
             target_bpm_max,
+            target_cadence_min,
+            target_cadence_max,
             preferred_genre
         ) VALUES (
             #{memberId},
             #{runningIntensity},
             #{targetBpmMin},
             #{targetBpmMax},
+            #{targetCadenceMin},
+            #{targetCadenceMax},
             #{preferredGenre}
         )
     </insert>
@@ -61,6 +69,8 @@
             running_intensity = #{runningIntensity},
             target_bpm_min = #{targetBpmMin},
             target_bpm_max = #{targetBpmMax},
+            target_cadence_min = #{targetCadenceMin},
+            target_cadence_max = #{targetCadenceMax},
             preferred_genre = #{preferredGenre}
         WHERE member_id = #{memberId}
     </update>

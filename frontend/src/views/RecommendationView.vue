@@ -26,12 +26,29 @@
         </select>
       </label>
       <label>
+        운동 강도 목표
+        <select v-model="query.runningIntensityGoal">
+          <option value="">최근 평균 심박수 이력 참고</option>
+          <option value="EASY">EASY · 회복주/가벼운 러닝</option>
+          <option value="MODERATE">MODERATE · 지속주/일반 러닝</option>
+          <option value="HIGH">HIGH · 템포런/인터벌</option>
+        </select>
+      </label>
+      <label>
+        목표 케이던스(SPM)
+        <input
+          v-model="query.targetCadenceSpm"
+          inputmode="numeric"
+          placeholder="비우면 프로필/최근 기록 사용"
+        />
+      </label>
+      <label>
         선호 장르
         <input v-model="query.genre" maxlength="100" placeholder="비우면 프로필 장르 사용" />
       </label>
       <label>
         추천 곡 수
-        <input v-model="query.size" inputmode="numeric" placeholder="1~50" />
+        <input v-model="query.limit" inputmode="numeric" placeholder="1~50" />
       </label>
       <div class="bpm-contract-field">
         <span>적용 BPM 조건</span>
@@ -130,8 +147,10 @@ import {
 const route = useRoute();
 const query = reactive({
   intensity: "",
+  targetCadenceSpm: "",
+  runningIntensityGoal: "",
   genre: "",
-  size: "10",
+  limit: "10",
 });
 const result = ref(null);
 const queryStatus = ref("idle");
@@ -191,20 +210,35 @@ function normalizedCondition() {
     validationMessage.value = "목표 강도를 선택해 주세요.";
     return null;
   }
-  const sizeText = String(query.size).trim();
-  if (!/^\d+$/.test(sizeText)) {
+  const cadenceText = String(query.targetCadenceSpm).trim();
+  if (cadenceText && !/^\d+$/.test(cadenceText)) {
+    validationMessage.value = "목표 케이던스는 60~240 SPM 정수로 입력해 주세요.";
+    return null;
+  }
+  const targetCadenceSpm = cadenceText ? Number(cadenceText) : undefined;
+  if (targetCadenceSpm != null
+      && (!Number.isSafeInteger(targetCadenceSpm)
+      || targetCadenceSpm < 60
+      || targetCadenceSpm > 240)) {
+    validationMessage.value = "목표 케이던스는 60~240 SPM 정수로 입력해 주세요.";
+    return null;
+  }
+  const limitText = String(query.limit).trim();
+  if (!/^\d+$/.test(limitText)) {
     validationMessage.value = "추천 곡 수는 1~50 사이 정수로 입력해 주세요.";
     return null;
   }
-  const size = Number(sizeText);
-  if (!Number.isSafeInteger(size) || size < 1 || size > 50) {
+  const limit = Number(limitText);
+  if (!Number.isSafeInteger(limit) || limit < 1 || limit > 50) {
     validationMessage.value = "추천 곡 수는 1~50 사이 정수로 입력해 주세요.";
     return null;
   }
   return {
     intensity: query.intensity,
+    targetCadenceSpm,
+    runningIntensityGoal: query.runningIntensityGoal || undefined,
     genre: query.genre.trim(),
-    size,
+    limit,
   };
 }
 

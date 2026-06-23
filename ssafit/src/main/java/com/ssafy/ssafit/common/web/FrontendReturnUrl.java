@@ -4,7 +4,7 @@ import java.net.URI;
 
 public final class FrontendReturnUrl {
 
-    private static final String FRONTEND_ORIGIN = "http://localhost:5173";
+    private static final String FRONTEND_ORIGIN = "http://127.0.0.1:5173";
 
     private FrontendReturnUrl() {
     }
@@ -16,7 +16,7 @@ public final class FrontendReturnUrl {
         try {
             URI uri = URI.create(candidate);
             if (!"http".equalsIgnoreCase(uri.getScheme())
-                    || !"localhost".equalsIgnoreCase(uri.getHost())
+                    || !"127.0.0.1".equalsIgnoreCase(uri.getHost())
                     || uri.getPort() != 5173
                     || uri.getUserInfo() != null
                     || uri.getFragment() != null) {

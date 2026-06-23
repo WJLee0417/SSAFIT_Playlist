@@ -11,7 +11,18 @@ public interface SpotifyApiClient {
 
     String issueClientAccessToken();
 
-    List<SpotifyTrack> searchTracks(String accessToken, String query, int limit);
+    List<SpotifyTrack> searchTracks(
+            String accessToken,
+            String query,
+            int offset,
+            int limit);
+
+    default List<SpotifyTrack> searchTracks(
+            String accessToken,
+            String query,
+            int limit) {
+        return searchTracks(accessToken, query, 0, limit);
+    }
 
     SpotifyToken exchangeAuthorizationCode(String code);
 

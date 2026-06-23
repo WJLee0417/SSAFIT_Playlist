@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -22,7 +23,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import com.ssafy.ssafit.common.exception.CustomException;
 import com.ssafy.ssafit.common.exception.ErrorCode;
 import com.ssafy.ssafit.music.domain.Music;
-import com.ssafy.ssafit.music.domain.MusicSearchCondition;
+import com.ssafy.ssafit.music.domain.MusicEnergyLevel;
 import com.ssafy.ssafit.music.mapper.MusicMapper;
 import com.ssafy.ssafit.playlist.domain.Playlist;
 import com.ssafy.ssafit.playlist.domain.PlaylistItem;
@@ -33,6 +34,13 @@ import com.ssafy.ssafit.playlist.mapper.PlaylistItemMapper;
 import com.ssafy.ssafit.playlist.mapper.PlaylistMapper;
 import com.ssafy.ssafit.recommendation.domain.RecommendationLog;
 import com.ssafy.ssafit.recommendation.domain.RecommendationResult;
+import com.ssafy.ssafit.recommendation.domain.RunningIntensityGoal;
+import com.ssafy.ssafit.recommendation.domain.TempoMatchMode;
+import com.ssafy.ssafit.recommendation.domain.CadenceResolutionResult;
+import com.ssafy.ssafit.recommendation.domain.IntensityResolutionResult;
+import com.ssafy.ssafit.recommendation.domain.IntensitySource;
+import com.ssafy.ssafit.recommendation.policy.CadenceMatchingPolicy;
+import com.ssafy.ssafit.recommendation.policy.IntensityMatchingPolicy;
 import com.ssafy.ssafit.recommendation.mapper.RecommendationLogMapper;
 import com.ssafy.ssafit.runningprofile.domain.RunningIntensity;
 import com.ssafy.ssafit.runningprofile.domain.RunningProfile;
@@ -56,6 +64,12 @@ class RecommendationServiceTest {
     @Mock
     private PlaylistItemMapper playlistItemMapper;
 
+    @Mock
+    private RunningIntensityResolutionService intensityResolutionService;
+
+    @Mock
+    private CadenceResolutionService cadenceResolutionService;
+
     private RecommendationService recommendationService;
 
     @BeforeEach
@@ -65,20 +79,37 @@ class RecommendationServiceTest {
                 musicMapper,
                 recommendationLogMapper,
                 playlistMapper,
-                playlistItemMapper);
+                playlistItemMapper,
+                intensityResolutionService,
+                cadenceResolutionService,
+                new CadenceMatchingPolicy(),
+                new IntensityMatchingPolicy());
+        lenient().when(cadenceResolutionService.resolve(any(), any(), any()))
+                .thenReturn(new CadenceResolutionResult(null, "UNKNOWN", "none"));
+        lenient().when(intensityResolutionService.resolve(any(), any()))
+                .thenReturn(new IntensityResolutionResult(
+                        null,
+                        IntensitySource.UNKNOWN,
+                        false,
+                        null,
+                        "none"));
     }
 
     @Test
-    void recommendationRequiresProfile() {
+    void recommendationCanUseDefaultsWithoutProfile() {
         when(runningProfileMapper.selectByMemberId(10L)).thenReturn(Optional.empty());
+        when(musicMapper.selectRecommendationCandidates(any(), any(Integer.class)))
+                .thenReturn(List.of(music(1L)));
+        when(musicMapper.selectPreferenceScores(10L)).thenReturn(List.of());
+        when(recommendationLogMapper.insert(any())).thenReturn(1);
 
-        assertError(
-                ErrorCode.PROFILE_NOT_FOUND,
-                () -> recommendationService.recommend(
-                        10L,
-                        RunningIntensity.LOW,
-                        null,
-                        10));
+        RecommendationResult result = recommendationService.recommend(
+                10L,
+                RunningIntensity.LOW,
+                null,
+                10);
+
+        assertThat(result.getMusicList()).hasSize(1);
     }
 
     @Test
@@ -94,7 +125,8 @@ class RecommendationServiceTest {
     void recommendationRejectsInsufficientData() {
         when(runningProfileMapper.selectByMemberId(10L))
                 .thenReturn(Optional.of(profile(null, null, "POP")));
-        when(musicMapper.selectRecommendedMusic(any())).thenReturn(List.of());
+        when(musicMapper.selectRecommendationCandidates(any(), any(Integer.class)))
+                .thenReturn(List.of());
 
         assertError(
                 ErrorCode.RECOMMENDATION_DATA_NOT_ENOUGH,
@@ -112,7 +144,9 @@ class RecommendationServiceTest {
         when(runningProfileMapper.selectByMemberId(10L))
                 .thenReturn(Optional.of(profile(135, 155, "ROCK")));
         List<Music> musicList = List.of(music(1L), music(2L));
-        when(musicMapper.selectRecommendedMusic(any())).thenReturn(musicList);
+        when(musicMapper.selectRecommendationCandidates(any(), any(Integer.class)))
+                .thenReturn(musicList);
+        when(musicMapper.selectPreferenceScores(10L)).thenReturn(List.of());
         when(recommendationLogMapper.insert(any())).thenAnswer(invocation -> {
             RecommendationLog log = invocation.getArgument(0);
             log.setId(100L);
@@ -125,7 +159,9 @@ class RecommendationServiceTest {
                 null,
                 5);
 
-        assertThat(result.getMusicList()).containsExactlyElementsOf(musicList);
+        assertThat(result.getMusicList().stream()
+                .map(value -> value.music().getId())
+                .toList()).containsExactly(1L, 2L);
         assertThat(result.getRecommendationLog().getId()).isEqualTo(100L);
         assertThat(result.getRecommendationLog().getRequestedBpmMin()).isEqualTo(135);
         assertThat(result.getRecommendationLog().getRequestedBpmMax()).isEqualTo(155);
@@ -133,19 +169,16 @@ class RecommendationServiceTest {
         assertThat(result.getRecommendationLog().getResultSummary())
                 .contains("\"musicIds\":[1,2]");
 
-        ArgumentCaptor<MusicSearchCondition> conditionCaptor =
-                ArgumentCaptor.forClass(MusicSearchCondition.class);
-        verify(musicMapper).selectRecommendedMusic(conditionCaptor.capture());
-        assertThat(conditionCaptor.getValue().getMinBpm()).isEqualTo(135);
-        assertThat(conditionCaptor.getValue().getMaxBpm()).isEqualTo(155);
+        verify(musicMapper).selectRecommendationCandidates("ROCK", 500);
     }
 
     @Test
     void recommendationUsesExistingIntensityDefaultsWhenProfileRangeIsAbsent() {
         when(runningProfileMapper.selectByMemberId(10L))
                 .thenReturn(Optional.of(profile(null, null, null)));
-        when(musicMapper.selectRecommendedMusic(any()))
+        when(musicMapper.selectRecommendationCandidates(any(), any(Integer.class)))
                 .thenReturn(List.of(music(1L)));
+        when(musicMapper.selectPreferenceScores(10L)).thenReturn(List.of());
         when(recommendationLogMapper.insert(any())).thenReturn(1);
 
         RecommendationResult result = recommendationService.recommend(
@@ -163,8 +196,9 @@ class RecommendationServiceTest {
     void recommendationQueryDoesNotCreatePlaylist() {
         when(runningProfileMapper.selectByMemberId(10L))
                 .thenReturn(Optional.of(profile(null, null, null)));
-        when(musicMapper.selectRecommendedMusic(any()))
+        when(musicMapper.selectRecommendationCandidates(any(), any(Integer.class)))
                 .thenReturn(List.of(music(1L)));
+        when(musicMapper.selectPreferenceScores(10L)).thenReturn(List.of());
         when(recommendationLogMapper.insert(any())).thenReturn(1);
 
         recommendationService.recommend(
@@ -311,6 +345,136 @@ class RecommendationServiceTest {
 
         assertThat(recommendationService.getMyRecommendationLogs(10L))
                 .containsExactly(log);
+    }
+
+    @Test
+    void recommendationSeparatesScoresAndRenormalizesMissingMetadata() {
+        when(runningProfileMapper.selectByMemberId(10L)).thenReturn(Optional.empty());
+        when(cadenceResolutionService.resolve(10L, 172, null))
+                .thenReturn(new CadenceResolutionResult(
+                        172,
+                        "USER_SELECTED",
+                        "172 SPM"));
+        when(intensityResolutionService.resolve(10L, RunningIntensityGoal.HIGH))
+                .thenReturn(new IntensityResolutionResult(
+                        RunningIntensityGoal.HIGH,
+                        IntensitySource.USER_SELECTED,
+                        true,
+                        154.0,
+                        "heart-rate reference only"));
+        Music complete = music(1L);
+        complete.setMusicBpm(86);
+        complete.setMusicEnergyLevel(MusicEnergyLevel.PEAK);
+        Music noBpm = music(2L);
+        noBpm.setMusicEnergyLevel(MusicEnergyLevel.PEAK);
+        Music noEnergy = music(3L);
+        noEnergy.setMusicBpm(172);
+        Music preferenceOnly = music(4L);
+        when(musicMapper.selectRecommendationCandidates(null, 500))
+                .thenReturn(List.of(complete, noBpm, noEnergy, preferenceOnly));
+        when(musicMapper.selectPreferenceScores(10L)).thenReturn(List.of());
+        when(recommendationLogMapper.insert(any())).thenReturn(1);
+
+        RecommendationResult result = recommendationService.recommend(
+                10L,
+                RunningIntensity.HIGH,
+                172,
+                RunningIntensityGoal.HIGH,
+                null,
+                null,
+                10);
+
+        var byId = result.getMusicList().stream()
+                .collect(java.util.stream.Collectors.toMap(
+                        value -> value.music().getId(),
+                        value -> value));
+        assertThat(byId.get(1L).tempoMatchMode())
+                .isEqualTo(TempoMatchMode.HALF_TIME);
+        assertThat(byId.get(1L).cadenceScore()).isEqualTo(100.0);
+        assertThat(byId.get(1L).intensityScore()).isEqualTo(100.0);
+        assertThat(byId.get(2L).cadenceScore()).isNull();
+        assertThat(byId.get(2L).finalScore()).isEqualTo(90.0);
+        assertThat(byId.get(3L).intensityScore()).isNull();
+        assertThat(byId.get(3L).finalScore()).isEqualTo(94.29);
+        assertThat(byId.get(4L).finalScore()).isEqualTo(60.0);
+        assertThat(byId.get(1L).recommendationReason())
+                .contains("172 SPM", "86 BPM");
+    }
+
+    @Test
+    void heartRateReferenceValueDoesNotChangeCadenceScoreOrMusicBpm() {
+        when(runningProfileMapper.selectByMemberId(10L)).thenReturn(Optional.empty());
+        when(cadenceResolutionService.resolve(10L, 172, null))
+                .thenReturn(new CadenceResolutionResult(
+                        172,
+                        "USER_SELECTED",
+                        "172 SPM"));
+        when(intensityResolutionService.resolve(10L, null))
+                .thenReturn(
+                        new IntensityResolutionResult(
+                                RunningIntensityGoal.MODERATE,
+                                IntensitySource.HISTORY_REFERENCE,
+                                true,
+                                120.0,
+                                "reference"),
+                        new IntensityResolutionResult(
+                                RunningIntensityGoal.MODERATE,
+                                IntensitySource.HISTORY_REFERENCE,
+                                true,
+                                180.0,
+                                "reference"));
+        Music candidate = music(1L);
+        candidate.setMusicBpm(86);
+        candidate.setMusicEnergyLevel(MusicEnergyLevel.STEADY);
+        when(musicMapper.selectRecommendationCandidates(null, 500))
+                .thenReturn(List.of(candidate));
+        when(musicMapper.selectPreferenceScores(10L)).thenReturn(List.of());
+        when(recommendationLogMapper.insert(any())).thenReturn(1);
+
+        RecommendationResult first = recommendationService.recommend(
+                10L,
+                RunningIntensity.MODERATE,
+                172,
+                null,
+                null,
+                1,
+                null);
+        RecommendationResult second = recommendationService.recommend(
+                10L,
+                RunningIntensity.MODERATE,
+                172,
+                null,
+                null,
+                1,
+                null);
+
+        assertThat(first.getMusicList().getFirst().cadenceScore())
+                .isEqualTo(second.getMusicList().getFirst().cadenceScore());
+        assertThat(first.getMusicList().getFirst().music().getMusicBpm())
+                .isEqualTo(86);
+        assertThat(second.getMusicList().getFirst().music().getMusicBpm())
+                .isEqualTo(86);
+    }
+
+    @Test
+    void identicalScoresUseStableMusicIdOrdering() {
+        when(runningProfileMapper.selectByMemberId(10L)).thenReturn(Optional.empty());
+        Music laterId = music(2L);
+        Music earlierId = music(1L);
+        when(musicMapper.selectRecommendationCandidates(null, 500))
+                .thenReturn(List.of(laterId, earlierId));
+        when(musicMapper.selectPreferenceScores(10L)).thenReturn(List.of());
+        when(recommendationLogMapper.insert(any())).thenReturn(1);
+
+        RecommendationResult result = recommendationService.recommend(
+                10L,
+                RunningIntensity.LOW,
+                null,
+                10);
+
+        assertThat(result.getMusicList())
+                .extracting(value -> value.music().getId())
+                .containsExactly(1L, 2L);
     }
 
     private RunningProfile profile(Integer minBpm, Integer maxBpm, String genre) {

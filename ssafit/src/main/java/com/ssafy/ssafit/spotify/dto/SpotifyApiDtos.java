@@ -18,7 +18,8 @@ public final class SpotifyApiDtos {
             String artist,
             String albumName,
             String imageUrl,
-            Integer bpm,
+            Integer durationMs,
+            Integer musicBpm,
             String genre) {
 
         public static TrackResponse from(SpotifyTrackMetadata track) {
@@ -30,28 +31,47 @@ public final class SpotifyApiDtos {
                     track.getArtist(),
                     track.getAlbumName(),
                     track.getImageUrl(),
-                    track.getBpm(),
+                    track.getDurationMs(),
+                    track.getMusicBpm(),
                     track.getGenre());
         }
     }
 
-    public record AuthorizationResponse(String authorizationUrl) {
+    public enum ConnectionState {
+        CONNECTED,
+        DISCONNECTED,
+        RECONNECT_REQUIRED
     }
 
     public record ConnectionResponse(
             boolean connected,
+            ConnectionState state,
             String spotifyUserId,
             LocalDateTime tokenExpiresAt) {
 
         public static ConnectionResponse connected(SpotifyConnection connection) {
             return new ConnectionResponse(
                     true,
+                    ConnectionState.CONNECTED,
                     connection.getSpotifyUserId(),
                     connection.getTokenExpiresAt());
         }
 
         public static ConnectionResponse disconnected() {
-            return new ConnectionResponse(false, null, null);
+            return new ConnectionResponse(
+                    false,
+                    ConnectionState.DISCONNECTED,
+                    null,
+                    null);
+        }
+
+        public static ConnectionResponse reconnectRequired(
+                SpotifyConnection connection) {
+            return new ConnectionResponse(
+                    false,
+                    ConnectionState.RECONNECT_REQUIRED,
+                    connection == null ? null : connection.getSpotifyUserId(),
+                    connection == null ? null : connection.getTokenExpiresAt());
         }
     }
 }

@@ -3,14 +3,14 @@
 <c:url var="homeUrl" value="/members/me"/>
 <header class="site-header">
     <nav class="nav-shell" aria-label="주요 메뉴">
-        <a class="brand" href="http://localhost:5173/playlists">
+        <a class="brand" href="http://127.0.0.1:5173/playlists">
             <span class="brand-mark">S</span>
             <span>SSAFIT Playlist</span>
         </a>
         <div class="nav-links">
-            <a href="http://localhost:5173/playlists">플레이리스트</a>
-            <a href="http://localhost:5173/running-records">러닝 기록</a>
-            <a href="http://localhost:5173/running-sessions">러닝 모임</a>
+            <a href="http://127.0.0.1:5173/playlists">플레이리스트</a>
+            <a href="http://127.0.0.1:5173/running-records">러닝 기록</a>
+            <a href="http://127.0.0.1:5173/running-sessions">러닝 모임</a>
             <a href="${homeUrl}">마이페이지</a>
             <form class="nav-form" method="post" action="<c:url value='/logout'/>">
                 <button class="link-button" type="submit">로그아웃</button>

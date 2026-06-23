@@ -23,6 +23,14 @@ public class RunningProfileViewForm {
     @Max(value = 220, message = "최대 BPM은 220 이하여야 합니다.")
     private Integer targetBpmMax;
 
+    @Min(value = 60, message = "목표 케이던스 최소값은 60 SPM 이상이어야 합니다.")
+    @Max(value = 240, message = "목표 케이던스 최소값은 240 SPM 이하여야 합니다.")
+    private Integer targetCadenceMin;
+
+    @Min(value = 60, message = "목표 케이던스 최대값은 60 SPM 이상이어야 합니다.")
+    @Max(value = 240, message = "목표 케이던스 최대값은 240 SPM 이하여야 합니다.")
+    private Integer targetCadenceMax;
+
     @Size(max = 100, message = "선호 장르는 100자 이하여야 합니다.")
     private String preferredGenre;
 
@@ -31,6 +39,8 @@ public class RunningProfileViewForm {
         form.setRunningIntensity(profile.getRunningIntensity());
         form.setTargetBpmMin(profile.getTargetBpmMin());
         form.setTargetBpmMax(profile.getTargetBpmMax());
+        form.setTargetCadenceMin(profile.getTargetCadenceMin());
+        form.setTargetCadenceMax(profile.getTargetCadenceMax());
         form.setPreferredGenre(profile.getPreferredGenre());
         return form;
     }
@@ -41,6 +51,8 @@ public class RunningProfileViewForm {
         profile.setRunningIntensity(runningIntensity);
         profile.setTargetBpmMin(targetBpmMin);
         profile.setTargetBpmMax(targetBpmMax);
+        profile.setTargetCadenceMin(targetCadenceMin);
+        profile.setTargetCadenceMax(targetCadenceMax);
         profile.setPreferredGenre(preferredGenre);
         return profile;
     }
@@ -67,6 +79,22 @@ public class RunningProfileViewForm {
 
     public void setTargetBpmMax(Integer targetBpmMax) {
         this.targetBpmMax = targetBpmMax;
+    }
+
+    public Integer getTargetCadenceMin() {
+        return targetCadenceMin;
+    }
+
+    public void setTargetCadenceMin(Integer targetCadenceMin) {
+        this.targetCadenceMin = targetCadenceMin;
+    }
+
+    public Integer getTargetCadenceMax() {
+        return targetCadenceMax;
+    }
+
+    public void setTargetCadenceMax(Integer targetCadenceMax) {
+        this.targetCadenceMax = targetCadenceMax;
     }
 
     public String getPreferredGenre() {

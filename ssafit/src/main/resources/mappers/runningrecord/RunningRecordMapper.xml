@@ -12,6 +12,8 @@
         <result property="distanceKm" column="distance_km"/>
         <result property="durationSeconds" column="duration_seconds"/>
         <result property="paceSecondsPerKm" column="pace_seconds_per_km"/>
+        <result property="averageCadence" column="average_cadence"/>
+        <result property="averageHeartRateBpm" column="average_heart_rate_bpm"/>
         <result property="memo" column="memo"/>
         <result property="createdAt" column="created_at"/>
         <result property="updatedAt" column="updated_at"/>
@@ -25,6 +27,8 @@
         distance_km,
         duration_seconds,
         pace_seconds_per_km,
+        average_cadence,
+        average_heart_rate_bpm,
         memo,
         created_at,
         updated_at,
@@ -42,6 +46,8 @@
             distance_km,
             duration_seconds,
             pace_seconds_per_km,
+            average_cadence,
+            average_heart_rate_bpm,
             memo
         ) VALUES (
             #{memberId},
@@ -49,6 +55,8 @@
             #{distanceKm},
             #{durationSeconds},
             #{paceSecondsPerKm},
+            #{averageCadence},
+            #{averageHeartRateBpm},
             #{memo}
         )
     </insert>
@@ -60,6 +68,26 @@
         WHERE member_id = #{memberId}
           AND deleted_at IS NULL
         ORDER BY record_date DESC, id DESC
+    </select>
+
+    <select id="selectRecentAverageHeartRates" resultType="int">
+        SELECT average_heart_rate_bpm
+        FROM running_records
+        WHERE member_id = #{memberId}
+          AND average_heart_rate_bpm IS NOT NULL
+          AND deleted_at IS NULL
+        ORDER BY record_date DESC, id DESC
+        LIMIT #{limit}
+    </select>
+
+    <select id="selectRecentAverageCadences" resultType="int">
+        SELECT average_cadence
+        FROM running_records
+        WHERE member_id = #{memberId}
+          AND average_cadence IS NOT NULL
+          AND deleted_at IS NULL
+        ORDER BY record_date DESC, id DESC
+        LIMIT #{limit}
     </select>
 
     <select id="selectById" resultMap="runningRecordResultMap">
@@ -78,6 +106,8 @@
             distance_km = #{distanceKm},
             duration_seconds = #{durationSeconds},
             pace_seconds_per_km = #{paceSecondsPerKm},
+            average_cadence = #{averageCadence},
+            average_heart_rate_bpm = #{averageHeartRateBpm},
             memo = #{memo}
         WHERE id = #{id}
           AND deleted_at IS NULL

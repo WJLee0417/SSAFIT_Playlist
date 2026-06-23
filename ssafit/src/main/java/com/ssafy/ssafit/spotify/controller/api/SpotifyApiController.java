@@ -15,7 +15,6 @@ import com.ssafy.ssafit.common.exception.ErrorCode;
 import com.ssafy.ssafit.common.response.ApiResponse;
 import com.ssafy.ssafit.common.web.FrontendReturnUrl;
 import com.ssafy.ssafit.spotify.domain.SpotifyConnection;
-import com.ssafy.ssafit.spotify.dto.SpotifyApiDtos.AuthorizationResponse;
 import com.ssafy.ssafit.spotify.dto.SpotifyApiDtos.ConnectionResponse;
 import com.ssafy.ssafit.spotify.dto.SpotifyApiDtos.TrackResponse;
 import com.ssafy.ssafit.spotify.service.SpotifyOAuthService;
@@ -36,25 +35,26 @@ public class SpotifyApiController {
     @GetMapping("/tracks/search")
     public ApiResponse<List<TrackResponse>> searchTracks(
             @RequestParam String query,
+            @RequestParam(required = false) Integer offset,
             @RequestParam(required = false) Integer limit) {
-        return ApiResponse.success(spotifyService.searchTracks(query, limit)
+        return ApiResponse.success(spotifyService.searchTracks(query, offset, limit)
                 .stream()
                 .map(TrackResponse::from)
                 .toList());
     }
 
     @GetMapping("/oauth/authorize")
-    public ApiResponse<AuthorizationResponse> authorize(HttpSession session) {
+    public RedirectView authorize(HttpSession session) {
         sessionMemberResolver.requireMemberId(session);
-        return ApiResponse.success(new AuthorizationResponse(
-                spotifyOAuthService.buildAuthorizationUrl(session)));
+        return new RedirectView(
+                spotifyOAuthService.buildAuthorizationUrl(session));
     }
 
     @GetMapping("/oauth/callback")
     public RedirectView callback(
             @RequestParam(required = false) String code,
             @RequestParam(required = false) String error,
-            @RequestParam String state,
+            @RequestParam(required = false) String state,
             HttpSession session) {
         Long memberId = sessionMemberResolver.requireMemberId(session);
         try {
@@ -78,10 +78,16 @@ public class SpotifyApiController {
         Long memberId = sessionMemberResolver.requireMemberId(session);
         try {
             return ApiResponse.success(ConnectionResponse.connected(
-                    spotifyOAuthService.getConnection(memberId)));
+                    spotifyOAuthService.getValidConnection(memberId)));
         } catch (CustomException exception) {
-            if (exception.getErrorCode() == ErrorCode.SPOTIFY_AUTH_REQUIRED) {
+            if (exception.getErrorCode() == ErrorCode.SPOTIFY_NOT_CONNECTED) {
                 return ApiResponse.success(ConnectionResponse.disconnected());
+            }
+            if (exception.getErrorCode()
+                    == ErrorCode.SPOTIFY_TOKEN_REFRESH_FAILED) {
+                return ApiResponse.success(
+                        ConnectionResponse.reconnectRequired(
+                                spotifyOAuthService.getConnection(memberId)));
             }
             throw exception;
         }

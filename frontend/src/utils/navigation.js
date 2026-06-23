@@ -1,5 +1,5 @@
 const JSP_BASE_URL =
-  import.meta.env.VITE_JSP_BASE_URL || "http://localhost:8080";
+  import.meta.env.VITE_JSP_BASE_URL || "http://127.0.0.1:8080";
 
 export function buildJspLoginUrl(returnTo) {
   const url = new URL("/login", JSP_BASE_URL);

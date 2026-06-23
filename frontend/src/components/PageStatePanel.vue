@@ -40,7 +40,7 @@ import { computed } from "vue";
 const props = defineProps({
   status: { type: String, required: true },
   error: { type: Object, default: null },
-  loginUrl: { type: String, default: "http://localhost:8080/login" },
+  loginUrl: { type: String, default: "http://127.0.0.1:8080/login" },
   emptyTitle: { type: String, default: "표시할 데이터가 없습니다" },
   emptyMessage: { type: String, default: "조건을 바꾸거나 새 항목을 추가해 보세요." },
   errorTitle: { type: String, default: "요청을 완료하지 못했습니다" },

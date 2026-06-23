@@ -16,6 +16,19 @@ const routes = [
     props: true,
   },
   {
+    path: "/music-manage/new",
+    name: "music-create",
+    component: () => import("../views/MusicFormView.vue"),
+    meta: { requiresAuth: true, mode: "create" },
+  },
+  {
+    path: "/music-manage/:musicId/edit",
+    name: "music-edit",
+    component: () => import("../views/MusicFormView.vue"),
+    meta: { requiresAuth: true, mode: "edit" },
+    props: true,
+  },
+  {
     path: "/playlists",
     name: "playlist-list",
     component: () => import("../views/PlaylistListView.vue"),

@@ -3,8 +3,10 @@ package com.ssafy.ssafit.music.dto;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import com.ssafy.ssafit.common.response.PageRequest;
 import com.ssafy.ssafit.music.domain.Music;
+import com.ssafy.ssafit.music.domain.MusicEnergyLevel;
 import com.ssafy.ssafit.music.domain.MusicSearchCondition;
 import com.ssafy.ssafit.music.domain.MusicSortType;
 import com.ssafy.ssafit.music.domain.MusicSourceType;
@@ -57,7 +59,8 @@ public final class MusicApiDtos {
             @NotBlank @Size(max = 255) String artist,
             @Size(max = 255) String albumName,
             @Size(max = 500) String imageUrl,
-            @Min(60) @Max(220) Integer bpm,
+            @Min(1) Integer durationMs,
+            @JsonAlias("bpm") @Min(60) @Max(220) Integer musicBpm,
             @Size(max = 100) String genre) {
 
         public SpotifyTrackMetadata toMetadata() {
@@ -69,8 +72,35 @@ public final class MusicApiDtos {
                     artist,
                     albumName,
                     imageUrl,
-                    bpm,
+                    durationMs,
+                    musicBpm,
+                    null,
                     genre);
+        }
+    }
+
+    public record InternalSaveRequest(
+            @NotBlank @Size(max = 255) String title,
+            @NotBlank @Size(max = 255) String artist,
+            @Size(max = 255) String albumName,
+            @Size(max = 500) String imageUrl,
+            @Size(max = 100) String genre,
+            @Min(60) @Max(220) Integer musicBpm,
+            @Min(1) Integer durationMs,
+            MusicEnergyLevel musicEnergyLevel) {
+
+        public Music toMusic() {
+            Music music = new Music();
+            music.setTitle(title);
+            music.setArtist(artist);
+            music.setAlbumName(albumName);
+            music.setImageUrl(imageUrl);
+            music.setGenre(genre);
+            music.setMusicBpm(musicBpm);
+            music.setDurationMs(durationMs);
+            music.setMusicEnergyLevel(musicEnergyLevel);
+            music.setSourceType(MusicSourceType.ADMIN);
+            return music;
         }
     }
 
@@ -81,7 +111,9 @@ public final class MusicApiDtos {
             String albumName,
             String imageUrl,
             String genre,
-            Integer bpm,
+            Integer musicBpm,
+            Integer durationMs,
+            MusicEnergyLevel musicEnergyLevel,
             MusicSourceType sourceType,
             String spotifyTrackId,
             String spotifyUri,
@@ -97,7 +129,9 @@ public final class MusicApiDtos {
                     music.getAlbumName(),
                     music.getImageUrl(),
                     music.getGenre(),
-                    music.getBpm(),
+                    music.getMusicBpm(),
+                    music.getDurationMs(),
+                    music.getMusicEnergyLevel(),
                     music.getSourceType(),
                     music.getSpotifyTrackId(),
                     music.getSpotifyUri(),

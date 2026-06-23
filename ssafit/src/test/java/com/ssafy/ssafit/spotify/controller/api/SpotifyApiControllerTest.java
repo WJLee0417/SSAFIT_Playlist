@@ -54,8 +54,8 @@ class SpotifyApiControllerTest {
         when(sessionMemberResolver.requireMemberId(
                 org.mockito.ArgumentMatchers.any()))
                 .thenReturn(10L);
-        when(spotifyOAuthService.getConnection(10L))
-                .thenThrow(new CustomException(ErrorCode.SPOTIFY_AUTH_REQUIRED));
+        when(spotifyOAuthService.getValidConnection(10L))
+                .thenThrow(new CustomException(ErrorCode.SPOTIFY_NOT_CONNECTED));
 
         mockMvc.perform(get("/api/spotify/me/connection"))
                 .andExpect(status().isOk())
@@ -82,7 +82,7 @@ class SpotifyApiControllerTest {
                         .param("state", "oauth-state"))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl(
-                        "http://localhost:5173/oauth/spotify/complete"));
+                        "http://127.0.0.1:5173/oauth/spotify/complete"));
     }
 
     @Test
@@ -102,7 +102,7 @@ class SpotifyApiControllerTest {
                         .param("state", "oauth-state"))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl(
-                        "http://localhost:5173/oauth/spotify/complete"
+                        "http://127.0.0.1:5173/oauth/spotify/complete"
                                 + "?oauthError=SPOTIFY_AUTH_DENIED"));
     }
 }

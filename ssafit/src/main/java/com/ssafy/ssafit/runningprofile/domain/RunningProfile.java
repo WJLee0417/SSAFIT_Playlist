@@ -18,6 +18,8 @@ public class RunningProfile {
     private RunningIntensity runningIntensity;
     private Integer targetBpmMin;
     private Integer targetBpmMax;
+    private Integer targetCadenceMin;
+    private Integer targetCadenceMax;
     private String preferredGenre;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

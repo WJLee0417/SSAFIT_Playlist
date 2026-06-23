@@ -55,6 +55,24 @@
                 </div>
             </div>
 
+            <div class="two-column">
+                <div>
+                    <label for="targetCadenceMin">목표 케이던스 최소값 (SPM)</label>
+                    <form:input path="targetCadenceMin" id="targetCadenceMin"
+                                type="number" min="60" max="240"
+                                placeholder="예: 165"/>
+                    <form:errors path="targetCadenceMin" cssClass="field-error"/>
+                </div>
+                <div>
+                    <label for="targetCadenceMax">목표 케이던스 최대값 (SPM)</label>
+                    <form:input path="targetCadenceMax" id="targetCadenceMax"
+                                type="number" min="60" max="240"
+                                placeholder="예: 180"/>
+                    <form:errors path="targetCadenceMax" cssClass="field-error"/>
+                </div>
+            </div>
+            <small class="muted">목표 케이던스는 두 값을 함께 입력하거나 모두 비워 두세요.</small>
+
             <label for="preferredGenre">선호 장르</label>
             <form:input path="preferredGenre" id="preferredGenre" maxlength="100"
                         placeholder="예: POP, ROCK, EDM"/>

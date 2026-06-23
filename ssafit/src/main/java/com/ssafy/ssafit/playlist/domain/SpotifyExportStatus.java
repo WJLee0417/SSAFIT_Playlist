@@ -4,5 +4,6 @@ public enum SpotifyExportStatus {
     NOT_EXPORTED,
     PENDING,
     SUCCESS,
+    PARTIAL,
     FAILED
 }

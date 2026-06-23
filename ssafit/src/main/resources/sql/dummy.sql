@@ -21,6 +21,8 @@ INSERT IGNORE INTO running_profiles (
     running_intensity,
     target_bpm_min,
     target_bpm_max,
+    target_cadence_min,
+    target_cadence_max,
     preferred_genre
 ) VALUES
     (
@@ -28,6 +30,8 @@ INSERT IGNORE INTO running_profiles (
         'LOW',
         120,
         140,
+        165,
+        180,
         'POP'
     ),
     (
@@ -35,6 +39,8 @@ INSERT IGNORE INTO running_profiles (
         'HIGH',
         170,
         200,
+        NULL,
+        NULL,
         'ROCK'
     ),
     (
@@ -42,6 +48,8 @@ INSERT IGNORE INTO running_profiles (
         'MODERATE',
         140,
         170,
+        NULL,
+        NULL,
         'ELECTRONIC'
     ),
     (
@@ -49,6 +57,8 @@ INSERT IGNORE INTO running_profiles (
         'INTERVAL',
         140,
         200,
+        NULL,
+        NULL,
         'HIPHOP'
     );
 
@@ -295,6 +305,8 @@ INSERT INTO running_records (
     distance_km,
     duration_seconds,
     pace_seconds_per_km,
+    average_cadence,
+    average_heart_rate_bpm,
     memo
 )
 SELECT
@@ -303,6 +315,8 @@ SELECT
     5.00,
     1800,
     360,
+    172,
+    154,
     '5km 아침 러닝'
 WHERE NOT EXISTS (
     SELECT 1

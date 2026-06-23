@@ -8,10 +8,20 @@
       <dl class="playlist-meta">
         <div><dt>연결 상태</dt><dd>{{ connectionLabel }}</dd></div>
         <div><dt>내보내기 상태</dt><dd>{{ exportState.spotifyExportStatus || "NOT_EXPORTED" }}</dd></div>
+        <div><dt>요청 곡 수</dt><dd>{{ exportState.requestedCount }}</dd></div>
+        <div><dt>내보내기 가능</dt><dd>{{ exportableCount }}</dd></div>
+        <div><dt>내보내기 성공</dt><dd>{{ exportState.exportedCount }}</dd></div>
+        <div><dt>건너뜀</dt><dd>{{ exportState.skippedCount }}</dd></div>
         <div v-if="exportState.spotifyExportErrorCode">
           <dt>내보내기 오류</dt><dd>{{ exportState.spotifyExportErrorCode }}</dd>
         </div>
+        <div v-if="exportState.failedChunkIndexes.length">
+          <dt>실패 chunk</dt><dd>{{ exportState.failedChunkIndexes.join(", ") }}</dd>
+        </div>
       </dl>
+      <p v-if="exportState.skippedMusicIds.length" class="muted">
+        건너뛴 내부 음악 ID: {{ exportState.skippedMusicIds.join(", ") }}
+      </p>
 
       <SaveStatus :type="messageType" :message="message" />
 
@@ -76,6 +86,7 @@ const props = defineProps({
   playlistId: { type: [String, Number], required: true },
   editable: { type: Boolean, default: false },
   returnTo: { type: String, required: true },
+  items: { type: Array, default: () => [] },
 });
 
 const emit = defineEmits(["exported"]);
@@ -91,10 +102,23 @@ const exportState = reactive({
   spotifyExportStatus: props.playlist.spotifyExportStatus || "NOT_EXPORTED",
   spotifyExportErrorCode: props.playlist.spotifyExportErrorCode || null,
   spotifyExportedAt: props.playlist.spotifyExportedAt || null,
+  requestedCount: props.items.length,
+  exportedCount: 0,
+  skippedCount: props.items.filter((item) => !isExportableItem(item)).length,
+  skippedMusicIds: props.items
+    .filter((item) => !isExportableItem(item))
+    .map((item) => item.musicId),
+  failedChunkIndexes: [],
 });
 
 const busy = computed(() => checking.value || exporting.value);
-const alreadyExported = computed(() => exportState.spotifyExportStatus === "SUCCESS");
+const exportableCount = computed(() => (
+  exportState.requestedCount - exportState.skippedCount
+));
+const alreadyExported = computed(() => (
+  exportState.spotifyExportStatus === "SUCCESS"
+  || exportState.spotifyExportStatus === "PARTIAL"
+));
 const exportBlocked = computed(() => (
   exportState.spotifyExportStatus === "PENDING"
   || exportState.spotifyPlaylistId != null
@@ -128,7 +152,9 @@ async function checkConnection() {
   try {
     const response = await spotifyApi.getConnection();
     connection.value = response;
-    connectionStatus.value = response?.connected ? "connected" : "disconnected";
+    connectionStatus.value = response?.state === "RECONNECT_REQUIRED"
+      ? "expired"
+      : (response?.connected ? "connected" : "disconnected");
   } catch (caught) {
     connection.value = null;
     connectionStatus.value = requiresSpotifyReconnect(caught) ? "expired" : "unknown";
@@ -158,13 +184,17 @@ async function exportPlaylist() {
   try {
     const response = await spotifyApi.exportPlaylist(props.playlistId);
     Object.assign(exportState, response);
-    messageType.value = "success";
-    message.value = "Spotify 플레이리스트로 내보냈습니다.";
+    messageType.value = response.spotifyExportStatus === "PARTIAL"
+      ? "error"
+      : "success";
+    message.value = response.spotifyExportStatus === "PARTIAL"
+      ? `일부 곡만 내보냈습니다. 성공 ${response.exportedCount}곡, 실패 chunk ${response.failedChunkIndexes.join(", ")}`
+      : `Spotify 플레이리스트로 ${response.exportedCount}곡을 내보냈습니다.`;
     emit("exported", {
       response,
-      type: "success",
+      type: messageType.value,
       message: message.value,
-      refresh: true,
+      refresh: false,
     });
   } catch (caught) {
     messageType.value = "error";
@@ -185,6 +215,13 @@ async function exportPlaylist() {
   } finally {
     exporting.value = false;
   }
+}
+
+function isExportableItem(item) {
+  return Boolean(
+    item?.music?.spotifyTrackId?.trim?.()
+    && item?.music?.spotifyUri?.trim?.(),
+  );
 }
 
 onMounted(() => {

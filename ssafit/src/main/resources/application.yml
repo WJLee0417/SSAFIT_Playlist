@@ -41,7 +41,10 @@ spotify:
   redirect-uri: ${SPOTIFY_REDIRECT_URI:}
   authorization-base-url: https://accounts.spotify.com
   api-base-url: https://api.spotify.com/v1
+  # Current-user ID is read from /me after authorization. No email or playback
+  # data is requested; only playlist write scopes are retained.
   scopes:
-    - user-read-private
     - playlist-modify-private
     - playlist-modify-public
+  audio-feature-enrichment:
+    enabled: ${SPOTIFY_AUDIO_FEATURE_ENRICHMENT_ENABLED:false}

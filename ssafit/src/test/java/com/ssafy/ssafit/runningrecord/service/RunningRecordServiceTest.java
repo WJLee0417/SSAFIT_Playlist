@@ -325,6 +325,83 @@ class RunningRecordServiceTest {
                 () -> runningRecordService.createRecord(session, input));
     }
 
+    @Test
+    void createRecordAcceptsLegacyRequestWithoutCadenceAndHeartRate() {
+        mockLoginMember(10L);
+        RunningRecord input = validRecord(null, null);
+        when(runningRecordMapper.insert(input)).thenReturn(1);
+
+        RunningRecord created = runningRecordService.createRecord(session, input);
+
+        assertThat(created.getAverageCadence()).isNull();
+        assertThat(created.getAverageHeartRateBpm()).isNull();
+    }
+
+    @Test
+    void createRecordAcceptsCadenceAndHeartRateBoundaryValues() {
+        mockLoginMember(10L);
+        when(runningRecordMapper.insert(any())).thenReturn(1);
+        RunningRecord minimum = validRecord(null, null);
+        minimum.setAverageCadence(60);
+        minimum.setAverageHeartRateBpm(30);
+
+        RunningRecord createdMinimum =
+                runningRecordService.createRecord(session, minimum);
+        assertThat(createdMinimum.getAverageCadence()).isEqualTo(60);
+        assertThat(createdMinimum.getAverageHeartRateBpm()).isEqualTo(30);
+
+        RunningRecord maximum = validRecord(null, null);
+        maximum.setAverageCadence(240);
+        maximum.setAverageHeartRateBpm(240);
+        RunningRecord createdMaximum =
+                runningRecordService.createRecord(session, maximum);
+        assertThat(createdMaximum.getAverageCadence()).isEqualTo(240);
+        assertThat(createdMaximum.getAverageHeartRateBpm()).isEqualTo(240);
+    }
+
+    @Test
+    void createRecordRejectsCadenceOutsideBoundaries() {
+        mockLoginMember(10L);
+        for (int invalid : new int[] {59, 241}) {
+            RunningRecord input = validRecord(null, null);
+            input.setAverageCadence(invalid);
+            assertError(
+                    ErrorCode.INVALID_CADENCE_VALUE,
+                    () -> runningRecordService.createRecord(session, input));
+        }
+    }
+
+    @Test
+    void createRecordRejectsHeartRateOutsideBoundaries() {
+        mockLoginMember(10L);
+        for (int invalid : new int[] {29, 241}) {
+            RunningRecord input = validRecord(null, null);
+            input.setAverageHeartRateBpm(invalid);
+            assertError(
+                    ErrorCode.INVALID_HEART_RATE_VALUE,
+                    () -> runningRecordService.createRecord(session, input));
+        }
+    }
+
+    @Test
+    void updateMyRecordPersistsCadenceAndHeartRateChanges() {
+        mockLoginMember(10L);
+        RunningRecord existing = validRecord(100L, 10L);
+        RunningRecord changes = validRecord(100L, 10L);
+        changes.setAverageCadence(172);
+        changes.setAverageHeartRateBpm(154);
+        when(runningRecordMapper.selectById(100L))
+                .thenReturn(Optional.of(existing));
+        when(runningRecordMapper.update(changes)).thenReturn(1);
+
+        RunningRecord updated =
+                runningRecordService.updateMyRecord(session, changes);
+
+        assertThat(updated.getAverageCadence()).isEqualTo(172);
+        assertThat(updated.getAverageHeartRateBpm()).isEqualTo(154);
+        verify(runningRecordMapper).update(changes);
+    }
+
     private void mockLoginMember(Long memberId) {
         Member member = new Member();
         member.setId(memberId);

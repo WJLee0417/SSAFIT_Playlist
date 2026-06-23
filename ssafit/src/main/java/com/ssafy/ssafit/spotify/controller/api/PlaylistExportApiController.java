@@ -7,8 +7,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.ssafy.ssafit.common.auth.SessionMemberResolver;
 import com.ssafy.ssafit.common.response.ApiResponse;
-import com.ssafy.ssafit.playlist.domain.Playlist;
 import com.ssafy.ssafit.playlist.dto.PlaylistApiDtos.ExportResponse;
+import com.ssafy.ssafit.spotify.domain.SpotifyExportResult;
 import com.ssafy.ssafit.spotify.service.PlaylistExportService;
 
 import jakarta.servlet.http.HttpSession;
@@ -27,9 +27,10 @@ public class PlaylistExportApiController {
             @PathVariable Long playlistId,
             HttpSession session) {
         Long memberId = sessionMemberResolver.requireMemberId(session);
-        Playlist playlist = playlistExportService.export(memberId, playlistId);
+        SpotifyExportResult result =
+                playlistExportService.exportWithResult(memberId, playlistId);
         return ApiResponse.success(
                 "Spotify 플레이리스트로 내보냈습니다.",
-                ExportResponse.from(playlist));
+                ExportResponse.from(result));
     }
 }

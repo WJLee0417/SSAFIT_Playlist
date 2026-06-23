@@ -180,10 +180,10 @@ class MemberViewControllerTest {
                         .param("password", "password12")
                         .param(
                                 "returnTo",
-                                "http://localhost:5173/playlists/10?tab=items"))
+                                "http://127.0.0.1:5173/playlists/10?tab=items"))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl(
-                        "http://localhost:5173/playlists/10?tab=items"));
+                        "http://127.0.0.1:5173/playlists/10?tab=items"));
     }
 
     @Test

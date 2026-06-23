@@ -10,8 +10,8 @@
           <RouterLink to="/playlists">플레이리스트</RouterLink>
           <RouterLink to="/running-records">러닝 기록</RouterLink>
           <RouterLink to="/running-sessions">러닝 모임</RouterLink>
-          <a href="http://localhost:8080/members/me">마이페이지</a>
-          <form class="nav-form" method="post" action="http://localhost:8080/logout">
+          <a href="http://127.0.0.1:8080/members/me">마이페이지</a>
+          <form class="nav-form" method="post" action="http://127.0.0.1:8080/logout">
             <button class="link-button" type="submit">로그아웃</button>
           </form>
         </div>

@@ -1,10 +1,10 @@
 import { expect, test } from "@playwright/test";
 
-const BACKEND_URL = "http://localhost:8080";
+const BACKEND_URL = "http://127.0.0.1:8080";
 const PASSWORD = "e2e-password";
 
 async function login(page, loginId, returnPath = "/running-records") {
-  const returnTo = `http://localhost:5173${returnPath}`;
+  const returnTo = `http://127.0.0.1:5173${returnPath}`;
   await page.goto(`${BACKEND_URL}/login?returnTo=${encodeURIComponent(returnTo)}`);
   await page.getByLabel("로그인 ID").fill(loginId);
   await page.getByLabel("비밀번호").fill(PASSWORD);

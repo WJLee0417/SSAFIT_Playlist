@@ -7,6 +7,7 @@ import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
 import com.ssafy.ssafit.playlist.domain.PlaylistItem;
+import com.ssafy.ssafit.playlist.domain.PlaylistExportTrack;
 
 @Mapper
 public interface PlaylistItemMapper {
@@ -36,6 +37,9 @@ public interface PlaylistItemMapper {
             @Param("items") List<PlaylistItem> items);
 
     List<String> selectSpotifyUrisByPlaylistId(
+            @Param("playlistId") Long playlistId);
+
+    List<PlaylistExportTrack> selectExportTracks(
             @Param("playlistId") Long playlistId);
 
     int countByPlaylistId(@Param("playlistId") Long playlistId);
