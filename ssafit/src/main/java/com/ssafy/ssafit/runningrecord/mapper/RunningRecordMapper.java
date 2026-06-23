@@ -15,6 +15,14 @@ public interface RunningRecordMapper {
 
     List<RunningRecord> selectListByMemberId(@Param("memberId") Long memberId);
 
+    List<Integer> selectRecentAverageHeartRates(
+            @Param("memberId") Long memberId,
+            @Param("limit") int limit);
+
+    List<Integer> selectRecentAverageCadences(
+            @Param("memberId") Long memberId,
+            @Param("limit") int limit);
+
     Optional<RunningRecord> selectById(@Param("id") Long id);
 
     int update(RunningRecord runningRecord);

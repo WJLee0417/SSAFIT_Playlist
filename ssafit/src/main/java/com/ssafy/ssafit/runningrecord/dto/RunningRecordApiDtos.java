@@ -8,6 +8,8 @@ import com.ssafy.ssafit.runningrecord.domain.RunningRecord;
 
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Digits;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
@@ -24,6 +26,8 @@ public final class RunningRecordApiDtos {
             @Digits(integer = 8, fraction = 2)
             BigDecimal distanceKm,
             @NotNull @Positive Integer durationSeconds,
+            @Min(60) @Max(240) Integer averageCadence,
+            @Min(30) @Max(240) Integer averageHeartRateBpm,
             @Size(max = 1000) String memo) {
 
         public RunningRecord toDomain() {
@@ -32,6 +36,8 @@ public final class RunningRecordApiDtos {
                     recordDate,
                     distanceKm,
                     durationSeconds,
+                    averageCadence,
+                    averageHeartRateBpm,
                     memo);
         }
     }
@@ -43,6 +49,8 @@ public final class RunningRecordApiDtos {
             @Digits(integer = 8, fraction = 2)
             BigDecimal distanceKm,
             @NotNull @Positive Integer durationSeconds,
+            @Min(60) @Max(240) Integer averageCadence,
+            @Min(30) @Max(240) Integer averageHeartRateBpm,
             @Size(max = 1000) String memo) {
 
         public RunningRecord toDomain(Long runningRecordId) {
@@ -51,6 +59,8 @@ public final class RunningRecordApiDtos {
                     recordDate,
                     distanceKm,
                     durationSeconds,
+                    averageCadence,
+                    averageHeartRateBpm,
                     memo);
         }
     }
@@ -61,6 +71,8 @@ public final class RunningRecordApiDtos {
             BigDecimal distanceKm,
             Integer durationSeconds,
             Integer paceSecondsPerKm,
+            Integer averageCadence,
+            Integer averageHeartRateBpm,
             String memo,
             LocalDateTime createdAt,
             LocalDateTime updatedAt) {
@@ -72,6 +84,8 @@ public final class RunningRecordApiDtos {
                     runningRecord.getDistanceKm(),
                     runningRecord.getDurationSeconds(),
                     runningRecord.getPaceSecondsPerKm(),
+                    runningRecord.getAverageCadence(),
+                    runningRecord.getAverageHeartRateBpm(),
                     runningRecord.getMemo(),
                     runningRecord.getCreatedAt(),
                     runningRecord.getUpdatedAt());
@@ -83,12 +97,16 @@ public final class RunningRecordApiDtos {
             LocalDate recordDate,
             BigDecimal distanceKm,
             Integer durationSeconds,
+            Integer averageCadence,
+            Integer averageHeartRateBpm,
             String memo) {
         RunningRecord runningRecord = new RunningRecord();
         runningRecord.setId(id);
         runningRecord.setRecordDate(recordDate);
         runningRecord.setDistanceKm(distanceKm);
         runningRecord.setDurationSeconds(durationSeconds);
+        runningRecord.setAverageCadence(averageCadence);
+        runningRecord.setAverageHeartRateBpm(averageHeartRateBpm);
         runningRecord.setMemo(memo);
         return runningRecord;
     }

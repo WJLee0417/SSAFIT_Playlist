@@ -44,8 +44,11 @@ public class RecommendationApiController {
         RecommendationResult result = recommendationService.recommend(
                 memberId,
                 request.intensity(),
+                request.targetCadenceSpm(),
+                request.runningIntensityGoal(),
                 request.genre(),
-                request.size());
+                request.size(),
+                request.limit());
         return ApiResponse.success(ResultResponse.from(result));
     }
 

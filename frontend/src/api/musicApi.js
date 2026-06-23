@@ -18,4 +18,10 @@ export const musicApi = {
   importSpotifyTrack(payload) {
     return apiClient.post("/music/from-spotify", payload);
   },
+  createInternal(payload) {
+    return apiClient.post("/music/internal", payload);
+  },
+  updateInternal(musicId, payload) {
+    return apiClient.put(`/music/internal/${musicId}`, payload);
+  },
 };

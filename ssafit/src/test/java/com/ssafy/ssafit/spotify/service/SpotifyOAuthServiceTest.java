@@ -144,7 +144,7 @@ class SpotifyOAuthServiceTest {
                 .thenReturn(Optional.of(existing));
 
         assertError(
-                ErrorCode.SPOTIFY_AUTH_REQUIRED,
+                ErrorCode.SPOTIFY_AUTHORIZATION_FAILED,
                 () -> spotifyOAuthService.handleCallback(
                         10L,
                         "authorization-code",
@@ -162,7 +162,7 @@ class SpotifyOAuthServiceTest {
     void callbackRejectsDeniedAuthorization() {
         String state = issueState();
         assertError(
-                ErrorCode.SPOTIFY_AUTH_DENIED,
+                ErrorCode.SPOTIFY_AUTHORIZATION_CANCELLED,
                 () -> spotifyOAuthService.handleCallback(
                         10L,
                         null,
@@ -178,7 +178,7 @@ class SpotifyOAuthServiceTest {
     void callbackRejectsStateMismatch() {
         issueState();
         assertError(
-                ErrorCode.SPOTIFY_OAUTH_STATE_MISMATCH,
+                ErrorCode.SPOTIFY_STATE_MISMATCH,
                 () -> spotifyOAuthService.handleCallback(
                         10L,
                         "authorization-code",
@@ -197,7 +197,7 @@ class SpotifyOAuthServiceTest {
         String state = issueState();
 
         assertError(
-                ErrorCode.SPOTIFY_OAUTH_CALLBACK_ERROR,
+                ErrorCode.SPOTIFY_AUTHORIZATION_FAILED,
                 () -> spotifyOAuthService.handleCallback(
                         10L,
                         null,
@@ -292,7 +292,7 @@ class SpotifyOAuthServiceTest {
                 .thenReturn(Optional.of(connection));
 
         assertError(
-                ErrorCode.SPOTIFY_AUTH_REQUIRED,
+                ErrorCode.SPOTIFY_TOKEN_REFRESH_FAILED,
                 () -> spotifyOAuthService.getValidConnection(10L));
 
         verify(spotifyApiClient, never())
@@ -307,7 +307,7 @@ class SpotifyOAuthServiceTest {
                 .thenReturn(Optional.of(connection));
 
         assertError(
-                ErrorCode.SPOTIFY_TOKEN_EXPIRED,
+                ErrorCode.SPOTIFY_TOKEN_REFRESH_FAILED,
                 () -> spotifyOAuthService.getValidConnection(10L));
 
         verify(spotifyApiClient, never())
@@ -325,7 +325,7 @@ class SpotifyOAuthServiceTest {
                 .thenThrow(new CustomException(ErrorCode.SPOTIFY_API_ERROR));
 
         assertError(
-                ErrorCode.SPOTIFY_TOKEN_EXPIRED,
+                ErrorCode.SPOTIFY_TOKEN_REFRESH_FAILED,
                 () -> spotifyOAuthService.getValidConnection(10L));
 
         assertThat(connection.getAccessToken()).isEqualTo("old-access");
@@ -359,7 +359,7 @@ class SpotifyOAuthServiceTest {
 
         verify(spotifyConnectionMapper).deleteByMemberId(10L);
         assertError(
-                ErrorCode.SPOTIFY_AUTH_REQUIRED,
+                ErrorCode.SPOTIFY_NOT_CONNECTED,
                 () -> spotifyOAuthService.getConnection(10L));
     }
 
@@ -368,7 +368,7 @@ class SpotifyOAuthServiceTest {
         when(spotifyConnectionMapper.deleteByMemberId(10L)).thenReturn(0);
 
         assertError(
-                ErrorCode.SPOTIFY_AUTH_REQUIRED,
+                ErrorCode.SPOTIFY_NOT_CONNECTED,
                 () -> spotifyOAuthService.disconnect(10L));
     }
 
@@ -391,7 +391,7 @@ class SpotifyOAuthServiceTest {
                 .thenReturn(Optional.empty());
 
         assertError(
-                ErrorCode.SPOTIFY_AUTH_REQUIRED,
+                ErrorCode.SPOTIFY_NOT_CONNECTED,
                 () -> spotifyOAuthService.getValidConnection(10L));
     }
 

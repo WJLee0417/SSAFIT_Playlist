@@ -14,21 +14,40 @@ import com.ssafy.ssafit.spotify.client.SpotifyApiClient;
 import com.ssafy.ssafit.spotify.domain.SpotifyTrack;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import jakarta.annotation.PostConstruct;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class SpotifyService {
 
     private static final int DEFAULT_SEARCH_LIMIT = 10;
     private static final int MAX_SEARCH_LIMIT = 10;
+    private static final int MAX_SEARCH_OFFSET = 1_000;
 
     private final SpotifyApiClient spotifyApiClient;
     private final MusicService musicService;
 
+    @PostConstruct
+    void logInjectedSpotifyClient() {
+        log.info(
+                "Injected SpotifyApiClient implementation={}",
+                spotifyApiClient.getClass().getName());
+    }
+
     public List<SpotifyTrackMetadata> searchTracks(String query, Integer limit) {
+        return searchTracks(query, 0, limit);
+    }
+
+    public List<SpotifyTrackMetadata> searchTracks(
+            String query,
+            Integer offset,
+            Integer limit) {
         if (!StringUtils.hasText(query)) {
             throw new CustomException(ErrorCode.INVALID_REQUEST);
         }
+        int normalizedOffset = normalizeOffset(offset);
         int normalizedLimit = normalizeLimit(limit);
         List<SpotifyTrack> tracks;
         try {
@@ -36,11 +55,35 @@ public class SpotifyService {
             if (!StringUtils.hasText(clientAccessToken)) {
                 throw new CustomException(ErrorCode.SPOTIFY_SEARCH_FAILED);
             }
-            tracks = spotifyApiClient.searchTracks(
-                    clientAccessToken,
-                    query.trim(),
+            tracks = normalizedOffset == 0
+                    ? spotifyApiClient.searchTracks(
+                            clientAccessToken,
+                            query.trim(),
+                            normalizedLimit)
+                    : spotifyApiClient.searchTracks(
+                            clientAccessToken,
+                            query.trim(),
+                            normalizedOffset,
+                            normalizedLimit);
+        } catch (CustomException exception) {
+            log.error(
+                    "Spotify track search failed with a classified error. "
+                            + "errorCode={}, queryLength={}, offset={}, limit={}",
+                    exception.getErrorCode(),
+                    query.trim().length(),
+                    normalizedOffset,
                     normalizedLimit);
+            throw exception;
         } catch (RuntimeException exception) {
+            log.error(
+                    "Unexpected error during Spotify track search. "
+                            + "queryLength={}, offset={}, limit={}, "
+                            + "exceptionType={}",
+                    query.trim().length(),
+                    normalizedOffset,
+                    normalizedLimit,
+                    exception.getClass().getSimpleName(),
+                    exception);
             throw new CustomException(ErrorCode.SPOTIFY_SEARCH_FAILED);
         }
         if (tracks == null || tracks.isEmpty()) {
@@ -68,6 +111,8 @@ public class SpotifyService {
                 trimToNull(track.getArtist()),
                 trimToNull(track.getAlbumName()),
                 trimToNull(track.getImageUrl()),
+                track.getDurationMs(),
+                null,
                 null,
                 null);
     }
@@ -90,5 +135,13 @@ public class SpotifyService {
             throw new CustomException(ErrorCode.INVALID_REQUEST);
         }
         return Math.min(limit, MAX_SEARCH_LIMIT);
+    }
+
+    private int normalizeOffset(Integer offset) {
+        int normalized = offset == null ? 0 : offset;
+        if (normalized < 0 || normalized > MAX_SEARCH_OFFSET) {
+            throw new CustomException(ErrorCode.INVALID_REQUEST);
+        }
+        return normalized;
     }
 }

@@ -21,6 +21,8 @@ public class RunningRecord {
     private BigDecimal distanceKm;
     private Integer durationSeconds;
     private Integer paceSecondsPerKm;
+    private Integer averageCadence;
+    private Integer averageHeartRateBpm;
     private String memo;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

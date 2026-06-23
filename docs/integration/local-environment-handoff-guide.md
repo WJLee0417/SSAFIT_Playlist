@@ -117,7 +117,7 @@ ssafit/src/main/resources/sql/schema.sql
 ```text
 SPOTIFY_CLIENT_ID=<Spotify Developer Dashboard에서 발급>
 SPOTIFY_CLIENT_SECRET=<Spotify Developer Dashboard에서 발급>
-SPOTIFY_REDIRECT_URI=http://localhost:8080/api/spotify/oauth/callback
+SPOTIFY_REDIRECT_URI=http://127.0.0.1:8080/api/spotify/oauth/callback
 ```
 
 Spotify Developer Dashboard에도 동일한 Redirect URI를 등록한다. 실제 값은 Git에 커밋하지 않는다.

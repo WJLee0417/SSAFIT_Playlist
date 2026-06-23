@@ -22,7 +22,7 @@ IDE Run Configuration 또는 운영 환경의 비밀 저장소에 다음 변수�
 ```text
 SPOTIFY_CLIENT_ID=<Spotify Developer Dashboard에서 발급>
 SPOTIFY_CLIENT_SECRET=<Spotify Developer Dashboard에서 발급>
-SPOTIFY_REDIRECT_URI=http://localhost:8080/api/spotify/oauth/callback
+SPOTIFY_REDIRECT_URI=http://127.0.0.1:8080/api/spotify/oauth/callback
 ```
 
 - [ ] 세 변수가 모두 설정되어 있다.

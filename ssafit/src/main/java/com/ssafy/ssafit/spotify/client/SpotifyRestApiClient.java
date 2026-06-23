@@ -9,12 +9,14 @@ import java.util.List;
 import java.util.Map;
 
 import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.context.annotation.Primary;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
+import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import com.ssafy.ssafit.common.exception.CustomException;
@@ -26,13 +28,17 @@ import com.ssafy.ssafit.spotify.domain.SpotifyTrack;
 import com.ssafy.ssafit.spotify.domain.SpotifyUserProfile;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @Component
+@Primary
 @RequiredArgsConstructor
+@Slf4j
 public class SpotifyRestApiClient implements SpotifyApiClient {
 
     private static final ParameterizedTypeReference<Map<String, Object>> MAP_TYPE =
             new ParameterizedTypeReference<>() {};
+    private static final int MAX_LOGGED_RESPONSE_BODY_LENGTH = 2_000;
 
     private final RestClient.Builder restClientBuilder;
     private final SpotifyProperties properties;
@@ -47,12 +53,14 @@ public class SpotifyRestApiClient implements SpotifyApiClient {
     public List<SpotifyTrack> searchTracks(
             String accessToken,
             String query,
+            int offset,
             int limit) {
         URI uri = UriComponentsBuilder
                 .fromUriString(properties.getApiBaseUrl())
                 .path("/search")
                 .queryParam("q", query)
                 .queryParam("type", "track")
+                .queryParam("offset", offset)
                 .queryParam("limit", limit)
                 .build()
                 .encode()
@@ -73,13 +81,15 @@ public class SpotifyRestApiClient implements SpotifyApiClient {
                     string(item.get("name")),
                     artists.isEmpty() ? null : string(map(artists.getFirst()).get("name")),
                     string(album.get("name")),
-                    images.isEmpty() ? null : string(map(images.getFirst()).get("url"))));
+                    images.isEmpty() ? null : string(map(images.getFirst()).get("url")),
+                    integer(item.get("duration_ms"))));
         }
         return result;
     }
 
     @Override
     public SpotifyToken exchangeAuthorizationCode(String code) {
+        validateOAuthConfiguration();
         String body = "grant_type=authorization_code"
                 + "&code=" + encode(code)
                 + "&redirect_uri=" + encode(properties.getRedirectUri());
@@ -134,7 +144,7 @@ public class SpotifyRestApiClient implements SpotifyApiClient {
     }
 
     private Map<String, Object> postToken(String body) {
-        validateClientConfiguration();
+        validateClientCredentials();
         try {
             Map<String, Object> response = restClientBuilder.build()
                     .post()
@@ -146,7 +156,8 @@ public class SpotifyRestApiClient implements SpotifyApiClient {
                     .body(MAP_TYPE);
             return requiredResponse(response);
         } catch (RestClientException exception) {
-            throw new CustomException(ErrorCode.SPOTIFY_API_ERROR);
+            logSpotifyApiFailure("POST /api/token", exception);
+            throw spotifyApiException(exception);
         }
     }
 
@@ -160,7 +171,8 @@ public class SpotifyRestApiClient implements SpotifyApiClient {
                     .body(MAP_TYPE);
             return requiredResponse(response);
         } catch (RestClientException exception) {
-            throw new CustomException(ErrorCode.SPOTIFY_API_ERROR);
+            logSpotifyApiFailure("GET " + safeRequestTarget(uri), exception);
+            throw spotifyApiException(exception);
         }
     }
 
@@ -179,8 +191,80 @@ public class SpotifyRestApiClient implements SpotifyApiClient {
                     .body(MAP_TYPE);
             return response == null ? Map.of() : response;
         } catch (RestClientException exception) {
-            throw new CustomException(ErrorCode.SPOTIFY_API_ERROR);
+            logSpotifyApiFailure("POST " + safeRequestTarget(uri), exception);
+            throw spotifyApiException(exception);
         }
+    }
+
+    private void logSpotifyApiFailure(
+            String operation,
+            RestClientException exception) {
+        if (exception instanceof RestClientResponseException responseException) {
+            log.error(
+                    "Spotify API request failed. operation={}, status={}, "
+                            + "responseBody={}",
+                    operation,
+                    responseException.getStatusCode(),
+                    sanitizeResponseBody(
+                            responseException.getResponseBodyAsString()),
+                    responseException);
+            return;
+        }
+        log.error(
+                "Spotify API transport failed. operation={}, exceptionType={}, "
+                        + "message={}",
+                operation,
+                exception.getClass().getSimpleName(),
+                exception.getMessage(),
+                exception);
+    }
+
+    private String safeRequestTarget(URI uri) {
+        if (uri == null) {
+            return "unknown";
+        }
+        String path = uri.getPath();
+        return StringUtils.hasText(path) ? path : "unknown";
+    }
+
+    private String sanitizeResponseBody(String responseBody) {
+        if (!StringUtils.hasText(responseBody)) {
+            return "<empty>";
+        }
+        String sanitized = responseBody
+                .replaceAll(
+                        "(?i)(\"?(?:access_token|refresh_token|client_secret)"
+                                + "\"?\\s*[:=]\\s*\")([^\"]+)(\")",
+                        "$1<redacted>$3")
+                .replaceAll(
+                        "(?i)((?:access_token|refresh_token|client_secret)"
+                                + "=)([^&\\s]+)",
+                        "$1<redacted>")
+                .replaceAll(
+                        "(?i)(authorization\\s*[:=]\\s*)"
+                                + "(?:bearer|basic)\\s+[^,}\\s]+",
+                        "$1<redacted>")
+                .replaceAll(
+                        "(?i)(bearer|basic)\\s+[A-Za-z0-9._~+/=-]+",
+                        "$1 <redacted>");
+        if (sanitized.length() <= MAX_LOGGED_RESPONSE_BODY_LENGTH) {
+            return sanitized;
+        }
+        return sanitized.substring(0, MAX_LOGGED_RESPONSE_BODY_LENGTH)
+                + "...<truncated>";
+    }
+
+    private CustomException spotifyApiException(RestClientException exception) {
+        if (exception instanceof RestClientResponseException responseException) {
+            return switch (responseException.getStatusCode().value()) {
+                case 400, 401 -> new CustomException(
+                        ErrorCode.SPOTIFY_AUTHORIZATION_FAILED);
+                case 403 -> new CustomException(ErrorCode.SPOTIFY_FORBIDDEN);
+                case 429 -> new CustomException(ErrorCode.SPOTIFY_RATE_LIMITED);
+                default -> new CustomException(ErrorCode.SPOTIFY_API_FAILED);
+            };
+        }
+        return new CustomException(ErrorCode.SPOTIFY_API_FAILED);
     }
 
     private SpotifyToken toToken(Map<String, Object> response) {
@@ -190,10 +274,16 @@ public class SpotifyRestApiClient implements SpotifyApiClient {
                 integer(response.get("expires_in")));
     }
 
-    private void validateClientConfiguration() {
+    private void validateClientCredentials() {
         if (!StringUtils.hasText(properties.getClientId())
-                || !StringUtils.hasText(properties.getClientSecret())
-                || !StringUtils.hasText(properties.getRedirectUri())) {
+                || !StringUtils.hasText(properties.getClientSecret())) {
+            throw new CustomException(ErrorCode.SPOTIFY_CONFIGURATION_ERROR);
+        }
+    }
+
+    private void validateOAuthConfiguration() {
+        validateClientCredentials();
+        if (!StringUtils.hasText(properties.getRedirectUri())) {
             throw new CustomException(ErrorCode.SPOTIFY_CONFIGURATION_ERROR);
         }
     }
@@ -224,7 +314,7 @@ public class SpotifyRestApiClient implements SpotifyApiClient {
 
     private Map<String, Object> requiredResponse(Map<String, Object> response) {
         if (response == null || response.isEmpty()) {
-            throw new CustomException(ErrorCode.SPOTIFY_API_ERROR);
+            throw new CustomException(ErrorCode.SPOTIFY_API_FAILED);
         }
         return response;
     }
@@ -242,7 +332,7 @@ public class SpotifyRestApiClient implements SpotifyApiClient {
     private String requiredString(Map<String, Object> values, String key) {
         String value = string(values.get(key));
         if (!StringUtils.hasText(value)) {
-            throw new CustomException(ErrorCode.SPOTIFY_API_ERROR);
+            throw new CustomException(ErrorCode.SPOTIFY_API_FAILED);
         }
         return value;
     }

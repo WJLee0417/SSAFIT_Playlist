@@ -10,7 +10,7 @@
         <RouterLink :to="detailLocation">{{ music.title }}</RouterLink>
       </h2>
       <p>{{ music.artist }}</p>
-      <small>{{ music.bpm ? `${music.bpm} BPM` : "BPM 정보 없음" }}</small>
+      <small>{{ music.musicBpm ? `${music.musicBpm} BPM` : "BPM 정보 없음" }}</small>
       <div class="card-actions">
         <RouterLink class="text-link" :to="detailLocation">상세 보기</RouterLink>
         <a

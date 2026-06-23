@@ -18,6 +18,8 @@ public class RunningProfileService {
 
     private static final int MIN_BPM = 60;
     private static final int MAX_BPM = 220;
+    private static final int MIN_CADENCE_SPM = 60;
+    private static final int MAX_CADENCE_SPM = 240;
 
     private final RunningProfileMapper runningProfileMapper;
     private final MemberMapper memberMapper;
@@ -95,6 +97,31 @@ public class RunningProfileService {
                 || maxBpm > MAX_BPM
                 || minBpm > maxBpm) {
             throw new CustomException(ErrorCode.INVALID_PROFILE_VALUE);
+        }
+
+        validateCadenceRange(
+                runningProfile.getTargetCadenceMin(),
+                runningProfile.getTargetCadenceMax());
+    }
+
+    private void validateCadenceRange(
+            Integer targetCadenceMin,
+            Integer targetCadenceMax) {
+        if (targetCadenceMin == null && targetCadenceMax == null) {
+            return;
+        }
+        if (targetCadenceMin == null
+                || targetCadenceMax == null) {
+            throw new CustomException(ErrorCode.INVALID_CADENCE_RANGE);
+        }
+        if (targetCadenceMin < MIN_CADENCE_SPM
+                || targetCadenceMin > MAX_CADENCE_SPM
+                || targetCadenceMax < MIN_CADENCE_SPM
+                || targetCadenceMax > MAX_CADENCE_SPM) {
+            throw new CustomException(ErrorCode.INVALID_CADENCE_VALUE);
+        }
+        if (targetCadenceMin > targetCadenceMax) {
+            throw new CustomException(ErrorCode.INVALID_CADENCE_RANGE);
         }
     }
 }

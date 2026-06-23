@@ -19,6 +19,8 @@ public final class RunningProfileApiDtos {
             @NotNull RunningIntensity runningIntensity,
             @NotNull @Min(60) @Max(220) Integer targetBpmMin,
             @NotNull @Min(60) @Max(220) Integer targetBpmMax,
+            @Min(60) @Max(240) Integer targetCadenceMin,
+            @Min(60) @Max(240) Integer targetCadenceMax,
             @Size(max = 100) String preferredGenre) {
 
         public RunningProfile toDomain(Long memberId) {
@@ -27,6 +29,8 @@ public final class RunningProfileApiDtos {
             profile.setRunningIntensity(runningIntensity);
             profile.setTargetBpmMin(targetBpmMin);
             profile.setTargetBpmMax(targetBpmMax);
+            profile.setTargetCadenceMin(targetCadenceMin);
+            profile.setTargetCadenceMax(targetCadenceMax);
             profile.setPreferredGenre(preferredGenre);
             return profile;
         }
@@ -38,6 +42,8 @@ public final class RunningProfileApiDtos {
             RunningIntensity runningIntensity,
             Integer targetBpmMin,
             Integer targetBpmMax,
+            Integer targetCadenceMin,
+            Integer targetCadenceMax,
             String preferredGenre,
             LocalDateTime createdAt,
             LocalDateTime updatedAt) {
@@ -49,6 +55,8 @@ public final class RunningProfileApiDtos {
                     profile.getRunningIntensity(),
                     profile.getTargetBpmMin(),
                     profile.getTargetBpmMax(),
+                    profile.getTargetCadenceMin(),
+                    profile.getTargetCadenceMax(),
                     profile.getPreferredGenre(),
                     profile.getCreatedAt(),
                     profile.getUpdatedAt());

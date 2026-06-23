@@ -23,6 +23,10 @@ import lombok.RequiredArgsConstructor;
 public class RunningRecordService {
 
     private static final int MAX_MEMO_LENGTH = 1000;
+    private static final int MIN_CADENCE_SPM = 60;
+    private static final int MAX_CADENCE_SPM = 240;
+    private static final int MIN_HEART_RATE_BPM = 30;
+    private static final int MAX_HEART_RATE_BPM = 240;
 
     private final RunningRecordMapper runningRecordMapper;
     private final AuthService authService;
@@ -122,6 +126,24 @@ public class RunningRecordService {
                 || (runningRecord.getMemo() != null
                         && runningRecord.getMemo().length() > MAX_MEMO_LENGTH)) {
             throw new CustomException(ErrorCode.INVALID_REQUEST);
+        }
+        validateAverageCadence(runningRecord.getAverageCadence());
+        validateAverageHeartRateBpm(runningRecord.getAverageHeartRateBpm());
+    }
+
+    private void validateAverageCadence(Integer averageCadence) {
+        if (averageCadence != null
+                && (averageCadence < MIN_CADENCE_SPM
+                        || averageCadence > MAX_CADENCE_SPM)) {
+            throw new CustomException(ErrorCode.INVALID_CADENCE_VALUE);
+        }
+    }
+
+    private void validateAverageHeartRateBpm(Integer averageHeartRateBpm) {
+        if (averageHeartRateBpm != null
+                && (averageHeartRateBpm < MIN_HEART_RATE_BPM
+                        || averageHeartRateBpm > MAX_HEART_RATE_BPM)) {
+            throw new CustomException(ErrorCode.INVALID_HEART_RATE_VALUE);
         }
     }
 

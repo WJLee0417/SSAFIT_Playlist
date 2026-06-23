@@ -12,6 +12,7 @@ import com.ssafy.ssafit.music.domain.Music;
 import com.ssafy.ssafit.music.domain.MusicSourceType;
 import com.ssafy.ssafit.music.mapper.MusicMapper;
 import com.ssafy.ssafit.playlist.domain.Playlist;
+import com.ssafy.ssafit.playlist.domain.PlaylistExportTrack;
 import com.ssafy.ssafit.playlist.domain.PlaylistItem;
 import com.ssafy.ssafit.playlist.domain.PlaylistType;
 import com.ssafy.ssafit.playlist.mapper.PlaylistItemMapper;
@@ -107,6 +108,14 @@ public class PlaylistItemService {
             throw new CustomException(ErrorCode.SPOTIFY_URI_NOT_FOUND);
         }
         return playlistItemMapper.selectSpotifyUrisByPlaylistId(playlistId);
+    }
+
+    public List<PlaylistExportTrack> getExportTracks(
+            Long loginMemberId,
+            Long playlistId) {
+        validateAuthenticated(loginMemberId);
+        validateOwnedPlaylist(loginMemberId, playlistId);
+        return playlistItemMapper.selectExportTracks(playlistId);
     }
 
     private void validateNoDuplicate(

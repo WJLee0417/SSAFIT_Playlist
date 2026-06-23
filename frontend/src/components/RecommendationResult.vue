@@ -13,6 +13,36 @@
     </p>
 
     <p class="lead">{{ result.log.recommendationReason }}</p>
+    <aside class="policy-callout">
+      <strong>
+        운동 강도 목표:
+        {{ result.resolvedIntensityGoal || "UNKNOWN" }}
+      </strong>
+      <span>
+        {{ result.intensityExplanation }}
+        <template v-if="result.intensitySource">
+          (출처: {{ result.intensitySource }})
+        </template>
+      </span>
+    </aside>
+    <dl class="summary-list recommendation-summary">
+      <div>
+        <dt>러닝 케이던스</dt>
+        <dd>{{ result.resolvedTargetCadenceSpm ? `${result.resolvedTargetCadenceSpm} SPM` : "미적용" }}</dd>
+      </div>
+      <div>
+        <dt>평균 심박수</dt>
+        <dd>{{ result.averageHeartRateBpm != null ? `${Number(result.averageHeartRateBpm).toFixed(1)} BPM` : "참고 이력 없음" }}</dd>
+      </div>
+      <div><dt>운동 강도 목표</dt><dd>{{ result.resolvedIntensityGoal || "UNKNOWN" }}</dd></div>
+    </dl>
+    <aside class="policy-callout">
+      <strong>
+        목표 케이던스:
+        {{ result.resolvedTargetCadenceSpm ? `${result.resolvedTargetCadenceSpm} SPM` : "미적용" }}
+      </strong>
+      <span>{{ result.cadenceExplanation }}</span>
+    </aside>
     <dl class="summary-list recommendation-summary">
       <div><dt>강도</dt><dd>{{ result.log.requestedIntensity }}</dd></div>
       <div>
@@ -28,8 +58,18 @@
         <div>
           <strong>{{ track.title }}</strong>
           <small>{{ track.artist }}</small>
+          <small>{{ track.recommendationReason }}</small>
+          <small>음악 에너지: {{ track.musicEnergyLevel || "미지정" }}</small>
         </div>
-        <span>{{ track.bpm ? `${track.bpm} BPM` : "BPM 미정" }}</span>
+        <div>
+          <span>{{ track.musicBpm ? `${track.musicBpm} BPM` : "BPM 미정" }}</span>
+          <small>
+            최종 {{ formatScore(track.finalScore) }} ·
+            케이던스 {{ formatScore(track.cadenceScore) }} ·
+            강도 {{ formatScore(track.intensityScore) }} ·
+            선호 {{ formatScore(track.preferenceScore) }}
+          </small>
+        </div>
       </article>
     </div>
     <p v-else class="empty-inline">추천 결과에 표시할 음악이 없습니다.</p>
@@ -96,6 +136,14 @@
         </RouterLink>
       </div>
     </section>
+    <SpotifyExportPanel
+      v-if="savedPlaylist"
+      :playlist="savedPlaylist"
+      :playlist-id="savedPlaylist.id"
+      :editable="true"
+      return-to="/recommendations"
+      :items="exportItems"
+    />
   </section>
 </template>
 
@@ -103,6 +151,7 @@
 import { computed, reactive } from "vue";
 import { RouterLink } from "vue-router";
 import SaveStatus from "./SaveStatus.vue";
+import SpotifyExportPanel from "./SpotifyExportPanel.vue";
 
 const props = defineProps({
   result: { type: Object, required: true },
@@ -117,6 +166,10 @@ const saveForm = reactive({ title: "", visibility: "PRIVATE" });
 const music = computed(() => (
   Array.isArray(props.result?.music) ? props.result.music : []
 ));
+const exportItems = computed(() => music.value.map((track) => ({
+  musicId: track.id,
+  music: track,
+})));
 const canSave = computed(() => (
   Number.isSafeInteger(Number(props.result?.log?.id))
   && Number(props.result.log.id) >= 1
@@ -128,5 +181,9 @@ function submitSave() {
     title: saveForm.title,
     visibility: saveForm.visibility,
   });
+}
+
+function formatScore(value) {
+  return value == null ? "계산 불가" : Number(value).toFixed(2);
 }
 </script>

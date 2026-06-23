@@ -41,6 +41,8 @@ CREATE TABLE running_profiles (
     running_intensity VARCHAR(20) NOT NULL,
     target_bpm_min SMALLINT UNSIGNED NOT NULL,
     target_bpm_max SMALLINT UNSIGNED NOT NULL,
+    target_cadence_min SMALLINT UNSIGNED NULL,
+    target_cadence_max SMALLINT UNSIGNED NULL,
     preferred_genre VARCHAR(100) NULL,
     created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
     updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6)
@@ -58,7 +60,26 @@ CREATE TABLE running_profiles (
     CONSTRAINT ck_running_profiles_bpm_max
         CHECK (target_bpm_max BETWEEN 60 AND 220),
     CONSTRAINT ck_running_profiles_bpm_range
-        CHECK (target_bpm_min <= target_bpm_max)
+        CHECK (target_bpm_min <= target_bpm_max),
+    CONSTRAINT ck_running_profiles_cadence_min
+        CHECK (
+            target_cadence_min IS NULL
+            OR target_cadence_min BETWEEN 60 AND 240
+        ),
+    CONSTRAINT ck_running_profiles_cadence_max
+        CHECK (
+            target_cadence_max IS NULL
+            OR target_cadence_max BETWEEN 60 AND 240
+        ),
+    CONSTRAINT ck_running_profiles_cadence_range
+        CHECK (
+            (target_cadence_min IS NULL AND target_cadence_max IS NULL)
+            OR (
+                target_cadence_min IS NOT NULL
+                AND target_cadence_max IS NOT NULL
+                AND target_cadence_min <= target_cadence_max
+            )
+        )
 ) ENGINE = InnoDB
   DEFAULT CHARACTER SET = utf8mb4
   COLLATE = utf8mb4_0900_ai_ci
@@ -73,7 +94,9 @@ CREATE TABLE music (
     album_name VARCHAR(255) NULL,
     image_url VARCHAR(500) NULL,
     genre VARCHAR(100) NULL,
-    bpm SMALLINT UNSIGNED NULL,
+    bpm SMALLINT UNSIGNED NULL COMMENT '음악 템포 BPM. 케이던스 SPM 및 평균 심박수 BPM과 별도 값',
+    duration_ms INT UNSIGNED NULL,
+    music_energy_level VARCHAR(20) NULL,
     source_type VARCHAR(20) NOT NULL,
     spotify_track_id VARCHAR(100) NULL,
     spotify_uri VARCHAR(255) NULL,
@@ -83,8 +106,16 @@ CREATE TABLE music (
         ON UPDATE CURRENT_TIMESTAMP(6),
     CONSTRAINT pk_music PRIMARY KEY (id),
     CONSTRAINT uk_music_spotify_track_id UNIQUE (spotify_track_id),
+    CONSTRAINT uk_music_spotify_uri UNIQUE (spotify_uri),
     CONSTRAINT ck_music_bpm
         CHECK (bpm IS NULL OR bpm BETWEEN 60 AND 220),
+    CONSTRAINT ck_music_duration
+        CHECK (duration_ms IS NULL OR duration_ms > 0),
+    CONSTRAINT ck_music_energy_level
+        CHECK (
+            music_energy_level IS NULL
+            OR music_energy_level IN ('CALM', 'STEADY', 'ENERGETIC', 'PEAK')
+        ),
     CONSTRAINT ck_music_source_type
         CHECK (source_type IN ('ADMIN', 'SEED', 'EXTERNAL', 'SPOTIFY')),
     CONSTRAINT ck_music_spotify_identity
@@ -175,6 +206,7 @@ CREATE TABLE playlists (
                 'NOT_EXPORTED',
                 'PENDING',
                 'SUCCESS',
+                'PARTIAL',
                 'FAILED'
             )
         ),
@@ -195,24 +227,24 @@ CREATE TABLE playlists (
     CONSTRAINT ck_playlists_export_result
         CHECK (
             (
-                spotify_export_status = 'SUCCESS'
+                spotify_export_status IN ('SUCCESS', 'PARTIAL')
                 AND spotify_playlist_id IS NOT NULL
                 AND spotify_playlist_url IS NOT NULL
                 AND spotify_exported_at IS NOT NULL
             )
             OR (
-                spotify_export_status <> 'SUCCESS'
+                spotify_export_status NOT IN ('SUCCESS', 'PARTIAL')
                 AND spotify_exported_at IS NULL
             )
         ),
     CONSTRAINT ck_playlists_export_error
         CHECK (
             (
-                spotify_export_status = 'FAILED'
+                spotify_export_status IN ('FAILED', 'PARTIAL')
                 AND spotify_export_error_code IS NOT NULL
             )
             OR (
-                spotify_export_status <> 'FAILED'
+                spotify_export_status NOT IN ('FAILED', 'PARTIAL')
                 AND spotify_export_error_code IS NULL
             )
         ),
@@ -356,6 +388,8 @@ CREATE TABLE running_records (
     distance_km DECIMAL(10, 2) NOT NULL,
     duration_seconds INT UNSIGNED NOT NULL,
     pace_seconds_per_km INT UNSIGNED NOT NULL,
+    average_cadence SMALLINT UNSIGNED NULL,
+    average_heart_rate_bpm SMALLINT UNSIGNED NULL,
     memo TEXT NULL,
     created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
     updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6)
@@ -372,6 +406,16 @@ CREATE TABLE running_records (
         CHECK (duration_seconds > 0),
     CONSTRAINT ck_running_records_pace
         CHECK (pace_seconds_per_km > 0),
+    CONSTRAINT ck_running_records_average_cadence
+        CHECK (
+            average_cadence IS NULL
+            OR average_cadence BETWEEN 60 AND 240
+        ),
+    CONSTRAINT ck_running_records_average_heart_rate
+        CHECK (
+            average_heart_rate_bpm IS NULL
+            OR average_heart_rate_bpm BETWEEN 30 AND 240
+        ),
     INDEX idx_running_records_member_date (member_id, record_date),
     INDEX idx_running_records_record_date (record_date),
     INDEX idx_running_records_deleted_at (deleted_at)

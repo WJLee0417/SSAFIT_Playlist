@@ -18,7 +18,7 @@
         <div class="mypage-landing-content" id="mypageLandingContent">
             <h1 id="beatRateTitle">오늘의<br>BEAT RATE</h1>
             <a class="primary-button mypage-playlist-button"
-               href="http://localhost:5173/playlists">플레이리스트</a>
+               href="http://127.0.0.1:5173/playlists">플레이리스트</a>
         </div>
         <span class="mypage-scroll-cue" aria-hidden="true"></span>
     </section>
@@ -50,6 +50,17 @@
                         <dl class="info-list mypage-profile-list">
                             <div><dt>러닝 강도</dt><dd><c:out value="${runningProfile.runningIntensity}"/></dd></div>
                             <div><dt>목표 BPM</dt><dd><c:out value="${runningProfile.targetBpmMin}"/> - <c:out value="${runningProfile.targetBpmMax}"/></dd></div>
+                            <div>
+                                <dt>목표 케이던스</dt>
+                                <dd>
+                                    <c:choose>
+                                        <c:when test="${not empty runningProfile.targetCadenceMin and not empty runningProfile.targetCadenceMax}">
+                                            <c:out value="${runningProfile.targetCadenceMin}"/> - <c:out value="${runningProfile.targetCadenceMax}"/> SPM
+                                        </c:when>
+                                        <c:otherwise>미설정</c:otherwise>
+                                    </c:choose>
+                                </dd>
+                            </div>
                             <div><dt>선호 장르</dt><dd><c:out value="${empty runningProfile.preferredGenre ? '설정 안 함' : runningProfile.preferredGenre}"/></dd></div>
                         </dl>
                     </c:otherwise>
@@ -57,7 +68,7 @@
             </article>
 
             <a class="card mypage-tile mypage-link-tile"
-               href="http://localhost:5173/running-records">
+               href="http://127.0.0.1:5173/running-records">
                 <span class="eyebrow">RUNNING RECORDS</span>
                 <div>
                     <strong>나의 러닝 기록</strong>
@@ -67,7 +78,7 @@
             </a>
 
             <a class="card mypage-tile mypage-link-tile"
-               href="http://localhost:5173/running-sessions">
+               href="http://127.0.0.1:5173/running-sessions">
                 <span class="eyebrow">RUNNING SESSIONS</span>
                 <div>
                     <strong>나의 러닝 모임</strong>

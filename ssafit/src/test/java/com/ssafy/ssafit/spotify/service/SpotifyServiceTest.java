@@ -139,7 +139,7 @@ class SpotifyServiceTest {
                 .thenThrow(new CustomException(ErrorCode.SPOTIFY_API_ERROR));
 
         assertError(
-                ErrorCode.SPOTIFY_SEARCH_FAILED,
+                ErrorCode.SPOTIFY_API_ERROR,
                 () -> spotifyService.searchTracks("running", 10));
     }
 

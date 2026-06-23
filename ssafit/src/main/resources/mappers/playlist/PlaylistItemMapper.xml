@@ -110,6 +110,18 @@
         ORDER BY pi.order_no ASC, pi.id ASC
     </select>
 
+    <select id="selectExportTracks"
+            resultType="com.ssafy.ssafit.playlist.domain.PlaylistExportTrack">
+        SELECT
+            pi.music_id AS musicId,
+            m.spotify_track_id AS spotifyTrackId,
+            m.spotify_uri AS spotifyUri
+        FROM playlist_items pi
+        INNER JOIN music m ON m.id = pi.music_id
+        WHERE pi.playlist_id = #{playlistId}
+        ORDER BY pi.order_no ASC, pi.id ASC
+    </select>
+
     <select id="countByPlaylistId" resultType="int">
         SELECT COUNT(*)
         FROM playlist_items

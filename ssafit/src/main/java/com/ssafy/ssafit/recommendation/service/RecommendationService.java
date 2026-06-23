@@ -1,7 +1,10 @@
 package com.ssafy.ssafit.recommendation.service;
 
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -11,8 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.ssafy.ssafit.common.exception.CustomException;
 import com.ssafy.ssafit.common.exception.ErrorCode;
 import com.ssafy.ssafit.music.domain.Music;
-import com.ssafy.ssafit.music.domain.MusicSearchCondition;
-import com.ssafy.ssafit.music.domain.MusicSortType;
+import com.ssafy.ssafit.music.domain.MusicPreferenceScore;
 import com.ssafy.ssafit.music.mapper.MusicMapper;
 import com.ssafy.ssafit.playlist.domain.Playlist;
 import com.ssafy.ssafit.playlist.domain.PlaylistItem;
@@ -23,7 +25,14 @@ import com.ssafy.ssafit.playlist.domain.SpotifyExportStatus;
 import com.ssafy.ssafit.playlist.mapper.PlaylistItemMapper;
 import com.ssafy.ssafit.playlist.mapper.PlaylistMapper;
 import com.ssafy.ssafit.recommendation.domain.RecommendationLog;
+import com.ssafy.ssafit.recommendation.domain.RecommendedMusic;
 import com.ssafy.ssafit.recommendation.domain.RecommendationResult;
+import com.ssafy.ssafit.recommendation.domain.CadenceResolutionResult;
+import com.ssafy.ssafit.recommendation.domain.IntensityResolutionResult;
+import com.ssafy.ssafit.recommendation.domain.RunningIntensityGoal;
+import com.ssafy.ssafit.recommendation.policy.CadenceMatchingPolicy;
+import com.ssafy.ssafit.recommendation.policy.CadenceMatchingPolicy.CadenceMatchResult;
+import com.ssafy.ssafit.recommendation.policy.IntensityMatchingPolicy;
 import com.ssafy.ssafit.recommendation.mapper.RecommendationLogMapper;
 import com.ssafy.ssafit.runningprofile.domain.RunningIntensity;
 import com.ssafy.ssafit.runningprofile.domain.RunningProfile;
@@ -40,6 +49,10 @@ public class RecommendationService {
     private static final int MAX_BPM = 220;
     private static final int DEFAULT_RECOMMENDATION_SIZE = 10;
     private static final int MAX_RECOMMENDATION_SIZE = 50;
+    private static final int MAX_CANDIDATE_SIZE = 500;
+    private static final double CADENCE_WEIGHT = 0.60;
+    private static final double INTENSITY_WEIGHT = 0.30;
+    private static final double PREFERENCE_WEIGHT = 0.10;
     private static final int MAX_PLAYLIST_TITLE_LENGTH = 200;
     private static final Pattern MUSIC_IDS_PATTERN =
             Pattern.compile("\"musicIds\"\\s*:\\s*\\[([0-9,\\s]*)]");
@@ -49,6 +62,10 @@ public class RecommendationService {
     private final RecommendationLogMapper recommendationLogMapper;
     private final PlaylistMapper playlistMapper;
     private final PlaylistItemMapper playlistItemMapper;
+    private final RunningIntensityResolutionService intensityResolutionService;
+    private final CadenceResolutionService cadenceResolutionService;
+    private final CadenceMatchingPolicy cadenceMatchingPolicy;
+    private final IntensityMatchingPolicy intensityMatchingPolicy;
 
     /**
      * 추천 조회는 음악과 로그만 생성한다.
@@ -60,42 +77,103 @@ public class RecommendationService {
             RunningIntensity requestedIntensity,
             String requestedGenre,
             Integer size) {
+        return recommend(
+                loginMemberId,
+                requestedIntensity,
+                null,
+                null,
+                requestedGenre,
+                size,
+                null);
+    }
+
+    @Transactional
+    public RecommendationResult recommend(
+            Long loginMemberId,
+            RunningIntensity requestedIntensity,
+            RunningIntensityGoal requestedIntensityGoal,
+            String requestedGenre,
+            Integer size) {
+        return recommend(
+                loginMemberId,
+                requestedIntensity,
+                null,
+                requestedIntensityGoal,
+                requestedGenre,
+                size,
+                null);
+    }
+
+    @Transactional
+    public RecommendationResult recommend(
+            Long loginMemberId,
+            RunningIntensity requestedIntensity,
+            Integer requestedTargetCadenceSpm,
+            RunningIntensityGoal requestedIntensityGoal,
+            String requestedGenre,
+            Integer size,
+            Integer limit) {
         validateAuthenticated(loginMemberId);
         if (requestedIntensity == null) {
             throw new CustomException(ErrorCode.INVALID_INTENSITY);
         }
 
         RunningProfile profile = runningProfileMapper.selectByMemberId(loginMemberId)
-                .orElseThrow(() -> new CustomException(ErrorCode.PROFILE_NOT_FOUND));
+                .orElse(null);
         int[] bpmRange = resolveBpmRange(profile, requestedIntensity);
-        String genre = firstNonBlank(requestedGenre, profile.getPreferredGenre());
+        String genre = firstNonBlank(
+                requestedGenre,
+                profile == null ? null : profile.getPreferredGenre());
         int recommendationSize = normalizeSize(size);
+        if (limit != null) {
+            recommendationSize = normalizeSize(limit);
+        }
+        CadenceResolutionResult cadenceResolution = cadenceResolutionService.resolve(
+                loginMemberId,
+                requestedTargetCadenceSpm,
+                profile);
+        IntensityResolutionResult intensityResolution =
+                intensityResolutionService.resolve(
+                        loginMemberId,
+                        requestedIntensityGoal);
 
-        MusicSearchCondition condition = new MusicSearchCondition();
-        condition.setGenre(genre);
-        condition.setMinBpm(bpmRange[0]);
-        condition.setMaxBpm(bpmRange[1]);
-        condition.setRunningIntensity(requestedIntensity);
-        condition.setSortType(MusicSortType.RUNNING_FIT_DESC);
-        condition.setPage(1);
-        condition.setSize(recommendationSize);
-        condition.setOffset(0);
-
-        List<Music> musicList = musicMapper.selectRecommendedMusic(condition);
-        if (musicList == null || musicList.isEmpty()) {
+        List<Music> candidates = musicMapper.selectRecommendationCandidates(
+                genre,
+                MAX_CANDIDATE_SIZE);
+        if (candidates == null || candidates.isEmpty()) {
             throw new CustomException(ErrorCode.RECOMMENDATION_DATA_NOT_ENOUGH);
         }
+        Map<Long, Double> preferenceScores = preferenceScores(loginMemberId);
+        List<RecommendedMusic> musicList = candidates.stream()
+                .map(music -> scoreMusic(
+                        music,
+                        cadenceResolution.targetCadenceSpm(),
+                        intensityResolution.resolvedGoal(),
+                        preferenceScores.getOrDefault(music.getId(), 3.0)))
+                .sorted(recommendationComparator())
+                .limit(recommendationSize)
+                .toList();
 
         RecommendationLog log = createLog(
                 loginMemberId,
                 requestedIntensity,
                 genre,
                 bpmRange,
+                cadenceResolution,
+                intensityResolution,
                 musicList);
         if (recommendationLogMapper.insert(log) != 1) {
             throw new CustomException(ErrorCode.INTERNAL_SERVER_ERROR);
         }
-        return new RecommendationResult(log, List.copyOf(musicList));
+        return new RecommendationResult(
+                log,
+                List.copyOf(musicList),
+                cadenceResolution.targetCadenceSpm(),
+                cadenceResolution.explanation(),
+                intensityResolution.resolvedGoal(),
+                intensityResolution.source(),
+                intensityResolution.averageHeartRateBpm(),
+                intensityResolution.explanation());
     }
 
     /**
@@ -154,16 +232,28 @@ public class RecommendationService {
             RunningIntensity intensity,
             String genre,
             int[] bpmRange,
-            List<Music> musicList) {
+            CadenceResolutionResult cadenceResolution,
+            IntensityResolutionResult intensityResolution,
+            List<RecommendedMusic> musicList) {
         RecommendationLog log = new RecommendationLog();
         log.setMemberId(memberId);
         log.setRequestedIntensity(intensity);
         log.setRequestedBpmMin(bpmRange[0]);
         log.setRequestedBpmMax(bpmRange[1]);
         log.setRequestedGenre(genre);
-        log.setRequestConditions(buildRequestConditions(intensity, genre, bpmRange));
+        log.setRequestConditions(buildRequestConditions(
+                intensity,
+                genre,
+                bpmRange,
+                cadenceResolution.targetCadenceSpm(),
+                intensityResolution.resolvedGoal()));
         log.setResultSummary(buildResultSummary(musicList));
-        log.setRecommendationReason(buildRecommendationReason(intensity, genre, bpmRange));
+        log.setRecommendationReason(buildRecommendationReason(
+                intensity,
+                genre,
+                bpmRange,
+                cadenceResolution.targetCadenceSpm(),
+                intensityResolution.resolvedGoal()));
         return log;
     }
 
@@ -220,7 +310,10 @@ public class RecommendationService {
     private int[] resolveBpmRange(
             RunningProfile profile,
             RunningIntensity intensity) {
-        if (isValidBpmRange(profile.getTargetBpmMin(), profile.getTargetBpmMax())) {
+        if (profile != null
+                && isValidBpmRange(
+                        profile.getTargetBpmMin(),
+                        profile.getTargetBpmMax())) {
             return new int[] {profile.getTargetBpmMin(), profile.getTargetBpmMax()};
         }
 
@@ -254,7 +347,9 @@ public class RecommendationService {
     private String buildRequestConditions(
             RunningIntensity intensity,
             String genre,
-            int[] bpmRange) {
+            int[] bpmRange,
+            Integer targetCadenceSpm,
+            RunningIntensityGoal intensityGoal) {
         return "{\"intensity\":\""
                 + intensity
                 + "\",\"bpmMin\":"
@@ -263,11 +358,16 @@ public class RecommendationService {
                 + bpmRange[1]
                 + ",\"genre\":"
                 + jsonString(genre)
+                + ",\"targetCadenceSpm\":"
+                + (targetCadenceSpm == null ? "null" : targetCadenceSpm)
+                + ",\"runningIntensityGoal\":"
+                + jsonString(intensityGoal == null ? null : intensityGoal.name())
                 + "}";
     }
 
-    private String buildResultSummary(List<Music> musicList) {
+    private String buildResultSummary(List<RecommendedMusic> musicList) {
         String musicIds = musicList.stream()
+                .map(RecommendedMusic::music)
                 .map(Music::getId)
                 .map(String::valueOf)
                 .reduce((left, right) -> left + "," + right)
@@ -279,19 +379,167 @@ public class RecommendationService {
                 + "]}";
     }
 
+    private Map<Long, Double> preferenceScores(Long memberId) {
+        List<MusicPreferenceScore> rows =
+                musicMapper.selectPreferenceScores(memberId);
+        Map<Long, Double> result = new HashMap<>();
+        if (rows == null) {
+            return result;
+        }
+        for (MusicPreferenceScore row : rows) {
+            if (row != null
+                    && row.getMusicId() != null
+                    && row.getPreferenceScore() != null) {
+                result.put(row.getMusicId(), row.getPreferenceScore());
+            }
+        }
+        return result;
+    }
+
+    private RecommendedMusic scoreMusic(
+            Music music,
+            Integer targetCadenceSpm,
+            RunningIntensityGoal intensityGoal,
+            Double rawPreferenceScore) {
+        CadenceMatchResult cadenceMatch = cadenceMatchingPolicy.calculate(
+                targetCadenceSpm,
+                music.getMusicBpm());
+        Integer rawIntensityScore =
+                intensityMatchingPolicy.calculateIntensityScore(
+                        intensityGoal,
+                        music.getMusicEnergyLevel());
+        Double intensityScore = rawIntensityScore == null
+                ? null
+                : roundScore(rawIntensityScore / 3.0 * 100.0);
+        Double preferenceScore = roundScore(
+                Math.max(0.0, Math.min(5.0, rawPreferenceScore))
+                        / 5.0
+                        * 100.0);
+        Double cadenceScore = cadenceMatch.score() == null
+                ? null
+                : roundScore(cadenceMatch.score());
+        Double finalScore = weightedScore(
+                cadenceScore,
+                intensityScore,
+                preferenceScore);
+        return new RecommendedMusic(
+                music,
+                cadenceScore,
+                intensityScore,
+                preferenceScore,
+                finalScore,
+                cadenceMatch.mode(),
+                recommendationReason(
+                        music,
+                        targetCadenceSpm,
+                        intensityGoal,
+                        cadenceMatch));
+    }
+
+    private Double weightedScore(
+            Double cadenceScore,
+            Double intensityScore,
+            Double preferenceScore) {
+        double weightedTotal = 0.0;
+        double availableWeight = 0.0;
+        if (cadenceScore != null) {
+            weightedTotal += cadenceScore * CADENCE_WEIGHT;
+            availableWeight += CADENCE_WEIGHT;
+        }
+        if (intensityScore != null) {
+            weightedTotal += intensityScore * INTENSITY_WEIGHT;
+            availableWeight += INTENSITY_WEIGHT;
+        }
+        if (preferenceScore != null) {
+            weightedTotal += preferenceScore * PREFERENCE_WEIGHT;
+            availableWeight += PREFERENCE_WEIGHT;
+        }
+        return availableWeight == 0.0
+                ? 0.0
+                : roundScore(weightedTotal / availableWeight);
+    }
+
+    private Comparator<RecommendedMusic> recommendationComparator() {
+        Comparator<Double> descendingNullable =
+                Comparator.nullsLast(Comparator.reverseOrder());
+        return Comparator
+                .comparing(RecommendedMusic::finalScore, descendingNullable)
+                .thenComparing(
+                        RecommendedMusic::cadenceScore,
+                        descendingNullable)
+                .thenComparing(
+                        RecommendedMusic::intensityScore,
+                        descendingNullable)
+                .thenComparing(
+                        result -> result.music().getCreatedAt(),
+                        Comparator.nullsLast(Comparator.reverseOrder()))
+                .thenComparing(result -> result.music().getId());
+    }
+
+    private String recommendationReason(
+            Music music,
+            Integer targetCadenceSpm,
+            RunningIntensityGoal intensityGoal,
+            CadenceMatchResult cadenceMatch) {
+        List<String> reasons = new ArrayList<>();
+        if (cadenceMatch.score() != null) {
+            if (cadenceMatch.mode()
+                    == com.ssafy.ssafit.recommendation.domain.TempoMatchMode.HALF_TIME) {
+                reasons.add("목표 케이던스 "
+                        + targetCadenceSpm
+                        + " SPM과 음악 템포 "
+                        + music.getMusicBpm()
+                        + " BPM의 하프타임 매칭");
+            } else {
+                reasons.add("목표 케이던스 "
+                        + targetCadenceSpm
+                        + " SPM과 음악 템포 "
+                        + music.getMusicBpm()
+                        + " BPM의 직접 매칭");
+            }
+        }
+        if (intensityGoal != null && music.getMusicEnergyLevel() != null) {
+            reasons.add("운동 강도 "
+                    + intensityGoal
+                    + "와 음악 에너지 "
+                    + music.getMusicEnergyLevel()
+                    + " 매칭");
+        }
+        if (reasons.isEmpty()) {
+            return "템포 또는 에너지 정보가 없어 현재 선호 점수를 중심으로 추천했습니다.";
+        }
+        return String.join(", ", reasons);
+    }
+
+    private double roundScore(double value) {
+        return Math.round(value * 100.0) / 100.0;
+    }
+
     private String buildRecommendationReason(
             RunningIntensity intensity,
             String genre,
-            int[] bpmRange) {
+            int[] bpmRange,
+            Integer targetCadenceSpm,
+            RunningIntensityGoal intensityGoal) {
         String genreReason = genre == null ? "장르 제한 없이" : genre + " 장르를 우선해";
-        return intensity
-                + " 러닝 강도와 "
+        String cadenceReason = targetCadenceSpm == null
+                ? "케이던스 매칭 없이"
+                : "목표 케이던스 " + targetCadenceSpm + " SPM 템포 매칭과";
+        String intensityReason = intensityGoal == null
+                ? "운동 강도 매칭 없이"
+                : "운동 강도 " + intensityGoal + " 에너지 매칭을";
+        return cadenceReason
+                + " "
+                + intensityReason
+                + " 사용 가능한 점수 가중치를 재정규화하고 "
+                + genreReason
+                + " 추천했습니다. 기존 "
+                + intensity
+                + " 프로필 BPM 범위 "
                 + bpmRange[0]
                 + "~"
                 + bpmRange[1]
-                + " BPM 적합도, 음악 선호도 및 러닝 적합도 평균을 조합하고 "
-                + genreReason
-                + " 추천했습니다.";
+                + "은 호환 로그 정보로 유지됩니다.";
     }
 
     private List<Long> parseMusicIds(String resultSummary) {

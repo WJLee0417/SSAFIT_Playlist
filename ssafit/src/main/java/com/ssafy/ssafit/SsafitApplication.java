@@ -6,7 +6,18 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.boot.web.servlet.support.SpringBootServletInitializer;
 
-@MapperScan("com.ssafy.ssafit")
+@MapperScan(
+        basePackages = {
+            "com.ssafy.ssafit.member.mapper",
+            "com.ssafy.ssafit.music.mapper",
+            "com.ssafy.ssafit.musicreview.mapper",
+            "com.ssafy.ssafit.playlist.mapper",
+            "com.ssafy.ssafit.recommendation.mapper",
+            "com.ssafy.ssafit.runningprofile.mapper",
+            "com.ssafy.ssafit.runningrecord.mapper",
+            "com.ssafy.ssafit.runningsession.mapper",
+            "com.ssafy.ssafit.spotify.mapper"
+        })
 @SpringBootApplication
 public class SsafitApplication extends SpringBootServletInitializer {
 

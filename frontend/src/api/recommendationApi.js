@@ -3,8 +3,15 @@ import { apiClient } from "./http";
 function cleanRecommendationParams(condition) {
   return {
     intensity: condition.intensity,
+    ...(condition.targetCadenceSpm != null
+      ? { targetCadenceSpm: condition.targetCadenceSpm }
+      : {}),
+    ...(condition.runningIntensityGoal
+      ? { runningIntensityGoal: condition.runningIntensityGoal }
+      : {}),
     ...(condition.genre?.trim() ? { genre: condition.genre.trim() } : {}),
     ...(condition.size != null ? { size: condition.size } : {}),
+    ...(condition.limit != null ? { limit: condition.limit } : {}),
   };
 }
 

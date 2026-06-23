@@ -25,7 +25,7 @@ SPOTIFY_REDIRECT_URI
 - 세 값은 실행 환경에서만 주입한다.
 - Client ID와 Client Secret은 코드, DTO, 응답, 로그, Git에 넣지 않는다.
 - Redirect URI는 Spotify Developer Dashboard 등록값과 문자 단위로 일치해야 한다.
-- 로컬 기본 예시는 `http://localhost:8080/api/spotify/oauth/callback`이다.
+- 로컬 기본 예시는 `http://127.0.0.1:8080/api/spotify/oauth/callback`이다.
 - `application.yml`에는 실제 값이나 Redirect URI 기본값을 두지 않는다.
 
 ### Spotify scope

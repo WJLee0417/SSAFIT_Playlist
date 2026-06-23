@@ -177,7 +177,7 @@ Vue 상태, Router query, 화면, 문서에 다음 값을 저장하거나 출력
 
 - `SPOTIFY_CLIENT_ID`
 - `SPOTIFY_CLIENT_SECRET`
-- `SPOTIFY_REDIRECT_URI=http://localhost:8080/api/spotify/oauth/callback`
+- `SPOTIFY_REDIRECT_URI=http://127.0.0.1:8080/api/spotify/oauth/callback`
 - Spotify Developer Dashboard의 동일 Redirect URI 등록
 - 테스트용 Spotify 계정
 - Session 로그인과 Spotify URI가 있는 플레이리스트 수록곡

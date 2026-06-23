@@ -35,7 +35,7 @@ public class SpotifyOAuthStateManager {
                 || !StringUtils.hasText(returnedState)
                 || !storedState.equals(returnedState)) {
             session.removeAttribute(SESSION_ATTRIBUTE);
-            throw new CustomException(ErrorCode.SPOTIFY_OAUTH_STATE_MISMATCH);
+            throw new CustomException(ErrorCode.SPOTIFY_STATE_MISMATCH);
         }
 
         session.removeAttribute(SESSION_ATTRIBUTE);

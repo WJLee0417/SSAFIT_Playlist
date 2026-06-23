@@ -121,10 +121,10 @@ class RunningProfileViewControllerTest {
                         .param("preferredGenre", "POP")
                         .param(
                                 "returnTo",
-                                "http://localhost:5173/recommendations"))
+                                "http://127.0.0.1:5173/recommendations"))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl(
-                        "http://localhost:5173/recommendations"));
+                        "http://127.0.0.1:5173/recommendations"));
     }
 
     @Test

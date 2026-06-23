@@ -11,6 +11,7 @@ import com.ssafy.ssafit.playlist.domain.PlaylistSourceType;
 import com.ssafy.ssafit.playlist.domain.PlaylistType;
 import com.ssafy.ssafit.playlist.domain.PlaylistVisibility;
 import com.ssafy.ssafit.playlist.domain.SpotifyExportStatus;
+import com.ssafy.ssafit.spotify.domain.SpotifyExportResult;
 
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
@@ -152,15 +153,40 @@ public final class PlaylistApiDtos {
 
     public record ExportResponse(
             Long playlistId,
+            int requestedCount,
+            int exportedCount,
+            int skippedCount,
+            List<Long> skippedMusicIds,
+            List<Integer> failedChunkIndexes,
             String spotifyPlaylistId,
             String spotifyPlaylistUrl,
             SpotifyExportStatus spotifyExportStatus,
             String spotifyExportErrorCode,
             LocalDateTime spotifyExportedAt) {
 
+        public static ExportResponse from(SpotifyExportResult result) {
+            return new ExportResponse(
+                    result.playlistId(),
+                    result.requestedCount(),
+                    result.exportedCount(),
+                    result.skippedCount(),
+                    result.skippedMusicIds(),
+                    result.failedChunkIndexes(),
+                    result.spotifyPlaylistId(),
+                    result.spotifyPlaylistUrl(),
+                    result.spotifyExportStatus(),
+                    result.spotifyExportErrorCode(),
+                    result.exportedAt());
+        }
+
         public static ExportResponse from(Playlist playlist) {
             return new ExportResponse(
                     playlist.getId(),
+                    0,
+                    0,
+                    0,
+                    List.of(),
+                    List.of(),
                     playlist.getSpotifyPlaylistId(),
                     playlist.getSpotifyPlaylistUrl(),
                     playlist.getSpotifyExportStatus(),

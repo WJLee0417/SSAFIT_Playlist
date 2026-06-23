@@ -19,6 +19,14 @@ mysql -u ssafit -p ssafit_playlist < src/main/resources/sql/dummy.sql
 
 기존 테이블이 있는 DB에 `schema.sql`을 반복 실행하지 않습니다. 스키마 변경이 필요한
 경우 기존 데이터를 확인한 후 별도 마이그레이션 SQL을 작성합니다.
+케이던스·평균 심박수 확장은 기존 DB에서
+`migrations/20260623_add_cadence_heart_rate.sql`을 한 번만 실행합니다.
+Spotify 음악 메타데이터 확장은 `spotify_uri` 중복을 먼저 정리한 뒤
+`migrations/20260623_add_spotify_music_metadata.sql`을 한 번만 실행합니다.
+음악 에너지 태그 확장은
+`migrations/20260623_add_music_energy_level.sql`을 한 번만 실행합니다.
+Spotify 부분 내보내기 상태 확장은
+`migrations/20260623_add_spotify_partial_export_status.sql`을 한 번만 실행합니다.
 `data.sql`과 `dummy.sql`은 중복 방지 구문을 사용해 반복 실행할 수 있습니다.
 
 ## 명명과 매핑

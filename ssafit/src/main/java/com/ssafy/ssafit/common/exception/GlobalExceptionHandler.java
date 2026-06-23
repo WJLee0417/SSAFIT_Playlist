@@ -7,6 +7,7 @@ import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.validation.BindException;
+import org.springframework.validation.FieldError;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
@@ -32,13 +33,35 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorResponse> handleValidationException(
             MethodArgumentNotValidException exception) {
-        ErrorCode errorCode = ErrorCode.INVALID_REQUEST;
+        FieldError firstFieldError = exception.getBindingResult()
+                .getFieldErrors()
+                .stream()
+                .findFirst()
+                .orElse(null);
+        ErrorCode errorCode = validationErrorCode(firstFieldError);
         String message = exception.getBindingResult().getFieldErrors().stream()
                 .findFirst()
                 .map(fieldError -> fieldError.getDefaultMessage())
                 .orElse(errorCode.getMessage());
+        if (errorCode != ErrorCode.INVALID_REQUEST) {
+            message = errorCode.getMessage();
+        }
         ErrorResponse response = new ErrorResponse(errorCode.name(), message);
         return ResponseEntity.status(errorCode.getStatus()).body(response);
+    }
+
+    private ErrorCode validationErrorCode(FieldError fieldError) {
+        if (fieldError == null) {
+            return ErrorCode.INVALID_REQUEST;
+        }
+        return switch (fieldError.getField()) {
+            case "targetCadenceMin", "targetCadenceMax", "targetCadenceSpm",
+                    "averageCadence" ->
+                    ErrorCode.INVALID_CADENCE_VALUE;
+            case "averageHeartRateBpm" -> ErrorCode.INVALID_HEART_RATE_VALUE;
+            case "musicBpm" -> ErrorCode.INVALID_MUSIC_BPM_VALUE;
+            default -> ErrorCode.INVALID_REQUEST;
+        };
     }
 
     @ExceptionHandler({

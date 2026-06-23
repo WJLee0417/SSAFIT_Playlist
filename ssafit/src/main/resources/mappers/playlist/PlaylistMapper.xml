@@ -197,6 +197,19 @@
           AND deleted_at IS NULL
     </update>
 
+    <update id="updateSpotifyExportPartial"
+            parameterType="com.ssafy.ssafit.playlist.domain.Playlist">
+        UPDATE playlists
+        SET
+            spotify_playlist_id = #{spotifyPlaylistId},
+            spotify_playlist_url = #{spotifyPlaylistUrl},
+            spotify_export_status = 'PARTIAL',
+            spotify_export_error_code = #{spotifyExportErrorCode},
+            spotify_exported_at = #{spotifyExportedAt}
+        WHERE id = #{id}
+          AND deleted_at IS NULL
+    </update>
+
     <update id="updateSpotifyExportStatus">
         UPDATE playlists
         SET

@@ -33,7 +33,7 @@ export default defineConfig({
     ["html", { outputFolder: "playwright-report", open: "never" }],
   ],
   use: {
-    baseURL: "http://localhost:5173",
+    baseURL: "http://127.0.0.1:5173",
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
     video: "retain-on-failure",
@@ -43,16 +43,16 @@ export default defineConfig({
       command:
         ".\\mvnw.cmd spring-boot:test-run \"-Dspring-boot.run.profiles=e2e\"",
       cwd: "../ssafit",
-      url: "http://localhost:8080/health",
+      url: "http://127.0.0.1:8080/health",
       timeout: 120_000,
-      reuseExistingServer: false,
+      reuseExistingServer: !process.env.CI,
     },
     {
       command: "npm run dev -- --host 127.0.0.1",
       cwd: ".",
-      url: "http://localhost:5173",
+      url: "http://127.0.0.1:5173",
       timeout: 60_000,
-      reuseExistingServer: false,
+      reuseExistingServer: !process.env.CI,
     },
   ],
 });

@@ -66,7 +66,7 @@
             <span>{{ track.artist }}</span>
             <div class="playlist-result-tags">
               <span>{{ track.genre || "장르 미정" }}</span>
-              <span>{{ track.bpm ? `${track.bpm} BPM` : "BPM 미정" }}</span>
+              <span>{{ track.musicBpm ? `${track.musicBpm} BPM` : "BPM 미정" }}</span>
             </div>
           </div>
 
@@ -336,7 +336,7 @@ function summarizePlaylist(playlist, detail) {
   const representativeGenre = [...genreCounts.values()]
     .sort((left, right) => right.count - left.count)[0]?.label || null;
   const bpms = items
-    .map((item) => Number(item.music?.bpm))
+    .map((item) => Number(item.music?.musicBpm))
     .filter((bpm) => Number.isFinite(bpm) && bpm > 0);
   const bpmMin = bpms.length ? Math.min(...bpms) : null;
   const bpmMax = bpms.length ? Math.max(...bpms) : null;
@@ -445,7 +445,7 @@ function playlistIntensityRange(playlist) {
 }
 
 function compatiblePlaylists(track) {
-  const trackBpm = Number(track.bpm);
+  const trackBpm = Number(track.musicBpm);
   const hasTrackBpm = Number.isFinite(trackBpm) && trackBpm > 0;
   const trackGenre = normalizeGenre(track.genre);
 

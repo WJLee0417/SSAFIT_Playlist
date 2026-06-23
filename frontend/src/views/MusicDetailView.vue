@@ -32,11 +32,18 @@
           >
             Spotify에서 열기
           </a>
+          <RouterLink
+            class="secondary-button inline-button"
+            :to="{ name: 'music-edit', params: { musicId: data.music.id } }"
+          >
+            내부 메타데이터 수정
+          </RouterLink>
         </div>
       </div>
 
       <dl class="summary-list">
-        <div><dt>BPM</dt><dd>{{ data.music.bpm || "정보 없음" }}</dd></div>
+        <div><dt>음악 에너지</dt><dd>{{ energyLabel(data.music.musicEnergyLevel) }}</dd></div>
+        <div><dt>음악 BPM</dt><dd>{{ data.music.musicBpm || "정보 없음" }}</dd></div>
         <div>
           <dt>평균 선호도</dt>
           <dd>{{ formatAverage(data.reviewAverage?.averagePreferenceScore) }}</dd>
@@ -153,6 +160,15 @@ function formatAverage(value) {
   return value !== null && value !== undefined && Number.isFinite(Number(value))
     ? Number(value).toFixed(1)
     : "평가 없음";
+}
+
+function energyLabel(value) {
+  return {
+    CALM: "CALM · 낮은 에너지",
+    STEADY: "STEADY · 중간 에너지",
+    ENERGETIC: "ENERGETIC · 높은 에너지",
+    PEAK: "PEAK · 매우 높은 에너지",
+  }[value] || "미지정";
 }
 
 async function resolveViewer() {

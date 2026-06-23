@@ -110,6 +110,7 @@ public class PlaylistService {
         Playlist playlist = getExportTarget(loginMemberId, playlistId);
         if (status == null
                 || status == SpotifyExportStatus.SUCCESS
+                || status == SpotifyExportStatus.PARTIAL
                 || status == SpotifyExportStatus.FAILED) {
             throw new CustomException(ErrorCode.INVALID_REQUEST);
         }
@@ -175,6 +176,29 @@ public class PlaylistService {
         playlist.setSpotifyExportErrorCode(null);
         playlist.setSpotifyExportedAt(java.time.LocalDateTime.now());
         if (playlistMapper.updateSpotifyExportResult(playlist) != 1) {
+            throw new CustomException(ErrorCode.SPOTIFY_EXPORT_FAILED);
+        }
+        return playlist;
+    }
+
+    @Transactional
+    public Playlist saveSpotifyExportPartial(
+            Long loginMemberId,
+            Long playlistId,
+            String spotifyPlaylistId,
+            String spotifyPlaylistUrl,
+            ErrorCode errorCode) {
+        Playlist playlist = getExportTarget(loginMemberId, playlistId);
+        validateSpotifyPlaylistIdentity(spotifyPlaylistId, spotifyPlaylistUrl);
+        playlist.setSpotifyPlaylistId(spotifyPlaylistId.trim());
+        playlist.setSpotifyPlaylistUrl(spotifyPlaylistUrl.trim());
+        playlist.setSpotifyExportStatus(SpotifyExportStatus.PARTIAL);
+        playlist.setSpotifyExportErrorCode(
+                errorCode == null
+                        ? ErrorCode.SPOTIFY_PLAYLIST_ITEM_ADD_FAILED.name()
+                        : errorCode.name());
+        playlist.setSpotifyExportedAt(java.time.LocalDateTime.now());
+        if (playlistMapper.updateSpotifyExportPartial(playlist) != 1) {
             throw new CustomException(ErrorCode.SPOTIFY_EXPORT_FAILED);
         }
         return playlist;

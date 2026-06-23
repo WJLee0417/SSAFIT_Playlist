@@ -15,6 +15,14 @@ const SPOTIFY_ERROR_MESSAGES = {
   SPOTIFY_PLAYLIST_ITEM_ADD_FAILED: "Spotify 플레이리스트는 생성됐지만 곡 추가에 실패했습니다. 자동 재시도하지 말고 저장된 상태와 URL을 확인해 주세요.",
   SPOTIFY_ALREADY_EXPORTED: "이미 Spotify로 내보낸 플레이리스트입니다. 기존 Spotify 링크를 이용해 주세요.",
   SPOTIFY_EXPORT_FAILED: "이전 내보내기 정보가 남아 있거나 내보내기 상태가 불완전해 다시 실행할 수 없습니다.",
+  SPOTIFY_NOT_CONNECTED: "Spotify 계정이 연결되어 있지 않습니다.",
+  SPOTIFY_AUTHORIZATION_FAILED: "Spotify 인증이 취소되었거나 토큰 교환에 실패했습니다. 다시 연결해 주세요.",
+  SPOTIFY_AUTHORIZATION_CANCELLED: "Spotify 인증을 취소했습니다. 원할 때 다시 연결할 수 있습니다.",
+  SPOTIFY_STATE_MISMATCH: "Spotify OAuth 요청을 확인하지 못했습니다. 연결을 처음부터 다시 시도해 주세요.",
+  SPOTIFY_TOKEN_REFRESH_FAILED: "Spotify 연결을 갱신하지 못했습니다. 계정을 다시 연결해 주세요.",
+  SPOTIFY_FORBIDDEN: "Spotify 권한이 부족하거나 개발 모드 허용 계정이 아닙니다.",
+  SPOTIFY_RATE_LIMITED: "Spotify 요청 한도를 초과했습니다. 잠시 후 다시 시도해 주세요.",
+  SPOTIFY_API_FAILED: "Spotify API 호출에 실패했습니다. 잠시 후 다시 시도해 주세요.",
   DUPLICATE_PLAYLIST_ITEM: "이미 이 플레이리스트에 포함된 곡입니다.",
   DUPLICATE_PLAYLIST_ORDER: "이미 사용 중인 수록곡 순서입니다. 상세 화면에서 순서를 확인해 주세요.",
   PLAYLIST_NOT_FOUND: "플레이리스트를 찾을 수 없습니다.",
@@ -37,9 +45,14 @@ export function spotifyErrorState(error) {
 export function requiresSpotifyReconnect(error) {
   return [
     "SPOTIFY_AUTH_REQUIRED",
+    "SPOTIFY_NOT_CONNECTED",
     "SPOTIFY_AUTH_DENIED",
+    "SPOTIFY_AUTHORIZATION_FAILED",
+    "SPOTIFY_AUTHORIZATION_CANCELLED",
     "SPOTIFY_TOKEN_EXPIRED",
+    "SPOTIFY_TOKEN_REFRESH_FAILED",
     "SPOTIFY_OAUTH_STATE_MISMATCH",
+    "SPOTIFY_STATE_MISMATCH",
     "SPOTIFY_OAUTH_CALLBACK_ERROR",
   ].includes(error?.errorCode);
 }

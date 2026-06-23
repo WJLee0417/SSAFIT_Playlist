@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -18,6 +19,7 @@ import com.ssafy.ssafit.common.response.PageResponse;
 import com.ssafy.ssafit.music.domain.Music;
 import com.ssafy.ssafit.music.domain.MusicSearchCondition;
 import com.ssafy.ssafit.music.dto.MusicApiDtos.DetailResponse;
+import com.ssafy.ssafit.music.dto.MusicApiDtos.InternalSaveRequest;
 import com.ssafy.ssafit.music.dto.MusicApiDtos.MusicResponse;
 import com.ssafy.ssafit.music.dto.MusicApiDtos.SearchRequest;
 import com.ssafy.ssafit.music.dto.MusicApiDtos.SpotifyImportRequest;
@@ -83,5 +85,27 @@ public class MusicApiController {
         return ApiResponse.success(
                 "Spotify 음악을 저장했습니다.",
                 MusicResponse.from(music));
+    }
+
+    @PostMapping("/internal")
+    @ResponseStatus(HttpStatus.CREATED)
+    public ApiResponse<MusicResponse> createInternalMusic(
+            @Valid @RequestBody InternalSaveRequest request,
+            HttpSession session) {
+        sessionMemberResolver.requireMemberId(session);
+        Music music = musicService.createInternalMusic(request.toMusic());
+        return ApiResponse.success(MusicResponse.from(music));
+    }
+
+    @PutMapping("/internal/{musicId}")
+    public ApiResponse<MusicResponse> updateInternalMusic(
+            @PathVariable Long musicId,
+            @Valid @RequestBody InternalSaveRequest request,
+            HttpSession session) {
+        sessionMemberResolver.requireMemberId(session);
+        Music music = musicService.updateInternalMusic(
+                musicId,
+                request.toMusic());
+        return ApiResponse.success(MusicResponse.from(music));
     }
 }

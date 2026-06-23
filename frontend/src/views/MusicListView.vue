@@ -8,6 +8,10 @@
       <RouterLink class="secondary-button" to="/spotify/search">Spotify 검색</RouterLink>
     </div>
 
+    <div class="form-actions">
+      <RouterLink class="secondary-button" to="/music-manage/new">내부 음악 등록</RouterLink>
+    </div>
+
     <MusicSearchBar
       :model="filters"
       :validation-message="validationMessage"

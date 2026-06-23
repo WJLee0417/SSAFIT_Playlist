@@ -3,6 +3,7 @@ package com.ssafy.ssafit.music.service;
 import java.util.List;
 import java.util.Optional;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -15,12 +16,12 @@ import com.ssafy.ssafit.music.domain.MusicSortType;
 import com.ssafy.ssafit.music.domain.MusicSourceType;
 import com.ssafy.ssafit.music.domain.SpotifyTrackMetadata;
 import com.ssafy.ssafit.music.mapper.MusicMapper;
+import com.ssafy.ssafit.music.tempo.MusicTempoEnrichmentProperties;
+import com.ssafy.ssafit.music.tempo.MusicTempoProvider;
+import com.ssafy.ssafit.music.tempo.NoOpMusicTempoProvider;
 import com.ssafy.ssafit.runningprofile.domain.RunningIntensity;
 
-import lombok.RequiredArgsConstructor;
-
 @Service
-@RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class MusicService {
 
@@ -31,6 +32,25 @@ public class MusicService {
     private static final int MAX_SIZE = 100;
 
     private final MusicMapper musicMapper;
+    private final MusicTempoProvider musicTempoProvider;
+    private final MusicTempoEnrichmentProperties tempoEnrichmentProperties;
+
+    @Autowired
+    public MusicService(
+            MusicMapper musicMapper,
+            MusicTempoProvider musicTempoProvider,
+            MusicTempoEnrichmentProperties tempoEnrichmentProperties) {
+        this.musicMapper = musicMapper;
+        this.musicTempoProvider = musicTempoProvider;
+        this.tempoEnrichmentProperties = tempoEnrichmentProperties;
+    }
+
+    public MusicService(MusicMapper musicMapper) {
+        this(
+                musicMapper,
+                new NoOpMusicTempoProvider(),
+                new MusicTempoEnrichmentProperties());
+    }
 
     public List<Music> getMusicList(MusicSearchCondition condition) {
         return musicMapper.selectMusicList(normalizeCondition(condition));
@@ -54,13 +74,37 @@ public class MusicService {
     }
 
     @Transactional
+    public Music createInternalMusic(Music music) {
+        normalizeInternalMusic(music);
+        if (musicMapper.insertInternal(music) != 1) {
+            throw new CustomException(ErrorCode.INTERNAL_SERVER_ERROR);
+        }
+        return music;
+    }
+
+    @Transactional
+    public Music updateInternalMusic(Long musicId, Music request) {
+        Music existing = getMusicDetail(musicId);
+        request.setId(existing.getId());
+        request.setSourceType(existing.getSourceType());
+        normalizeInternalMusic(request);
+        if (musicMapper.updateInternal(request) != 1) {
+            throw new CustomException(ErrorCode.MUSIC_NOT_FOUND);
+        }
+        return musicMapper.selectMusicDetail(musicId)
+                .orElseThrow(() -> new CustomException(ErrorCode.MUSIC_NOT_FOUND));
+    }
+
+    @Transactional
     public Music saveSelectedSpotifyTrack(SpotifyTrackMetadata metadata) {
         validateSpotifyMetadata(metadata);
-        validateBpm(metadata.getBpm());
+        validateMusicBpm(metadata.getMusicBpm());
 
         String spotifyTrackId = metadata.getSpotifyTrackId().trim();
-        Optional<Music> existing = musicMapper.selectBySpotifyTrackId(
-                spotifyTrackId);
+        String spotifyUri = metadata.getSpotifyUri().trim();
+        Optional<Music> existing = findExistingSpotifyMusic(
+                spotifyTrackId,
+                spotifyUri);
         if (existing.isPresent()) {
             return enrichExistingMusic(existing.get(), metadata);
         }
@@ -72,7 +116,7 @@ public class MusicService {
             }
             return music;
         } catch (DuplicateKeyException exception) {
-            return musicMapper.selectBySpotifyTrackId(spotifyTrackId)
+            return findExistingSpotifyMusic(spotifyTrackId, spotifyUri)
                     .map(value -> enrichExistingMusic(value, metadata))
                     .orElseThrow(() -> exception);
         }
@@ -143,6 +187,13 @@ public class MusicService {
         }
     }
 
+    private void validateMusicBpm(Integer musicBpm) {
+        if (musicBpm != null
+                && (musicBpm < MIN_BPM || musicBpm > MAX_BPM)) {
+            throw new CustomException(ErrorCode.INVALID_MUSIC_BPM_VALUE);
+        }
+    }
+
     private void validateBpmRange(Integer minBpm, Integer maxBpm) {
         validateBpm(minBpm);
         validateBpm(maxBpm);
@@ -159,6 +210,29 @@ public class MusicService {
                 || isBlank(metadata.getArtist())) {
             throw new CustomException(ErrorCode.SPOTIFY_TRACK_NOT_FOUND);
         }
+        if (metadata.getDurationMs() != null && metadata.getDurationMs() < 1) {
+            throw new CustomException(ErrorCode.INVALID_REQUEST);
+        }
+    }
+
+    private void normalizeInternalMusic(Music music) {
+        if (music == null
+                || isBlank(music.getTitle())
+                || isBlank(music.getArtist())) {
+            throw new CustomException(ErrorCode.INVALID_REQUEST);
+        }
+        validateMusicBpm(music.getMusicBpm());
+        if (music.getDurationMs() != null && music.getDurationMs() < 1) {
+            throw new CustomException(ErrorCode.INVALID_REQUEST);
+        }
+        music.setTitle(music.getTitle().trim());
+        music.setArtist(music.getArtist().trim());
+        music.setAlbumName(trimToNull(music.getAlbumName()));
+        music.setImageUrl(trimToNull(music.getImageUrl()));
+        music.setGenre(trimToNull(music.getGenre()));
+        if (music.getSourceType() == null) {
+            music.setSourceType(MusicSourceType.ADMIN);
+        }
     }
 
     private Music toSpotifyMusic(SpotifyTrackMetadata metadata) {
@@ -168,7 +242,11 @@ public class MusicService {
         music.setAlbumName(trimToNull(metadata.getAlbumName()));
         music.setImageUrl(trimToNull(metadata.getImageUrl()));
         music.setGenre(trimToNull(metadata.getGenre()));
-        music.setBpm(metadata.getBpm());
+        music.setDurationMs(metadata.getDurationMs());
+        music.setMusicEnergyLevel(null);
+        music.setMusicBpm(resolveMusicBpm(
+                metadata.getMusicBpm(),
+                metadata.getSpotifyTrackId()));
         music.setSourceType(MusicSourceType.SPOTIFY);
         music.setSpotifyTrackId(metadata.getSpotifyTrackId().trim());
         music.setSpotifyUri(metadata.getSpotifyUri().trim());
@@ -177,6 +255,7 @@ public class MusicService {
     }
 
     private Music enrichExistingMusic(Music music, SpotifyTrackMetadata metadata) {
+        validateSpotifyIdentity(music, metadata);
         boolean changed = false;
         changed |= fillIfBlank(music.getTitle(), metadata.getTitle(), music::setTitle);
         changed |= fillIfBlank(music.getArtist(), metadata.getArtist(), music::setArtist);
@@ -187,6 +266,10 @@ public class MusicService {
         changed |= fillIfBlank(music.getImageUrl(), metadata.getImageUrl(), music::setImageUrl);
         changed |= fillIfBlank(music.getGenre(), metadata.getGenre(), music::setGenre);
         changed |= fillIfBlank(
+                music.getSpotifyTrackId(),
+                metadata.getSpotifyTrackId(),
+                music::setSpotifyTrackId);
+        changed |= fillIfBlank(
                 music.getSpotifyUri(),
                 metadata.getSpotifyUri(),
                 music::setSpotifyUri);
@@ -195,9 +278,18 @@ public class MusicService {
                 metadata.getSpotifyExternalUrl(),
                 music::setSpotifyExternalUrl);
 
-        if (music.getBpm() == null && metadata.getBpm() != null) {
-            music.setBpm(metadata.getBpm());
+        if (music.getDurationMs() == null && metadata.getDurationMs() != null) {
+            music.setDurationMs(metadata.getDurationMs());
             changed = true;
+        }
+        if (music.getMusicBpm() == null) {
+            Integer resolvedMusicBpm = resolveMusicBpm(
+                    metadata.getMusicBpm(),
+                    metadata.getSpotifyTrackId());
+            if (resolvedMusicBpm != null) {
+                music.setMusicBpm(resolvedMusicBpm);
+                changed = true;
+            }
         }
 
         if (changed) {
@@ -206,6 +298,52 @@ public class MusicService {
             }
         }
         return music;
+    }
+
+    private Optional<Music> findExistingSpotifyMusic(
+            String spotifyTrackId,
+            String spotifyUri) {
+        Optional<Music> byTrackId =
+                musicMapper.selectBySpotifyTrackId(spotifyTrackId);
+        Optional<Music> byUri = musicMapper.selectBySpotifyUri(spotifyUri);
+        if (byTrackId.isPresent()
+                && byUri.isPresent()
+                && !byTrackId.get().getId().equals(byUri.get().getId())) {
+            throw new CustomException(ErrorCode.SPOTIFY_TRACK_IDENTITY_CONFLICT);
+        }
+        return byTrackId.isPresent() ? byTrackId : byUri;
+    }
+
+    private void validateSpotifyIdentity(
+            Music music,
+            SpotifyTrackMetadata metadata) {
+        if ((!isBlank(music.getSpotifyTrackId())
+                && !music.getSpotifyTrackId().equals(
+                        metadata.getSpotifyTrackId().trim()))
+                || (!isBlank(music.getSpotifyUri())
+                && !music.getSpotifyUri().equals(metadata.getSpotifyUri().trim()))) {
+            throw new CustomException(ErrorCode.SPOTIFY_TRACK_IDENTITY_CONFLICT);
+        }
+    }
+
+    private Integer resolveMusicBpm(
+            Integer operatorProvidedMusicBpm,
+            String spotifyTrackId) {
+        if (operatorProvidedMusicBpm != null) {
+            return operatorProvidedMusicBpm;
+        }
+        if (!tempoEnrichmentProperties.isEnabled()) {
+            return null;
+        }
+        try {
+            Integer resolved = musicTempoProvider
+                    .resolveMusicBpm(spotifyTrackId)
+                    .orElse(null);
+            validateMusicBpm(resolved);
+            return resolved;
+        } catch (RuntimeException exception) {
+            return null;
+        }
     }
 
     private boolean fillIfBlank(
