@@ -13,9 +13,8 @@
 <%@ include file="/WEB-INF/views/common/nav.jspf" %>
 <main class="page-shell profile-shell">
     <section class="page-heading">
-        <span class="eyebrow">RUNNING PROFILE</span>
-        <h1>나의 러닝 기준</h1>
-        <p>기본 프로필과 최근 러닝 기록을 바탕으로 운동 목표 추천에 사용할 기준값을 계산합니다.</p>
+        <h1>나의 프로필</h1>
+        <p>최근 러닝 기록을 바탕으로 운동 목표를 추천합니다</p>
     </section>
 
     <section class="card profile-card">
@@ -25,7 +24,7 @@
 
         <section class="profile-score-panel" aria-label="Running Fitness Score">
             <div>
-                <span class="eyebrow">RUNNING FITNESS SCORE</span>
+                <span class="eyebrow">FITNESS SCORE</span>
                 <h2>
                     <c:choose>
                         <c:when test="${runningFitnessScore ne null}">
@@ -34,23 +33,23 @@
                         <c:otherwise>--<small>/100</small></c:otherwise>
                     </c:choose>
                 </h2>
-                <p>최근 러닝의 거리, 심박 효율, 케이던스 안정성, 기록 변동성을 100점 만점으로 환산합니다.</p>
+                <p>*최근 러닝의 거리, 심박 효율, 케이던스 안정성, 기록 변동성을 100점 만점으로 환산</p>
             </div>
             <dl class="profile-score-breakdown">
                 <div>
-                    <dt>거리 점수</dt>
+                    <dt>평균 거리</dt>
                     <dd><c:out value="${averageDistanceScore == null ? '-' : averageDistanceScore}"/></dd>
                 </div>
                 <div>
-                    <dt>심박 효율 점수</dt>
+                    <dt>심박 효율</dt>
                     <dd><c:out value="${paceEfficiencyScore == null ? '-' : paceEfficiencyScore}"/></dd>
                 </div>
                 <div>
-                    <dt>케이던스 안정성 점수</dt>
+                    <dt>케이던스 안정성</dt>
                     <dd><c:out value="${cadenceStabilityScore == null ? '-' : cadenceStabilityScore}"/></dd>
                 </div>
                 <div>
-                    <dt>기록 변동성 점수</dt>
+                    <dt>기록 변동성</dt>
                     <dd><c:out value="${variationScore == null ? '-' : variationScore}"/></dd>
                 </div>
             </dl>
@@ -75,21 +74,33 @@
                     <form:errors path="gender" cssClass="field-error"/>
                 </div>
                 <div>
-                    <label for="age">나이</label>
+                    <label for="age">나이 (만)</label>
                     <form:input path="age" id="age" type="number"
                                 min="10" max="100" placeholder="예: 32"/>
                     <form:errors path="age" cssClass="field-error"/>
                 </div>
             </div>
             <small class="muted">
-                나이를 저장하면 추정 최대 심박수는 220 - 나이로 자동 계산합니다.
+                추정 최대 심박수는 = 220 - 나이.
                 <c:if test="${profileForm.age ne null}">
                     현재 입력 기준 <strong><c:out value="${220 - profileForm.age}"/> BPM</strong>
                 </c:if>
             </small>
 
             <section class="auto-target-summary" aria-label="자동 산출 기준값">
-                <span class="eyebrow">AUTO TARGET RANGE</span>
+                <span class="eyebrow">SUMMARY</span>
+                <div class="summary-highlight-grid">
+                    <div class="summary-highlight">
+                        <span>누적 거리</span>
+                        <strong><c:out value="${totalDistanceKmText}"/></strong>
+                        <small>km</small>
+                    </div>
+                    <div class="summary-highlight">
+                        <span>평균 페이스</span>
+                        <strong><c:out value="${averagePaceText}"/></strong>
+                        <small>/km</small>
+                    </div>
+                </div>
                 <dl>
                     <div>
                         <dt>최근 심박 범위</dt>

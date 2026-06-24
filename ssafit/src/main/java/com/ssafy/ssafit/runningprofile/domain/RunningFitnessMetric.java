@@ -3,6 +3,8 @@ package com.ssafy.ssafit.runningprofile.domain;
 public record RunningFitnessMetric(
         Integer score,
         int recordCount,
+        Double totalDistanceKm,
+        Integer averagePaceSecondsPerKm,
         Double averageRecentDistanceKm,
         Double heartRateCost,
         Double cadenceStandardDeviation,
@@ -17,6 +19,8 @@ public record RunningFitnessMetric(
         return new RunningFitnessMetric(
                 null,
                 0,
+                null,
+                null,
                 null,
                 null,
                 null,

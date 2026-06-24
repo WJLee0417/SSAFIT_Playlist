@@ -36,6 +36,7 @@
           :key="music.id"
           :music="music"
           :return-to="route.fullPath"
+          :current-member-id="currentMember?.id"
         />
       </section>
       <nav v-if="pageData.totalPages > 1" class="pagination" aria-label="음악 목록 페이지">
@@ -62,8 +63,9 @@
 </template>
 
 <script setup>
-import { reactive, ref, watch } from "vue";
+import { onMounted, reactive, ref, watch } from "vue";
 import { RouterLink, useRoute, useRouter } from "vue-router";
+import { authApi } from "../api/authApi";
 import { musicApi } from "../api/musicApi";
 import AppLayout from "../components/AppLayout.vue";
 import MusicCard from "../components/MusicCard.vue";
@@ -84,6 +86,7 @@ const filters = reactive({ ...DEFAULT_MUSIC_QUERY });
 const pageData = ref(normalizeMusicPage(null, DEFAULT_MUSIC_QUERY));
 const status = ref("idle");
 const error = ref(null);
+const currentMember = ref(null);
 const validationMessage = ref("");
 let requestSequence = 0;
 
@@ -112,6 +115,14 @@ async function loadFromRoute() {
     if (sequence !== requestSequence) return;
     error.value = caught;
     status.value = "error";
+  }
+}
+
+async function resolveViewer() {
+  try {
+    currentMember.value = await authApi.getSession();
+  } catch {
+    currentMember.value = null;
   }
 }
 
@@ -152,4 +163,5 @@ function movePage(page) {
 }
 
 watch(() => route.query, loadFromRoute, { immediate: true, deep: true });
+onMounted(resolveViewer);
 </script>

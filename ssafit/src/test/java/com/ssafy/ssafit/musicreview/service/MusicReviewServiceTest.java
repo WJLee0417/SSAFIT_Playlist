@@ -23,6 +23,7 @@ import com.ssafy.ssafit.music.mapper.MusicMapper;
 import com.ssafy.ssafit.musicreview.domain.MusicReview;
 import com.ssafy.ssafit.musicreview.domain.MusicReviewAverage;
 import com.ssafy.ssafit.musicreview.mapper.MusicReviewMapper;
+import com.ssafy.ssafit.playlist.service.FavoritePlaylistService;
 
 @ExtendWith(MockitoExtension.class)
 class MusicReviewServiceTest {
@@ -33,11 +34,17 @@ class MusicReviewServiceTest {
     @Mock
     private MusicMapper musicMapper;
 
+    @Mock
+    private FavoritePlaylistService favoritePlaylistService;
+
     private MusicReviewService musicReviewService;
 
     @BeforeEach
     void setUp() {
-        musicReviewService = new MusicReviewService(musicReviewMapper, musicMapper);
+        musicReviewService = new MusicReviewService(
+                musicReviewMapper,
+                musicMapper,
+                favoritePlaylistService);
     }
 
     @Test
@@ -55,6 +62,7 @@ class MusicReviewServiceTest {
         assertThat(created.getId()).isEqualTo(100L);
         assertThat(created.getMemberId()).isEqualTo(10L);
         verify(musicReviewMapper).insert(review);
+        verify(favoritePlaylistService).syncLikedMusic(10L, 1L, true);
     }
 
     @Test
@@ -116,6 +124,7 @@ class MusicReviewServiceTest {
         assertThat(updated.getCreatedAt()).isEqualTo(createdAt);
         assertThat(updated.getPreferenceScore()).isEqualTo(5);
         verify(musicReviewMapper).update(changed);
+        verify(favoritePlaylistService).syncLikedMusic(10L, 1L, true);
     }
 
     @Test
@@ -142,6 +151,7 @@ class MusicReviewServiceTest {
         musicReviewService.delete(10L, 100L);
 
         verify(musicReviewMapper).delete(100L);
+        verify(favoritePlaylistService).syncLikedMusic(10L, 1L, false);
     }
 
     @Test

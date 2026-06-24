@@ -1,5 +1,7 @@
 package com.ssafy.ssafit.member.controller.view;
 
+import java.util.Locale;
+
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
@@ -117,9 +119,25 @@ public class RunningProfileViewController {
         model.addAttribute("runningFitnessMetric", resolved);
         model.addAttribute("runningFitnessScore", resolved.score());
         model.addAttribute("runningFitnessRecordCount", resolved.recordCount());
+        model.addAttribute("totalDistanceKmText", formatDistance(resolved.totalDistanceKm()));
+        model.addAttribute("averagePaceText", formatPace(resolved.averagePaceSecondsPerKm()));
         model.addAttribute("averageDistanceScore", resolved.averageDistanceScore());
         model.addAttribute("paceEfficiencyScore", resolved.paceEfficiencyScore());
         model.addAttribute("cadenceStabilityScore", resolved.cadenceStabilityScore());
         model.addAttribute("variationScore", resolved.variationScore());
+    }
+
+    private String formatDistance(Double distanceKm) {
+        if (distanceKm == null) {
+            return "-";
+        }
+        return String.format(Locale.US, "%.1f", distanceKm);
+    }
+
+    private String formatPace(Integer secondsPerKm) {
+        if (secondsPerKm == null || secondsPerKm <= 0) {
+            return "-";
+        }
+        return "%d'%02d\"".formatted(secondsPerKm / 60, secondsPerKm % 60);
     }
 }

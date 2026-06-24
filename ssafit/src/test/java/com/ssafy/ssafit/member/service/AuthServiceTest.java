@@ -20,6 +20,7 @@ import com.ssafy.ssafit.common.exception.ErrorCode;
 import com.ssafy.ssafit.member.domain.Member;
 import com.ssafy.ssafit.member.domain.MemberStatus;
 import com.ssafy.ssafit.member.mapper.MemberMapper;
+import com.ssafy.ssafit.playlist.service.FavoritePlaylistService;
 
 import jakarta.servlet.http.HttpSession;
 
@@ -33,13 +34,19 @@ class AuthServiceTest {
     private PasswordHashService passwordHashService;
 
     @Mock
+    private FavoritePlaylistService favoritePlaylistService;
+
+    @Mock
     private HttpSession session;
 
     private AuthService authService;
 
     @BeforeEach
     void setUp() {
-        authService = new AuthService(memberMapper, passwordHashService);
+        authService = new AuthService(
+                memberMapper,
+                passwordHashService,
+                favoritePlaylistService);
     }
 
     @Test
@@ -84,6 +91,7 @@ class AuthServiceTest {
 
         assertThat(loggedIn).isSameAs(member);
         verify(session).setAttribute(SessionConst.LOGIN_MEMBER_ID, 1L);
+        verify(favoritePlaylistService).ensureForMember(1L);
     }
 
     @Test

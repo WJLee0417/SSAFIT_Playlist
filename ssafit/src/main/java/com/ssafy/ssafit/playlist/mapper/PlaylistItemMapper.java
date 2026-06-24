@@ -16,6 +16,10 @@ public interface PlaylistItemMapper {
 
     int delete(@Param("id") Long id);
 
+    int deleteByPlaylistAndMusic(
+            @Param("playlistId") Long playlistId,
+            @Param("musicId") Long musicId);
+
     int updateOrder(
             @Param("id") Long id,
             @Param("orderNo") Integer orderNo);
@@ -52,4 +56,6 @@ public interface PlaylistItemMapper {
     int countByPlaylistId(@Param("playlistId") Long playlistId);
 
     int countSpotifyUrisByPlaylistId(@Param("playlistId") Long playlistId);
+
+    int selectNextOrderNo(@Param("playlistId") Long playlistId);
 }

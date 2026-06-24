@@ -393,12 +393,22 @@ legend {
 .stack-form input:focus,
 .stack-form select:focus {
     border-color: var(--color-brand);
-    background: rgba(7, 11, 9, .72);
+    background-color: rgba(7, 11, 9, .72);
     box-shadow: 0 0 0 4px rgba(104, 166, 145, .11);
 }
 
 .stack-form select {
+    appearance: none;
+    padding-right: 2.75rem;
     color-scheme: dark;
+    background-image:
+        linear-gradient(45deg, transparent 50%, var(--color-brand-bright) 50%),
+        linear-gradient(135deg, var(--color-brand-bright) 50%, transparent 50%);
+    background-position:
+        calc(100% - 1.35rem) 50%,
+        calc(100% - 1rem) 50%;
+    background-repeat: no-repeat;
+    background-size: .36rem .36rem, .36rem .36rem;
 }
 
 .stack-form select option {
@@ -736,6 +746,27 @@ legend {
 .mypage-profile-list div {
     grid-template-columns: 6.5rem minmax(0, 1fr);
     padding: .8rem 0;
+}
+
+.mypage-clickable-tile {
+    position: relative;
+    transition:
+        transform 200ms ease,
+        border-color 200ms ease,
+        background-color 200ms ease,
+        box-shadow 200ms ease;
+}
+
+.mypage-clickable-tile .mypage-tile-arrow {
+    margin-top: auto;
+}
+
+.mypage-clickable-tile:hover,
+.mypage-clickable-tile:focus-visible {
+    border-color: var(--color-border-strong);
+    background: var(--color-surface-strong);
+    box-shadow: var(--shadow-card);
+    transform: translateY(-5px);
 }
 
 .mypage-link-tile {
@@ -1138,7 +1169,44 @@ legend {
     margin: 0;
 }
 
-.auto-target-summary div {
+.summary-highlight-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: .75rem;
+}
+
+.summary-highlight {
+    display: grid;
+    gap: .28rem;
+    border: 1px solid rgba(139, 200, 179, .28);
+    border-radius: .75rem;
+    padding: 1rem;
+    background:
+        linear-gradient(145deg, rgba(104, 166, 145, .16), rgba(104, 166, 145, .055)),
+        rgba(7, 11, 9, .34);
+}
+
+.summary-highlight span {
+    color: var(--color-text-faint);
+    font-size: .78rem;
+    font-weight: 750;
+}
+
+.summary-highlight strong {
+    color: var(--color-brand-bright);
+    font-size: clamp(2rem, 4vw, 2.75rem);
+    font-weight: 900;
+    line-height: 1;
+    text-shadow: 0 0 24px rgba(139, 200, 179, .18);
+}
+
+.summary-highlight small {
+    color: var(--color-text-soft);
+    font-size: .8rem;
+    font-weight: 750;
+}
+
+.auto-target-summary dl > div {
     display: flex;
     align-items: baseline;
     justify-content: space-between;
@@ -1398,6 +1466,10 @@ legend {
     }
 
     .mypage-profile-list div {
+        grid-template-columns: 1fr;
+    }
+
+    .summary-highlight-grid {
         grid-template-columns: 1fr;
     }
 

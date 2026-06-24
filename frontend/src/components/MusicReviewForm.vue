@@ -2,13 +2,6 @@
   <form class="review-form" @submit.prevent="submit">
     <div class="review-score-grid">
       <label>
-        음악 선호도
-        <select v-model.number="form.preferenceScore" required>
-          <option disabled value="">점수 선택</option>
-          <option v-for="score in scores" :key="score" :value="score">{{ score }}</option>
-        </select>
-      </label>
-      <label>
         러닝 적합도
         <select v-model.number="form.runningFitScore" required>
           <option disabled value="">점수 선택</option>
@@ -61,7 +54,6 @@ const emit = defineEmits(["submit", "cancel"]);
 const scores = [1, 2, 3, 4, 5];
 const validationMessage = ref("");
 const form = reactive({
-  preferenceScore: "",
   runningFitScore: "",
   reviewContent: "",
 });
@@ -69,8 +61,7 @@ const form = reactive({
 watch(
   () => props.review,
   (review) => {
-    form.preferenceScore = review?.preferenceScore ?? "";
-    form.runningFitScore = review?.runningFitScore ?? "";
+    form.runningFitScore = review?.runningFitScore ?? review?.preferenceScore ?? "";
     form.reviewContent = review?.reviewContent ?? "";
     validationMessage.value = "";
   },
@@ -85,15 +76,11 @@ function validIntegerScore(value) {
 
 function submit() {
   validationMessage.value = "";
-  if (
-    !validIntegerScore(form.preferenceScore)
-    || !validIntegerScore(form.runningFitScore)
-  ) {
-    validationMessage.value = "두 점수 모두 1부터 5 사이의 정수로 선택해 주세요.";
+  if (!validIntegerScore(form.runningFitScore)) {
+    validationMessage.value = "러닝 적합도 점수를 1부터 5 사이의 정수로 선택해 주세요.";
     return;
   }
   emit("submit", {
-    preferenceScore: form.preferenceScore,
     runningFitScore: form.runningFitScore,
     reviewContent: form.reviewContent.trim() || null,
   });

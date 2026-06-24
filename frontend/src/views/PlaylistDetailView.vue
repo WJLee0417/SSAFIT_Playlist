@@ -14,7 +14,6 @@
         <div>
           <p class="playlist-detail-meta-line">
             {{ playlistCategoryLabel }} | {{ playlist.visibility || "PRIVATE" }}
-            <span v-if="isSavedByViewer"> | 저장됨</span>
           </p>
           <h1>{{ playlist.title }}</h1>
         </div>
@@ -36,9 +35,15 @@
       <SaveStatus :type="actionType" :message="actionMessage" />
 
       <section v-if="showReferenceSavePanel" class="save-reference-panel save-reference-panel-compact">
-        <p>이 플레이리스트를 저장할까요?</p>
-        <button type="button" class="primary-button" :disabled="actionBusy" @click="toggleSave">
-          내 목록에 저장
+        <button
+          type="button"
+          class="primary-button save-toggle-button"
+          :class="{ active: playlist.saved }"
+          :disabled="actionBusy"
+          :aria-pressed="String(Boolean(playlist.saved))"
+          @click="toggleSave"
+        >
+          {{ playlist.saved ? "내 목록에서 제거" : "내 목록에 저장" }}
         </button>
       </section>
 
@@ -92,6 +97,7 @@
       <PlaylistItemList
         :items="items"
         :editable="canManage"
+        :reviewable="canReviewItems"
         :busy="actionBusy"
         :current-member-id="currentMember?.id"
         @reorder="reorderItems"
@@ -176,7 +182,6 @@ const isOwner = computed(() => (
   && String(currentMember.value.id) === String(playlist.value.ownerId)
 ));
 const canManage = computed(() => isOwner.value && !isOfficial.value);
-const isSavedByViewer = computed(() => Boolean(playlist.value.saved) || isOwner.value);
 const canAttemptSave = computed(() => (
   viewerStatus.value === "authenticated"
   && !isOwner.value
@@ -188,8 +193,8 @@ const canAttemptSave = computed(() => (
 const showReferenceSavePanel = computed(() => (
   saveStateKnown.value
   && canAttemptSave.value
-  && !playlist.value.saved
 ));
+const canReviewItems = computed(() => viewerStatus.value === "authenticated");
 const playlistCategoryLabel = computed(() => (
   isOfficial.value ? "공식 플레이리스트" : "사용자 플레이리스트"
 ));
@@ -332,10 +337,15 @@ async function runAction(action, successMessage, callbacks) {
 }
 
 function toggleSave() {
-  if (!canAttemptSave.value || playlist.value.saved) return;
+  if (!canAttemptSave.value) return;
+  const saved = Boolean(playlist.value.saved);
   runAction(
-    () => playlistSaveApi.save(props.playlistId),
-    "내 목록에 저장했습니다.",
+    () => (saved
+      ? playlistSaveApi.cancel(props.playlistId)
+      : playlistSaveApi.save(props.playlistId)),
+    saved
+      ? "내 목록에서 제거했습니다."
+      : "내 목록에 저장했습니다.",
   );
 }
 

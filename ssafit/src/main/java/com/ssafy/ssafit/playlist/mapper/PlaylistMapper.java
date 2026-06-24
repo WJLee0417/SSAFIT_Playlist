@@ -22,6 +22,8 @@ public interface PlaylistMapper {
 
     List<Playlist> selectByIds(@Param("ids") List<Long> ids);
 
+    Optional<Playlist> selectFavoriteByOwner(@Param("ownerId") Long ownerId);
+
     int update(Playlist playlist);
 
     int softDelete(@Param("id") Long id);

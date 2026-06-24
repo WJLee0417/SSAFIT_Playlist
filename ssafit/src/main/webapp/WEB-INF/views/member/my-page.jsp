@@ -95,15 +95,14 @@
 
     <section class="page-shell dashboard-shell mypage-dashboard" id="mypageDashboard">
         <section class="mypage-tile-grid" aria-label="나의 러닝 정보">
-            <article class="card mypage-tile mypage-profile-tile">
+            <a class="card mypage-tile mypage-profile-tile mypage-clickable-tile"
+               href="<c:url value='/members/me/running-profile'/>"
+               aria-labelledby="runningProfileTileTitle">
                 <div class="section-heading row-heading">
                     <div>
                         <span class="eyebrow">MY PROFILE</span>
-                        <h2>러닝 프로필</h2>
+                        <h2 id="runningProfileTileTitle">러닝 프로필</h2>
                     </div>
-                    <a class="text-link" href="<c:url value='/members/me/running-profile'/>">
-                        ${empty runningProfile ? '등록하기' : '수정하기'}
-                    </a>
                 </div>
                 <dl class="info-list mypage-profile-list">
                     <div><dt>ID</dt><dd><c:out value="${member.loginId}"/></dd></div>
@@ -113,7 +112,7 @@
                     <c:when test="${empty runningProfile}">
                         <div class="empty-state">
                             <strong>아직 러닝 프로필이 없습니다.</strong>
-                            <p>기본 프로필을 저장하고 러닝 기록을 등록하면 맞춤 기준값이 자동 계산됩니다.</p>
+                            <p>기본 프로필을 저장하고 러닝 기록을 등록시 스코어가 계산됩니다.</p>
                         </div>
                     </c:when>
                     <c:otherwise>
@@ -125,7 +124,7 @@
                                         <c:when test="${not empty runningProfile.targetBpmMin and not empty runningProfile.targetBpmMax}">
                                             <c:out value="${runningProfile.targetBpmMin}"/> - <c:out value="${runningProfile.targetBpmMax}"/> BPM
                                         </c:when>
-                                        <c:otherwise>기록 등록 후 자동 산출</c:otherwise>
+                                        <c:otherwise>기록을 등록해 주세요</c:otherwise>
                                     </c:choose>
                                 </dd>
                             </div>
@@ -136,7 +135,7 @@
                                         <c:when test="${not empty runningProfile.targetCadenceMin and not empty runningProfile.targetCadenceMax}">
                                             <c:out value="${runningProfile.targetCadenceMin}"/> - <c:out value="${runningProfile.targetCadenceMax}"/> SPM
                                         </c:when>
-                                        <c:otherwise>기록 등록 후 자동 산출</c:otherwise>
+                                        <c:otherwise>기록을 등록해 주세요</c:otherwise>
                                     </c:choose>
                                 </dd>
                             </div>
@@ -144,7 +143,8 @@
                         </dl>
                     </c:otherwise>
                 </c:choose>
-            </article>
+                <span class="mypage-tile-arrow" aria-hidden="true">↗</span>
+            </a>
 
             <a class="card mypage-tile mypage-link-tile"
                href="${frontendOrigin}/running-records">

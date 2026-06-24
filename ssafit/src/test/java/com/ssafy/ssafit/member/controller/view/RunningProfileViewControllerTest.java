@@ -84,6 +84,8 @@ class RunningProfileViewControllerTest {
                 .thenReturn(new RunningFitnessMetric(
                         72,
                         4,
+                        20.0,
+                        300,
                         5.0,
                         2.5,
                         4.0,

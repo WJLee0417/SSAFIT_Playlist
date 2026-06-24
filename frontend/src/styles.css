@@ -726,8 +726,11 @@ select option {
 }
 
 .content-card {
+  display: block;
   border-radius: var(--radius-xl);
   padding: 1.4rem;
+  color: inherit;
+  text-decoration: none;
   transition:
     transform 220ms ease,
     border-color 220ms ease,
@@ -743,8 +746,21 @@ select option {
 }
 
 .music-card {
+  position: relative;
   padding: 0;
   overflow: hidden;
+  cursor: pointer;
+}
+
+.music-card .music-card-like-button {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  z-index: 1;
+  background: rgba(7, 11, 9, 0.68);
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.18);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
 }
 
 .music-card > img {
@@ -760,11 +776,13 @@ select option {
   padding: 1.25rem;
 }
 
+.music-card-body h2,
 .music-card-body h2 a,
 .playlist-card h2 a {
   transition: color 160ms ease;
 }
 
+.music-card:hover .music-card-body h2,
 .music-card-body h2 a:hover,
 .playlist-card h2 a:hover {
   color: var(--color-brand-bright);
@@ -843,6 +861,19 @@ select option {
   gap: 0.12rem;
 }
 
+.music-detail .summary-list {
+  gap: 1.15rem 1.65rem;
+}
+
+.music-detail .summary-list div {
+  min-width: 136px;
+  padding: 0.2rem 0;
+}
+
+.music-detail .summary-list dd {
+  font-size: 1.06rem;
+}
+
 dt {
   color: var(--color-text-faint);
   font-size: 0.75rem;
@@ -889,6 +920,19 @@ dd {
   border-radius: var(--radius-lg);
   object-fit: cover;
   box-shadow: var(--shadow-card);
+}
+
+.music-detail-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.music-detail .music-detail-like-button {
+  border: 1px solid var(--color-border);
+  background: rgba(255, 255, 255, 0.045);
 }
 
 .inline-button {
@@ -1018,7 +1062,7 @@ dd {
 
 .review-score-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(min(100%, 180px), 260px);
   gap: 1rem;
 }
 
@@ -1033,12 +1077,54 @@ dd {
 }
 
 .review-card-heading,
+.review-list-heading,
 .running-record-card-heading,
 .running-session-card-heading {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 1rem;
+}
+
+.music-review-list {
+  max-height: 460px;
+  overflow-y: auto;
+  gap: 0;
+  padding-right: 0.35rem;
+}
+
+.review-list-item {
+  display: grid;
+  gap: 0.65rem;
+  padding: 1.15rem 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.review-list-item:first-child {
+  border-top: 1px solid var(--color-border);
+}
+
+.review-list-heading small {
+  display: block;
+  margin-top: 0.3rem;
+  color: var(--color-brand-bright);
+  font-weight: 800;
+}
+
+.review-content {
+  margin: 0;
+  color: var(--color-text-soft);
+  line-height: 1.7;
+}
+
+.review-form-inline {
+  margin: 0;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 
 .running-record-card-heading {
@@ -1107,7 +1193,8 @@ dd {
 }
 
 .save-reference-panel-compact {
-  margin: 1.5rem 0;
+  justify-content: flex-start;
+  margin: 0.75rem 0 1.5rem;
   border: 0;
   border-radius: 0;
   padding: 0;
@@ -1115,11 +1202,14 @@ dd {
   box-shadow: none;
 }
 
-.save-reference-panel-compact p {
-  margin: 0;
-  color: var(--color-text);
-  font-size: 1rem;
-  font-weight: 800;
+.save-toggle-button {
+  min-width: 10rem;
+}
+
+.save-toggle-button.active {
+  border-color: var(--color-border-strong);
+  color: var(--color-brand-bright);
+  background: rgba(104, 166, 145, 0.14);
 }
 
 .playlist-spotify-inline-search {
@@ -2613,6 +2703,7 @@ dd {
   }
 
   .review-card-heading,
+  .review-list-heading,
   .save-reference-panel,
   .spotify-extension-panel,
   .spotify-track-add-panel,

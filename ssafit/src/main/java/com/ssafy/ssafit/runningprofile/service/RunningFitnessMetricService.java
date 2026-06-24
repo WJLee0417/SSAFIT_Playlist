@@ -35,6 +35,7 @@ public class RunningFitnessMetricService {
             return RunningFitnessMetric.empty();
         }
 
+        List<RunningRecord> allRecords = runningRecordMapper.selectListByMemberId(memberId);
         List<RunningRecord> records = runningRecordMapper.selectRecentByMemberId(
                 memberId,
                 RECENT_RECORD_LIMIT);
@@ -42,6 +43,8 @@ public class RunningFitnessMetricService {
             return RunningFitnessMetric.empty();
         }
 
+        double totalDistance = totalDistance(allRecords);
+        Integer averagePaceSecondsPerKm = averagePaceSecondsPerKm(allRecords);
         double averageDistance = records.stream()
                 .map(RunningRecord::getDistanceKm)
                 .filter(Objects::nonNull)
@@ -104,6 +107,8 @@ public class RunningFitnessMetricService {
         return new RunningFitnessMetric(
                 clampInt(totalScore),
                 records.size(),
+                round(totalDistance),
+                averagePaceSecondsPerKm,
                 round(averageDistance),
                 roundNullable(heartRateCost),
                 roundNullable(cadenceStandardDeviation),
@@ -113,6 +118,42 @@ public class RunningFitnessMetricService {
                 round(paceEfficiencyScore),
                 round(cadenceStabilityScore),
                 round(variationScore));
+    }
+
+    private double totalDistance(List<RunningRecord> records) {
+        if (records == null || records.isEmpty()) {
+            return 0.0;
+        }
+        return records.stream()
+                .map(RunningRecord::getDistanceKm)
+                .filter(Objects::nonNull)
+                .mapToDouble(BigDecimal::doubleValue)
+                .sum();
+    }
+
+    private Integer averagePaceSecondsPerKm(List<RunningRecord> records) {
+        if (records == null || records.isEmpty()) {
+            return null;
+        }
+        double totalDistance = records.stream()
+                .filter(record -> record.getDistanceKm() != null)
+                .filter(record -> record.getDistanceKm().compareTo(BigDecimal.ZERO) > 0)
+                .filter(record -> record.getDurationSeconds() != null)
+                .filter(record -> record.getDurationSeconds() > 0)
+                .map(RunningRecord::getDistanceKm)
+                .mapToDouble(BigDecimal::doubleValue)
+                .sum();
+        int totalDuration = records.stream()
+                .filter(record -> record.getDistanceKm() != null)
+                .filter(record -> record.getDistanceKm().compareTo(BigDecimal.ZERO) > 0)
+                .filter(record -> record.getDurationSeconds() != null)
+                .filter(record -> record.getDurationSeconds() > 0)
+                .mapToInt(RunningRecord::getDurationSeconds)
+                .sum();
+        if (totalDistance <= 0.0 || totalDuration <= 0) {
+            return null;
+        }
+        return (int) Math.round(totalDuration / totalDistance);
     }
 
     private Double average(List<Double> values) {

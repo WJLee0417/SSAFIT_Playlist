@@ -47,8 +47,9 @@
           </small>
         </div>
 
-        <div v-if="editable" class="playlist-item-actions">
+        <div v-if="reviewable || editable" class="playlist-item-actions">
           <button
+            v-if="reviewable"
             type="button"
             class="playlist-icon-button heart-button"
             :class="{ active: isLiked(item) }"
@@ -59,7 +60,7 @@
             {{ isLiked(item) ? "♥" : "♡" }}
           </button>
 
-          <div class="fit-score-control" title="러닝 적합도">
+          <div v-if="reviewable" class="fit-score-control" title="러닝 적합도">
             <span>FIT</span>
             <button
               v-for="score in scoreOptions"
@@ -76,6 +77,7 @@
           </div>
 
           <button
+            v-if="editable"
             type="button"
             class="playlist-icon-button delete-track-button"
             :disabled="busy"
@@ -98,6 +100,7 @@ import { playlistErrorMessage } from "../utils/playlistError";
 const props = defineProps({
   items: { type: Array, default: () => [] },
   editable: { type: Boolean, default: false },
+  reviewable: { type: Boolean, default: false },
   busy: { type: Boolean, default: false },
   currentMemberId: { type: [Number, String], default: null },
 });

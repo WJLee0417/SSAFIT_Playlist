@@ -31,6 +31,7 @@ class RunningFitnessMetricServiceTest {
 
     @Test
     void calculateReturnsEmptyMetricWhenNoRecentRecordsExist() {
+        when(runningRecordMapper.selectListByMemberId(10L)).thenReturn(List.of());
         when(runningRecordMapper.selectRecentByMemberId(10L, 10)).thenReturn(List.of());
 
         RunningFitnessMetric metric = runningFitnessMetricService.calculate(10L);
@@ -41,6 +42,11 @@ class RunningFitnessMetricServiceTest {
 
     @Test
     void calculateUsesGoldStandardComponentScores() {
+        when(runningRecordMapper.selectListByMemberId(10L))
+                .thenReturn(List.of(
+                        record("5.00", 390, 150, 170),
+                        record("7.00", 360, 150, 174),
+                        record("6.00", 420, 150, 166)));
         when(runningRecordMapper.selectRecentByMemberId(10L, 10))
                 .thenReturn(List.of(
                         record("5.00", 390, 150, 170),
@@ -51,6 +57,8 @@ class RunningFitnessMetricServiceTest {
 
         assertThat(metric.score()).isEqualTo(68);
         assertThat(metric.recordCount()).isEqualTo(3);
+        assertThat(metric.totalDistanceKm()).isEqualTo(18.0);
+        assertThat(metric.averagePaceSecondsPerKm()).isEqualTo(390);
         assertThat(metric.averageRecentDistanceKm()).isEqualTo(6.0);
         assertThat(metric.heartRateCost()).isEqualTo(2.6);
         assertThat(metric.averageDistanceScore()).isEqualTo(60.0);

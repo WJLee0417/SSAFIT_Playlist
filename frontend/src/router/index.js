@@ -1,10 +1,34 @@
 import { createRouter, createWebHistory } from "vue-router";
 import { authApi } from "../api/authApi";
 import { isApiError } from "../api/http";
-import { buildJspUrl } from "../utils/navigation";
+import { buildJspLoginUrl, buildJspUrl } from "../utils/navigation";
 
 const routes = [
-  { path: "/", redirect: "/music" },
+  {
+    path: "/",
+    name: "entry",
+    beforeEnter: async () => {
+      try {
+        await authApi.getSession();
+        return { name: "music-list" };
+      } catch (error) {
+        if (isApiError(error) && error.loginRequired) {
+          authApi.clearSessionCache();
+          window.location.assign(buildJspLoginUrl());
+          return false;
+        }
+        return {
+          name: "access-check-failed",
+          query: {
+            returnTo: "/",
+            status: error?.status,
+            errorCode: error?.errorCode,
+          },
+        };
+      }
+    },
+    component: () => import("../views/NotFoundView.vue"),
+  },
   {
     path: "/music",
     name: "music-list",

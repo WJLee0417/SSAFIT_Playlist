@@ -66,6 +66,8 @@ public final class RunningProfileApiDtos {
     public record RunningFitnessMetricResponse(
             Integer score,
             int recordCount,
+            Double totalDistanceKm,
+            Integer averagePaceSecondsPerKm,
             Double averageRecentDistanceKm,
             Double heartRateCost,
             Double cadenceStandardDeviation,
@@ -83,6 +85,8 @@ public final class RunningProfileApiDtos {
             return new RunningFitnessMetricResponse(
                     resolved.score(),
                     resolved.recordCount(),
+                    resolved.totalDistanceKm(),
+                    resolved.averagePaceSecondsPerKm(),
                     resolved.averageRecentDistanceKm(),
                     resolved.heartRateCost(),
                     resolved.cadenceStandardDeviation(),

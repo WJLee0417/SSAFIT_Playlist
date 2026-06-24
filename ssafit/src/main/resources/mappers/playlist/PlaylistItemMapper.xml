@@ -34,6 +34,12 @@
         WHERE id = #{id}
     </delete>
 
+    <delete id="deleteByPlaylistAndMusic">
+        DELETE FROM playlist_items
+        WHERE playlist_id = #{playlistId}
+          AND music_id = #{musicId}
+    </delete>
+
     <update id="updateOrder">
         UPDATE playlist_items
         SET order_no = #{orderNo}
@@ -154,6 +160,12 @@
         WHERE pi.playlist_id = #{playlistId}
           AND m.spotify_uri IS NOT NULL
           AND m.spotify_uri != ''
+    </select>
+
+    <select id="selectNextOrderNo" resultType="int">
+        SELECT COALESCE(MAX(order_no), 0) + 1
+        FROM playlist_items
+        WHERE playlist_id = #{playlistId}
     </select>
 
 </mapper>

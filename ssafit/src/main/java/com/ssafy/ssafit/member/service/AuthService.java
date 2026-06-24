@@ -10,6 +10,7 @@ import com.ssafy.ssafit.common.exception.ErrorCode;
 import com.ssafy.ssafit.member.domain.Member;
 import com.ssafy.ssafit.member.domain.MemberStatus;
 import com.ssafy.ssafit.member.mapper.MemberMapper;
+import com.ssafy.ssafit.playlist.service.FavoritePlaylistService;
 
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
@@ -21,6 +22,7 @@ public class AuthService {
 
     private final MemberMapper memberMapper;
     private final PasswordHashService passwordHashService;
+    private final FavoritePlaylistService favoritePlaylistService;
 
     public Member authenticate(String loginId, String rawPassword) {
         if (loginId == null || loginId.isBlank() || rawPassword == null) {
@@ -38,18 +40,21 @@ public class AuthService {
         return member;
     }
 
+    @Transactional
     public Member login(HttpSession session, String loginId, String rawPassword) {
         Member member = authenticate(loginId, rawPassword);
         login(session, member);
         return member;
     }
 
+    @Transactional
     public void login(HttpSession session, Member member) {
         if (session == null || member == null || member.getId() == null) {
             throw new CustomException(ErrorCode.AUTH_REQUIRED);
         }
         validateActiveMember(member);
         session.setAttribute(SessionConst.LOGIN_MEMBER_ID, member.getId());
+        favoritePlaylistService.ensureForMember(member.getId());
     }
 
     public void logout(HttpSession session) {
