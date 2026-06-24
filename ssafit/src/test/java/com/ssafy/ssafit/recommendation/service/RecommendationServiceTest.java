@@ -24,6 +24,7 @@ import com.ssafy.ssafit.common.exception.CustomException;
 import com.ssafy.ssafit.common.exception.ErrorCode;
 import com.ssafy.ssafit.music.domain.Music;
 import com.ssafy.ssafit.music.domain.MusicEnergyLevel;
+import com.ssafy.ssafit.music.domain.SpotifyTrackMetadata;
 import com.ssafy.ssafit.music.mapper.MusicMapper;
 import com.ssafy.ssafit.playlist.domain.Playlist;
 import com.ssafy.ssafit.playlist.domain.PlaylistItem;
@@ -45,6 +46,7 @@ import com.ssafy.ssafit.recommendation.mapper.RecommendationLogMapper;
 import com.ssafy.ssafit.runningprofile.domain.RunningIntensity;
 import com.ssafy.ssafit.runningprofile.domain.RunningProfile;
 import com.ssafy.ssafit.runningprofile.mapper.RunningProfileMapper;
+import com.ssafy.ssafit.spotify.service.SpotifyService;
 
 @ExtendWith(MockitoExtension.class)
 class RecommendationServiceTest {
@@ -70,6 +72,9 @@ class RecommendationServiceTest {
     @Mock
     private CadenceResolutionService cadenceResolutionService;
 
+    @Mock
+    private SpotifyService spotifyService;
+
     private RecommendationService recommendationService;
 
     @BeforeEach
@@ -83,7 +88,8 @@ class RecommendationServiceTest {
                 intensityResolutionService,
                 cadenceResolutionService,
                 new CadenceMatchingPolicy(),
-                new IntensityMatchingPolicy());
+                new IntensityMatchingPolicy(),
+                spotifyService);
         lenient().when(cadenceResolutionService.resolve(any(), any(), any()))
                 .thenReturn(new CadenceResolutionResult(null, "UNKNOWN", "none"));
         lenient().when(intensityResolutionService.resolve(any(), any()))
@@ -140,6 +146,126 @@ class RecommendationServiceTest {
     }
 
     @Test
+    void recommendationImportsSpotifyTracksWhenLocalCatalogIsEmpty() {
+        when(runningProfileMapper.selectByMemberId(10L))
+                .thenReturn(Optional.of(profile(120, 160, "POP")));
+        Music imported = music(1L);
+        when(musicMapper.selectRecommendationCandidates("POP", 500))
+                .thenReturn(List.of());
+        SpotifyTrackMetadata spotifyTrack = new SpotifyTrackMetadata();
+        spotifyTrack.setSpotifyTrackId("spotify-track-1");
+        spotifyTrack.setSpotifyUri("spotify:track:1");
+        spotifyTrack.setTitle("Imported Track");
+        spotifyTrack.setArtist("Artist");
+        when(spotifyService.searchTracks("genre:pop", 0, 10))
+                .thenReturn(List.of(spotifyTrack));
+        when(spotifyService.saveSelectedTrack(spotifyTrack)).thenReturn(imported);
+        when(musicMapper.selectPreferenceScores(10L)).thenReturn(List.of());
+        when(recommendationLogMapper.insert(any())).thenReturn(1);
+
+        RecommendationResult result = recommendationService.recommend(
+                10L,
+                RunningIntensity.MODERATE,
+                null,
+                10);
+
+        assertThat(result.getMusicList())
+                .extracting(value -> value.music().getId())
+                .containsExactly(1L);
+        assertThat(result.getRecommendationLog().getRecommendationReason())
+                .contains("Spotify 장르 검색 필터", "곡 장르를 추정 저장하지 않고");
+        verify(spotifyService).saveSelectedTrack(spotifyTrack);
+    }
+
+    @Test
+    void recommendationFallsBackWhenSpotifyGenreSearchIsEmpty() {
+        when(runningProfileMapper.selectByMemberId(10L))
+                .thenReturn(Optional.of(profile(120, 160, "HIP HOP")));
+        Music imported = music(1L);
+        when(musicMapper.selectRecommendationCandidates("HIP HOP", 500))
+                .thenReturn(List.of());
+        SpotifyTrackMetadata spotifyTrack = new SpotifyTrackMetadata();
+        spotifyTrack.setSpotifyTrackId("spotify-track-1");
+        spotifyTrack.setSpotifyUri("spotify:track:1");
+        spotifyTrack.setTitle("Imported Track");
+        spotifyTrack.setArtist("Artist");
+        when(spotifyService.searchTracks("genre:hip-hop", 0, 10))
+                .thenReturn(List.of());
+        when(spotifyService.searchTracks("running workout", 0, 10))
+                .thenReturn(List.of(spotifyTrack));
+        when(spotifyService.saveSelectedTrack(spotifyTrack)).thenReturn(imported);
+        when(musicMapper.selectPreferenceScores(10L)).thenReturn(List.of());
+        when(recommendationLogMapper.insert(any())).thenReturn(1);
+
+        RecommendationResult result = recommendationService.recommend(
+                10L,
+                RunningIntensity.MODERATE,
+                null,
+                10);
+
+        assertThat(result.getMusicList()).hasSize(1);
+        verify(spotifyService).searchTracks("genre:hip-hop", 0, 10);
+        verify(spotifyService).searchTracks("running workout", 0, 10);
+    }
+
+    @Test
+    void recommendationUsesSpotifyOffsetForNextPage() {
+        when(runningProfileMapper.selectByMemberId(10L))
+                .thenReturn(Optional.of(profile(120, 160, "POP")));
+        when(musicMapper.selectRecommendationCandidates("POP", 500))
+                .thenReturn(List.of());
+        SpotifyTrackMetadata spotifyTrack = new SpotifyTrackMetadata();
+        spotifyTrack.setSpotifyTrackId("spotify-track-11");
+        spotifyTrack.setSpotifyUri("spotify:track:11");
+        spotifyTrack.setTitle("Page Two Track");
+        spotifyTrack.setArtist("Artist");
+        Music imported = music(11L);
+        when(spotifyService.searchTracks("genre:pop", 10, 10))
+                .thenReturn(List.of(spotifyTrack));
+        when(spotifyService.saveSelectedTrack(spotifyTrack)).thenReturn(imported);
+        when(musicMapper.selectPreferenceScores(10L)).thenReturn(List.of());
+        when(recommendationLogMapper.insert(any())).thenReturn(1);
+
+        RecommendationResult result = recommendationService.recommend(
+                10L,
+                RunningIntensity.MODERATE,
+                null,
+                RunningIntensityGoal.MODERATE,
+                "POP",
+                null,
+                10,
+                2);
+
+        assertThat(result.getPage()).isEqualTo(2);
+        assertThat(result.getPageSize()).isEqualTo(10);
+        assertThat(result.isHasPrevious()).isTrue();
+        assertThat(result.isHasNext()).isFalse();
+        assertThat(result.getMusicList())
+                .extracting(value -> value.music().getId())
+                .containsExactly(11L);
+        verify(spotifyService).searchTracks("genre:pop", 10, 10);
+    }
+
+    @Test
+    void recommendationRejectsPageAfterFive() {
+        when(runningProfileMapper.selectByMemberId(10L)).thenReturn(Optional.empty());
+
+        assertError(
+                ErrorCode.INVALID_REQUEST,
+                () -> recommendationService.recommend(
+                        10L,
+                        RunningIntensity.MODERATE,
+                        null,
+                        RunningIntensityGoal.MODERATE,
+                        "POP",
+                        null,
+                        10,
+                        6));
+
+        verify(spotifyService, never()).searchTracks(any(), any(), any());
+    }
+
+    @Test
     void recommendationUsesProfileRangeAndSavesLog() {
         when(runningProfileMapper.selectByMemberId(10L))
                 .thenReturn(Optional.of(profile(135, 155, "ROCK")));
@@ -170,6 +296,31 @@ class RecommendationServiceTest {
                 .contains("\"musicIds\":[1,2]");
 
         verify(musicMapper).selectRecommendationCandidates("ROCK", 500);
+    }
+
+    @Test
+    void recommendationTreatsPreferredGenreAsSoftPreference() {
+        when(runningProfileMapper.selectByMemberId(10L))
+                .thenReturn(Optional.of(profile(120, 160, "POP")));
+        Music unclassified = music(1L);
+        Music matching = music(2L);
+        matching.setGenre("pop");
+        when(musicMapper.selectRecommendationCandidates("POP", 500))
+                .thenReturn(List.of(unclassified, matching));
+        when(musicMapper.selectPreferenceScores(10L)).thenReturn(List.of());
+        when(recommendationLogMapper.insert(any())).thenReturn(1);
+
+        RecommendationResult result = recommendationService.recommend(
+                10L,
+                RunningIntensity.MODERATE,
+                null,
+                10);
+
+        assertThat(result.getMusicList())
+                .extracting(value -> value.music().getId())
+                .containsExactly(2L, 1L);
+        assertThat(result.getMusicList().getFirst().recommendationReason())
+                .contains("선호 장르 POP 일치");
     }
 
     @Test

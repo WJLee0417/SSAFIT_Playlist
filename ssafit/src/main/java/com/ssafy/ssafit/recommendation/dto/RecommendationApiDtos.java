@@ -31,7 +31,8 @@ public final class RecommendationApiDtos {
             RunningIntensityGoal runningIntensityGoal,
             @Size(max = 100) String genre,
             @Min(1) @Max(50) Integer size,
-            @Min(1) @Max(50) Integer limit) {
+            @Min(1) @Max(10) Integer limit,
+            @Min(1) @Max(5) Integer page) {
     }
 
     public record SaveRequest(
@@ -76,7 +77,13 @@ public final class RecommendationApiDtos {
             RunningIntensityGoal resolvedIntensityGoal,
             IntensitySource intensitySource,
             Double averageHeartRateBpm,
-            String intensityExplanation) {
+            String intensityExplanation,
+            Integer page,
+            Integer pageSize,
+            boolean hasPrevious,
+            boolean hasNext,
+            boolean cadenceApplied,
+            boolean intensityApplied) {
 
         public ResultResponse {
             music = music == null ? List.of() : List.copyOf(music);
@@ -93,7 +100,13 @@ public final class RecommendationApiDtos {
                     result.getResolvedIntensityGoal(),
                     result.getIntensitySource(),
                     result.getAverageHeartRateBpm(),
-                    result.getIntensityExplanation());
+                    result.getIntensityExplanation(),
+                    result.getPage(),
+                    result.getPageSize(),
+                    result.isHasPrevious(),
+                    result.isHasNext(),
+                    result.isCadenceApplied(),
+                    result.isIntensityApplied());
         }
     }
 

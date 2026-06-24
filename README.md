@@ -387,3 +387,56 @@ macOS/Linux:
 ```text
 http://localhost:8080/health
 ```
+
+## AI running report environment variables
+
+AI running reports are disabled by default. When the feature is disabled or no
+provider/API key is configured, the backend uses the safe fallback report path
+and does not call an external LLM.
+
+Set real values only in local environment variables, Docker `.env`, an IDE run
+configuration, or a secret manager. Do not commit real API keys.
+
+```text
+AI_RUNNING_REPORT_ENABLED=false
+AI_RUNNING_REPORT_PROVIDER=none
+AI_RUNNING_REPORT_API_KEY=
+AI_RUNNING_REPORT_BASE_URL=https://api.openai.com/v1
+AI_RUNNING_REPORT_MODEL=gpt-4.1-mini
+AI_RUNNING_REPORT_TIMEOUT=10s
+AI_RUNNING_REPORT_PROMPT_VERSION=ai-running-report-v1
+AI_RUNNING_REPORT_MAX_OUTPUT_CHARACTERS=1200
+```
+
+To enable the OpenAI-compatible provider locally:
+
+```text
+AI_RUNNING_REPORT_ENABLED=true
+AI_RUNNING_REPORT_PROVIDER=openai
+AI_RUNNING_REPORT_API_KEY=<set-in-local-env-only>
+```
+
+Default unit and integration tests keep `AI_RUNNING_REPORT_ENABLED=false` and
+use fake or mock providers. Tests that require real external LLM network calls
+must be added as opt-in tests and excluded from the default test command.
+
+## AI 러닝 리포트 기능
+
+AI 러닝 리포트는 최근 러닝 기록과 음악 추천 로그를 사람이 읽기 쉬운
+한국어 리포트로 요약합니다. 숫자 중심 기록 화면의 해석 부담을 줄이고,
+다음 러닝과 음악 선택 방향을 제안하는 것이 목적입니다.
+
+활용 전에는 거리, 시간, 페이스, 케이던스, 심박, 추천 BPM, 추천 장르,
+추천 로그 목록을 사용자가 직접 비교해야 했습니다. 활용 후에는 같은
+데이터를 러닝 패턴 요약, 페이스·강도 해석, 케이던스·심박 참고, 다음
+음악 방향, 다음 러닝 제안으로 묶어서 확인할 수 있습니다.
+
+백엔드는 모든 수치 통계를 먼저 계산하고, LLM은 준비된 집계 DTO를
+해석해 제한된 JSON 문장으로 바꾸는 역할만 담당합니다. LLM 입력에는
+회원 ID, 이메일, 닉네임, API Key 같은 개인정보나 비밀 값을 포함하지
+않습니다. 데이터가 부족하거나 provider가 비활성화되어 있거나 LLM 호출이
+실패하면 추측하지 않고 `FALLBACK` 리포트를 저장해 반환합니다.
+
+발표 자료, 시연 흐름, 캡처 체크리스트는
+[`docs/ai-running-report-feature.md`](docs/ai-running-report-feature.md)에
+정리되어 있습니다.

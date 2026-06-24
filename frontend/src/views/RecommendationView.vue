@@ -7,14 +7,15 @@
     </p>
 
     <aside class="policy-callout">
-      <strong>조회만으로는 플레이리스트가 생성되지 않습니다.</strong>
+      <strong>Spotify 검색 결과의 장르와 BPM은 자동으로 채워지지 않습니다.</strong>
       <span>
-        실제 조회 API는 BPM 값을 받지 않습니다. 러닝 프로필의 유효한 BPM 범위를 우선 사용하고,
-        없으면 선택한 강도의 기본 범위를 적용합니다.
+        프로필의 장르와 BPM 범위는 추천 기준과 로그로 남기며, 곡에 해당 메타데이터가 있을 때만
+        매칭 점수에 반영합니다. 빈 음악 목록은 Spotify 장르 검색 필터로 후보를 확보하지만,
+        가져온 곡의 장르나 BPM을 추측해서 저장하지는 않습니다.
       </span>
     </aside>
 
-    <form class="recommendation-query-form" @submit.prevent="requestRecommendation">
+    <form class="recommendation-query-form" @submit.prevent="requestRecommendation(1)">
       <label>
         목표 강도
         <select v-model="query.intensity" required>
@@ -47,13 +48,13 @@
         <input v-model="query.genre" maxlength="100" placeholder="비우면 프로필 장르 사용" />
       </label>
       <label>
-        추천 곡 수
-        <input v-model="query.limit" inputmode="numeric" placeholder="1~50" />
+        페이지당 곡 수
+        <input v-model="query.limit" inputmode="numeric" placeholder="1~10" />
       </label>
       <div class="bpm-contract-field">
         <span>적용 BPM 조건</span>
         <strong>{{ expectedBpmLabel }}</strong>
-        <small>조회 완료 후 응답 로그의 실제 BPM 범위를 표시합니다.</small>
+        <small>곡 BPM이 저장된 경우에만 템포 매칭 점수에 반영됩니다.</small>
       </div>
       <button type="submit" :disabled="querying">
         {{ querying ? "추천 조회 중..." : "추천 조회" }}
@@ -70,7 +71,7 @@
       :error="queryDisplayError"
       :error-title="queryErrorTitle"
       :retryable="queryStatus === 'error' && queryError?.status >= 500"
-      @retry="requestRecommendation"
+      @retry="requestRecommendation(query.page)"
     />
 
     <section v-if="queryError?.errorCode === 'PROFILE_NOT_FOUND'" class="profile-guidance">
@@ -87,6 +88,7 @@
       :save-message="saveMessage"
       :save-message-type="saveMessageType"
       @save="createCurationCopy"
+      @page-change="requestRecommendation"
     />
 
     <section class="recommendation-log-section">
@@ -151,6 +153,7 @@ const query = reactive({
   runningIntensityGoal: "",
   genre: "",
   limit: "10",
+  page: 1,
 });
 const result = ref(null);
 const queryStatus = ref("idle");
@@ -225,12 +228,12 @@ function normalizedCondition() {
   }
   const limitText = String(query.limit).trim();
   if (!/^\d+$/.test(limitText)) {
-    validationMessage.value = "추천 곡 수는 1~50 사이 정수로 입력해 주세요.";
+    validationMessage.value = "페이지당 곡 수는 1~10 사이 정수로 입력해 주세요.";
     return null;
   }
   const limit = Number(limitText);
-  if (!Number.isSafeInteger(limit) || limit < 1 || limit > 50) {
-    validationMessage.value = "추천 곡 수는 1~50 사이 정수로 입력해 주세요.";
+  if (!Number.isSafeInteger(limit) || limit < 1 || limit > 10) {
+    validationMessage.value = "페이지당 곡 수는 1~10 사이 정수로 입력해 주세요.";
     return null;
   }
   return {
@@ -239,10 +242,14 @@ function normalizedCondition() {
     runningIntensityGoal: query.runningIntensityGoal || undefined,
     genre: query.genre.trim(),
     limit,
+    page: query.page,
   };
 }
 
-async function requestRecommendation() {
+async function requestRecommendation(page = 1) {
+  const targetPage = Number(page);
+  if (!Number.isSafeInteger(targetPage) || targetPage < 1 || targetPage > 5) return;
+  query.page = targetPage;
   const condition = normalizedCondition();
   if (!condition || querying.value) return;
 
@@ -261,7 +268,7 @@ async function requestRecommendation() {
       throw new Error("추천 응답에 로그 ID 또는 음악 목록이 없습니다.");
     }
     result.value = response;
-    queryStatus.value = response.music.length ? "ready" : "empty";
+    queryStatus.value = "ready";
     await loadLogs();
   } catch (caught) {
     if (sequence !== querySequence) return;

@@ -20,6 +20,8 @@ public interface PlaylistMapper {
 
     Optional<Playlist> selectDetail(@Param("id") Long id);
 
+    List<Playlist> selectByIds(@Param("ids") List<Long> ids);
+
     int update(Playlist playlist);
 
     int softDelete(@Param("id") Long id);

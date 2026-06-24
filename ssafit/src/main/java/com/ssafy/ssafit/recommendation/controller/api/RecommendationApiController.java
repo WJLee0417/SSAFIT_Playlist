@@ -48,7 +48,8 @@ public class RecommendationApiController {
                 request.runningIntensityGoal(),
                 request.genre(),
                 request.size(),
-                request.limit());
+                request.limit(),
+                request.page());
         return ApiResponse.success(ResultResponse.from(result));
     }
 

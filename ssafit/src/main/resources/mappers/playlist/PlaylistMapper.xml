@@ -109,6 +109,17 @@
           AND p.deleted_at IS NULL
     </select>
 
+    <select id="selectByIds" resultMap="playlistResultMap">
+        SELECT
+            <include refid="playlistColumns"/>
+        FROM playlists p
+        WHERE p.deleted_at IS NULL
+          AND p.id IN
+          <foreach collection="ids" item="id" open="(" separator="," close=")">
+            #{id}
+          </foreach>
+    </select>
+
     <update id="update"
             parameterType="com.ssafy.ssafit.playlist.domain.Playlist">
         UPDATE playlists

@@ -12,6 +12,7 @@ function cleanRecommendationParams(condition) {
     ...(condition.genre?.trim() ? { genre: condition.genre.trim() } : {}),
     ...(condition.size != null ? { size: condition.size } : {}),
     ...(condition.limit != null ? { limit: condition.limit } : {}),
+    ...(condition.page != null ? { page: condition.page } : {}),
   };
 }
 

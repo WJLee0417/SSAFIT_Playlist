@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -15,6 +16,7 @@ import com.ssafy.ssafit.common.exception.CustomException;
 import com.ssafy.ssafit.common.exception.ErrorCode;
 import com.ssafy.ssafit.music.domain.Music;
 import com.ssafy.ssafit.music.domain.MusicPreferenceScore;
+import com.ssafy.ssafit.music.domain.SpotifyTrackMetadata;
 import com.ssafy.ssafit.music.mapper.MusicMapper;
 import com.ssafy.ssafit.playlist.domain.Playlist;
 import com.ssafy.ssafit.playlist.domain.PlaylistItem;
@@ -37,6 +39,7 @@ import com.ssafy.ssafit.recommendation.mapper.RecommendationLogMapper;
 import com.ssafy.ssafit.runningprofile.domain.RunningIntensity;
 import com.ssafy.ssafit.runningprofile.domain.RunningProfile;
 import com.ssafy.ssafit.runningprofile.mapper.RunningProfileMapper;
+import com.ssafy.ssafit.spotify.service.SpotifyService;
 
 import lombok.RequiredArgsConstructor;
 
@@ -66,6 +69,7 @@ public class RecommendationService {
     private final CadenceResolutionService cadenceResolutionService;
     private final CadenceMatchingPolicy cadenceMatchingPolicy;
     private final IntensityMatchingPolicy intensityMatchingPolicy;
+    private final SpotifyService spotifyService;
 
     /**
      * 추천 조회는 음악과 로그만 생성한다.
@@ -84,6 +88,7 @@ public class RecommendationService {
                 null,
                 requestedGenre,
                 size,
+                null,
                 null);
     }
 
@@ -101,6 +106,7 @@ public class RecommendationService {
                 requestedIntensityGoal,
                 requestedGenre,
                 size,
+                null,
                 null);
     }
 
@@ -113,6 +119,27 @@ public class RecommendationService {
             String requestedGenre,
             Integer size,
             Integer limit) {
+        return recommend(
+                loginMemberId,
+                requestedIntensity,
+                requestedTargetCadenceSpm,
+                requestedIntensityGoal,
+                requestedGenre,
+                size,
+                limit,
+                null);
+    }
+
+    @Transactional
+    public RecommendationResult recommend(
+            Long loginMemberId,
+            RunningIntensity requestedIntensity,
+            Integer requestedTargetCadenceSpm,
+            RunningIntensityGoal requestedIntensityGoal,
+            String requestedGenre,
+            Integer size,
+            Integer limit,
+            Integer page) {
         validateAuthenticated(loginMemberId);
         if (requestedIntensity == null) {
             throw new CustomException(ErrorCode.INVALID_INTENSITY);
@@ -128,6 +155,9 @@ public class RecommendationService {
         if (limit != null) {
             recommendationSize = normalizeSize(limit);
         }
+        int resultPage = normalizePage(page);
+        int pageSize = Math.min(recommendationSize, 10);
+        int offset = (resultPage - 1) * pageSize;
         CadenceResolutionResult cadenceResolution = cadenceResolutionService.resolve(
                 loginMemberId,
                 requestedTargetCadenceSpm,
@@ -140,19 +170,55 @@ public class RecommendationService {
         List<Music> candidates = musicMapper.selectRecommendationCandidates(
                 genre,
                 MAX_CANDIDATE_SIZE);
+        boolean spotifyGenreDiscovery = false;
+        boolean spotifyPaged = false;
+        int spotifySourceCount = 0;
+        if (genre != null) {
+            CandidatePage discovered = importSpotifyCandidates(
+                    genre,
+                    requestedIntensity,
+                    offset,
+                    pageSize);
+            if (!discovered.music().isEmpty()) {
+                candidates = discovered.music();
+                spotifyGenreDiscovery = true;
+                spotifyPaged = true;
+                spotifySourceCount = discovered.sourceCount();
+            }
+        } else if (candidates == null || candidates.isEmpty()) {
+            CandidatePage discovered = importSpotifyCandidates(
+                    null,
+                    requestedIntensity,
+                    offset,
+                    pageSize);
+            candidates = discovered.music();
+            spotifyPaged = true;
+            spotifySourceCount = discovered.sourceCount();
+        }
         if (candidates == null || candidates.isEmpty()) {
             throw new CustomException(ErrorCode.RECOMMENDATION_DATA_NOT_ENOUGH);
         }
         Map<Long, Double> preferenceScores = preferenceScores(loginMemberId);
-        List<RecommendedMusic> musicList = candidates.stream()
+        List<Music> candidateSnapshot = List.copyOf(candidates);
+        long resultOffset = spotifyPaged ? 0L : offset;
+        List<RecommendedMusic> musicList = candidateSnapshot.stream()
                 .map(music -> scoreMusic(
                         music,
                         cadenceResolution.targetCadenceSpm(),
                         intensityResolution.resolvedGoal(),
+                        genre,
                         preferenceScores.getOrDefault(music.getId(), 3.0)))
-                .sorted(recommendationComparator())
-                .limit(recommendationSize)
+                .sorted(recommendationComparator(genre))
+                .skip(resultOffset)
+                .limit(pageSize)
                 .toList();
+        boolean hasNext = spotifyPaged
+                ? spotifySourceCount == pageSize
+                : candidateSnapshot.size() > offset + pageSize;
+        boolean cadenceApplied = musicList.stream()
+                .anyMatch(value -> value.cadenceScore() != null);
+        boolean intensityApplied = musicList.stream()
+                .anyMatch(value -> value.intensityScore() != null);
 
         RecommendationLog log = createLog(
                 loginMemberId,
@@ -161,6 +227,8 @@ public class RecommendationService {
                 bpmRange,
                 cadenceResolution,
                 intensityResolution,
+                spotifyGenreDiscovery,
+                resultPage,
                 musicList);
         if (recommendationLogMapper.insert(log) != 1) {
             throw new CustomException(ErrorCode.INTERNAL_SERVER_ERROR);
@@ -173,7 +241,13 @@ public class RecommendationService {
                 intensityResolution.resolvedGoal(),
                 intensityResolution.source(),
                 intensityResolution.averageHeartRateBpm(),
-                intensityResolution.explanation());
+                intensityResolution.explanation(),
+                resultPage,
+                pageSize,
+                resultPage > 1,
+                hasNext,
+                cadenceApplied,
+                intensityApplied);
     }
 
     /**
@@ -234,6 +308,8 @@ public class RecommendationService {
             int[] bpmRange,
             CadenceResolutionResult cadenceResolution,
             IntensityResolutionResult intensityResolution,
+            boolean spotifyGenreDiscovery,
+            int page,
             List<RecommendedMusic> musicList) {
         RecommendationLog log = new RecommendationLog();
         log.setMemberId(memberId);
@@ -246,14 +322,16 @@ public class RecommendationService {
                 genre,
                 bpmRange,
                 cadenceResolution.targetCadenceSpm(),
-                intensityResolution.resolvedGoal()));
+                intensityResolution.resolvedGoal(),
+                page));
         log.setResultSummary(buildResultSummary(musicList));
         log.setRecommendationReason(buildRecommendationReason(
                 intensity,
                 genre,
                 bpmRange,
                 cadenceResolution.targetCadenceSpm(),
-                intensityResolution.resolvedGoal()));
+                intensityResolution.resolvedGoal(),
+                spotifyGenreDiscovery));
         return log;
     }
 
@@ -344,12 +422,21 @@ public class RecommendationService {
         return size;
     }
 
+    private int normalizePage(Integer page) {
+        int normalized = page == null ? 1 : page;
+        if (normalized < 1 || normalized > 5) {
+            throw new CustomException(ErrorCode.INVALID_REQUEST);
+        }
+        return normalized;
+    }
+
     private String buildRequestConditions(
             RunningIntensity intensity,
             String genre,
             int[] bpmRange,
             Integer targetCadenceSpm,
-            RunningIntensityGoal intensityGoal) {
+            RunningIntensityGoal intensityGoal,
+            int page) {
         return "{\"intensity\":\""
                 + intensity
                 + "\",\"bpmMin\":"
@@ -362,6 +449,8 @@ public class RecommendationService {
                 + (targetCadenceSpm == null ? "null" : targetCadenceSpm)
                 + ",\"runningIntensityGoal\":"
                 + jsonString(intensityGoal == null ? null : intensityGoal.name())
+                + ",\"page\":"
+                + page
                 + "}";
     }
 
@@ -396,10 +485,63 @@ public class RecommendationService {
         return result;
     }
 
+    private CandidatePage importSpotifyCandidates(
+            String preferredGenre,
+            RunningIntensity intensity,
+            int offset,
+            int pageSize) {
+        String query = preferredGenre == null
+                ? spotifySearchQuery(intensity)
+                : spotifyGenreSearchQuery(preferredGenre);
+        List<SpotifyTrackMetadata> tracks = spotifyService.searchTracks(
+                query,
+                offset,
+                pageSize);
+        if ((tracks == null || tracks.isEmpty())
+                && preferredGenre != null
+                && offset == 0) {
+            tracks = spotifyService.searchTracks(
+                    spotifySearchQuery(intensity),
+                    offset,
+                    pageSize);
+        }
+        if (tracks == null) {
+            return new CandidatePage(List.of(), 0);
+        }
+        List<Music> music = tracks.stream()
+                .filter(java.util.Objects::nonNull)
+                .map(spotifyService::saveSelectedTrack)
+                .filter(java.util.Objects::nonNull)
+                .toList();
+        return new CandidatePage(music, tracks.size());
+    }
+
+    private String spotifyGenreSearchQuery(String preferredGenre) {
+        String normalized = preferredGenre
+                .trim()
+                .toLowerCase(Locale.ROOT)
+                .replaceAll("\\s+", "-")
+                .replaceAll("[^\\p{L}\\p{N}-]", "");
+        return normalized.isBlank() ? "running" : "genre:" + normalized;
+    }
+
+    private String spotifySearchQuery(RunningIntensity intensity) {
+        return switch (intensity) {
+            case LOW -> "easy running";
+            case MODERATE -> "running workout";
+            case HIGH -> "tempo running";
+            case INTERVAL -> "interval running";
+        };
+    }
+
+    private record CandidatePage(List<Music> music, int sourceCount) {
+    }
+
     private RecommendedMusic scoreMusic(
             Music music,
             Integer targetCadenceSpm,
             RunningIntensityGoal intensityGoal,
+            String preferredGenre,
             Double rawPreferenceScore) {
         CadenceMatchResult cadenceMatch = cadenceMatchingPolicy.calculate(
                 targetCadenceSpm,
@@ -433,6 +575,7 @@ public class RecommendationService {
                         music,
                         targetCadenceSpm,
                         intensityGoal,
+                        preferredGenre,
                         cadenceMatch));
     }
 
@@ -459,11 +602,15 @@ public class RecommendationService {
                 : roundScore(weightedTotal / availableWeight);
     }
 
-    private Comparator<RecommendedMusic> recommendationComparator() {
+    private Comparator<RecommendedMusic> recommendationComparator(
+            String preferredGenre) {
         Comparator<Double> descendingNullable =
                 Comparator.nullsLast(Comparator.reverseOrder());
         return Comparator
                 .comparing(RecommendedMusic::finalScore, descendingNullable)
+                .thenComparing(result -> genreMatchRank(
+                        result.music(),
+                        preferredGenre))
                 .thenComparing(
                         RecommendedMusic::cadenceScore,
                         descendingNullable)
@@ -480,8 +627,12 @@ public class RecommendationService {
             Music music,
             Integer targetCadenceSpm,
             RunningIntensityGoal intensityGoal,
+            String preferredGenre,
             CadenceMatchResult cadenceMatch) {
         List<String> reasons = new ArrayList<>();
+        if (genreMatchRank(music, preferredGenre) == 0) {
+            reasons.add("선호 장르 " + preferredGenre + " 일치");
+        }
         if (cadenceMatch.score() != null) {
             if (cadenceMatch.mode()
                     == com.ssafy.ssafit.recommendation.domain.TempoMatchMode.HALF_TIME) {
@@ -511,6 +662,17 @@ public class RecommendationService {
         return String.join(", ", reasons);
     }
 
+    private int genreMatchRank(Music music, String preferredGenre) {
+        if (music == null
+                || preferredGenre == null
+                || music.getGenre() == null) {
+            return 1;
+        }
+        return preferredGenre.trim().equalsIgnoreCase(music.getGenre().trim())
+                ? 0
+                : 1;
+    }
+
     private double roundScore(double value) {
         return Math.round(value * 100.0) / 100.0;
     }
@@ -520,8 +682,18 @@ public class RecommendationService {
             String genre,
             int[] bpmRange,
             Integer targetCadenceSpm,
-            RunningIntensityGoal intensityGoal) {
-        String genreReason = genre == null ? "장르 제한 없이" : genre + " 장르를 우선해";
+            RunningIntensityGoal intensityGoal,
+            boolean spotifyGenreDiscovery) {
+        String genreReason;
+        if (genre == null) {
+            genreReason = "장르 제한 없이";
+        } else if (spotifyGenreDiscovery) {
+            genreReason = "Spotify 장르 검색 필터로 "
+                    + genre
+                    + " 후보를 찾되 곡 장르를 추정 저장하지 않고";
+        } else {
+            genreReason = genre + " 장르 메타데이터가 있을 때 우선해";
+        }
         String cadenceReason = targetCadenceSpm == null
                 ? "케이던스 매칭 없이"
                 : "목표 케이던스 " + targetCadenceSpm + " SPM 템포 매칭과";

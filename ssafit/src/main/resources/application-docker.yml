@@ -12,3 +12,14 @@ ssafit:
   frontend:
     origin: ${SSAFIT_FRONTEND_ORIGIN:http://localhost:5173}
     cors-allowed-origins: ${SSAFIT_CORS_ALLOWED_ORIGINS:http://localhost:5173,http://127.0.0.1:5173}
+
+ai:
+  running-report:
+    enabled: ${AI_RUNNING_REPORT_ENABLED:false}
+    provider: ${AI_RUNNING_REPORT_PROVIDER:none}
+    api-key: ${AI_RUNNING_REPORT_API_KEY:}
+    base-url: ${AI_RUNNING_REPORT_BASE_URL:https://api.openai.com/v1}
+    model: ${AI_RUNNING_REPORT_MODEL:gpt-4.1-mini}
+    timeout: ${AI_RUNNING_REPORT_TIMEOUT:10s}
+    prompt-version: ${AI_RUNNING_REPORT_PROMPT_VERSION:ai-running-report-v1}
+    max-output-characters: ${AI_RUNNING_REPORT_MAX_OUTPUT_CHARACTERS:1200}

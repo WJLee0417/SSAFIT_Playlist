@@ -53,6 +53,14 @@
       <div><dt>추천 곡</dt><dd>{{ music.length }}곡</dd></div>
     </dl>
 
+    <aside v-if="limitedConditions.length" class="policy-callout recommendation-coverage">
+      <strong>현재 {{ limitedConditions.join("·") }} 조건은 곡 순위에 반영되지 않았습니다.</strong>
+      <span>
+        Spotify 검색 결과에 필요한 곡 메타데이터가 없어 계산하지 않았습니다.
+        장르 필터와 사용 가능한 선호 점수만 적용했습니다.
+      </span>
+    </aside>
+
     <div v-if="music.length" class="stack-list recommendation-music-list">
       <article v-for="track in music" :key="track.id" class="list-row">
         <div>
@@ -73,6 +81,22 @@
       </article>
     </div>
     <p v-else class="empty-inline">추천 결과에 표시할 음악이 없습니다.</p>
+
+    <nav class="recommendation-pagination" aria-label="추천 결과 페이지">
+      <button
+        v-for="pageNumber in pageNumbers"
+        :key="pageNumber"
+        type="button"
+        class="secondary-button recommendation-page-button"
+        :class="{ active: pageNumber === currentPage }"
+        :aria-label="`${pageNumber}페이지`"
+        :aria-current="pageNumber === currentPage ? 'page' : undefined"
+        :disabled="saving || pageNumber === currentPage"
+        @click="emit('page-change', pageNumber)"
+      >
+        {{ pageNumber }}
+      </button>
+    </nav>
 
     <section class="curation-save-panel">
       <div>
@@ -161,7 +185,7 @@ const props = defineProps({
   saveMessageType: { type: String, default: "success" },
 });
 
-const emit = defineEmits(["save"]);
+const emit = defineEmits(["save", "page-change"]);
 const saveForm = reactive({ title: "", visibility: "PRIVATE" });
 const music = computed(() => (
   Array.isArray(props.result?.music) ? props.result.music : []
@@ -174,6 +198,14 @@ const canSave = computed(() => (
   Number.isSafeInteger(Number(props.result?.log?.id))
   && Number(props.result.log.id) >= 1
 ));
+const currentPage = computed(() => Number(props.result?.page) || 1);
+const pageNumbers = [1, 2, 3, 4, 5];
+const limitedConditions = computed(() => {
+  const items = [];
+  if (!props.result?.cadenceApplied) items.push("케이던스");
+  if (!props.result?.intensityApplied) items.push("강도");
+  return items;
+});
 
 function submitSave() {
   if (!canSave.value || props.saving || props.savedPlaylist) return;

@@ -113,6 +113,10 @@ public enum ErrorCode {
             HttpStatus.UNPROCESSABLE_CONTENT,
             "추천에 필요한 음악 데이터가 충분하지 않습니다."),
 
+    AI_RUNNING_REPORT_NOT_FOUND(
+            HttpStatus.NOT_FOUND,
+            "AI 러닝 리포트를 찾을 수 없습니다."),
+
     INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "서버 내부 오류가 발생했습니다.");
 
     private final HttpStatus status;

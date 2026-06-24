@@ -11,6 +11,7 @@
         </RouterLink>
         <div class="nav-links">
           <RouterLink to="/playlists">플레이리스트</RouterLink>
+          <RouterLink to="/recommendations">음악 추천</RouterLink>
           <RouterLink to="/running-records">러닝 기록</RouterLink>
           <RouterLink to="/running-sessions">러닝 세션</RouterLink>
           <a :href="myPageUrl">마이페이지</a>

@@ -1087,6 +1087,33 @@ dd {
   margin: 1.25rem 0 2rem;
 }
 
+.recommendation-coverage {
+  margin: 1rem 0;
+}
+
+.recommendation-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  margin: 1.25rem 0 2rem;
+}
+
+.recommendation-page-button {
+  width: 2.65rem;
+  min-height: 2.65rem;
+  padding: 0;
+}
+
+.recommendation-page-button.active,
+.recommendation-page-button.active:disabled {
+  color: #07110c;
+  background: var(--color-brand-bright);
+  border-color: var(--color-brand-bright);
+  filter: none;
+  opacity: 1;
+}
+
 .curation-save-panel {
   display: grid;
   grid-template-columns: minmax(0, 1.2fr) minmax(280px, 0.8fr);
@@ -1670,6 +1697,150 @@ dd {
   line-height: 1;
 }
 
+.ai-running-report-card {
+  display: grid;
+  gap: 1.15rem;
+  margin: 0 0 1.6rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  padding: clamp(1.1rem, 4vw, 1.65rem);
+  background:
+    linear-gradient(145deg, rgba(104, 166, 145, 0.13), rgba(255, 255, 255, 0.055)),
+    var(--color-surface);
+  box-shadow: var(--shadow-soft);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+.ai-running-report-header,
+.ai-running-report-actions {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.ai-running-report-header h2 {
+  margin-bottom: 0;
+}
+
+.ai-running-report-actions {
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.ai-running-report-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.1rem;
+  border: 1px solid var(--color-border-strong);
+  border-radius: 999px;
+  padding: 0.42rem 0.7rem;
+  color: #b9ead8;
+  background: rgba(76, 154, 117, 0.18);
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+
+.ai-running-report-badge.fallback {
+  color: #ffe1a1;
+  background: rgba(160, 119, 37, 0.18);
+  border-color: rgba(242, 206, 129, 0.24);
+}
+
+.ai-running-report-state,
+.ai-running-report-empty {
+  display: grid;
+  justify-items: start;
+  gap: 0.65rem;
+  min-height: 9rem;
+  align-content: center;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 1rem;
+  background: rgba(7, 11, 9, 0.25);
+}
+
+.ai-running-report-state.error {
+  border-color: rgba(255, 157, 157, 0.25);
+  background: rgba(129, 43, 43, 0.16);
+}
+
+.ai-running-report-state h3,
+.ai-running-report-empty h3,
+.ai-running-report-section h3 {
+  margin: 0;
+  font-size: 1rem;
+  letter-spacing: normal;
+}
+
+.ai-running-report-state p,
+.ai-running-report-empty p,
+.ai-running-report-note,
+.ai-running-report-section p {
+  margin: 0;
+  color: var(--color-text-soft);
+}
+
+.ai-running-report-meta {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin: 0;
+}
+
+.ai-running-report-meta div {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-md);
+  padding: 0.85rem;
+  background: rgba(7, 11, 9, 0.24);
+}
+
+.ai-running-report-meta dd {
+  margin-top: 0.2rem;
+  font-size: 0.95rem;
+}
+
+.ai-running-report-note {
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  padding: 0.75rem 0.85rem;
+  color: #cce9dc;
+  background: rgba(59, 113, 87, 0.14);
+}
+
+.ai-running-report-note.warning {
+  color: #f5dfad;
+  background: rgba(142, 104, 29, 0.13);
+  border-color: rgba(242, 206, 129, 0.24);
+}
+
+.ai-running-report-recommendation-link {
+  width: fit-content;
+}
+
+.ai-running-report-sections {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.ai-running-report-section {
+  display: grid;
+  gap: 0.35rem;
+  min-height: 8.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-md);
+  padding: 0.95rem;
+  background: rgba(255, 255, 255, 0.045);
+}
+
+.ai-running-report-section:last-child {
+  grid-column: 1 / -1;
+  min-height: 0;
+}
+
 .running-record-card-heading strong {
   color: var(--color-brand-bright);
   font-size: clamp(1.55rem, 3vw, 1.95rem);
@@ -1984,6 +2155,26 @@ dd {
 
   .running-record-summary {
     grid-template-columns: 1fr;
+  }
+
+  .ai-running-report-header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .ai-running-report-actions {
+    justify-content: flex-start;
+  }
+
+  .ai-running-report-meta,
+  .ai-running-report-sections {
+    grid-template-columns: 1fr;
+  }
+
+  .ai-running-report-section,
+  .ai-running-report-section:last-child {
+    grid-column: auto;
+    min-height: 0;
   }
 
   .running-record-primary-row,

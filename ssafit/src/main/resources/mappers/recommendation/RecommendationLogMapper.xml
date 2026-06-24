@@ -72,6 +72,14 @@
         ORDER BY created_at DESC, id DESC
     </select>
 
+    <select id="selectRecentByMemberId" resultMap="recommendationLogResultMap">
+        SELECT <include refid="recommendationLogColumns"/>
+        FROM recommendation_logs
+        WHERE member_id = #{memberId}
+        ORDER BY created_at DESC, id DESC
+        LIMIT #{limit}
+    </select>
+
     <update id="updateSavedPlaylistId">
         UPDATE recommendation_logs
         SET saved_playlist_id = #{savedPlaylistId}

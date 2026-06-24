@@ -153,12 +153,14 @@
         SELECT
             <include refid="musicColumns"/>
         FROM music m
-        <where>
-            <if test="genre != null and genre != ''">
-                AND m.genre = #{genre}
-            </if>
-        </where>
-        ORDER BY m.created_at DESC, m.id ASC
+        ORDER BY
+            CASE
+                WHEN #{genre} IS NOT NULL AND #{genre} != ''
+                    AND UPPER(m.genre) = UPPER(#{genre}) THEN 0
+                ELSE 1
+            END,
+            m.created_at DESC,
+            m.id ASC
         LIMIT #{limit}
     </select>
 

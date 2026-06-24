@@ -21,6 +21,12 @@ public class RecommendationResult {
     private IntensitySource intensitySource;
     private Double averageHeartRateBpm;
     private String intensityExplanation;
+    private Integer page;
+    private Integer pageSize;
+    private boolean hasPrevious;
+    private boolean hasNext;
+    private boolean cadenceApplied;
+    private boolean intensityApplied;
 
     public RecommendationResult(
             RecommendationLog recommendationLog,
