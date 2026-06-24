@@ -1,5 +1,9 @@
 # SSAFIT PlayList
 
+## Data Sources
+
+- BPM and song metadata may be enriched by [GetSongBPM](https://getsongbpm.com).
+
 ## 다른 PC에서 Docker로 실행하기
 
 이 프로젝트는 Docker Compose로 `mysql`, `backend`, `frontend` 서비스를 한 번에 실행합니다.

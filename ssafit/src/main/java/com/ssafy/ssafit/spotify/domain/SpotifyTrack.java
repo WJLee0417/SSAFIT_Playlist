@@ -20,6 +20,7 @@ public class SpotifyTrack {
     private String albumName;
     private String imageUrl;
     private Integer durationMs;
+    private String isrc;
 
     public SpotifyTrack(
             String id,
@@ -29,7 +30,7 @@ public class SpotifyTrack {
             String artist,
             String albumName,
             String imageUrl) {
-        this(id, uri, externalUrl, title, null, artist, albumName, imageUrl, null);
+        this(id, uri, externalUrl, title, null, artist, albumName, imageUrl, null, null);
     }
 
     public SpotifyTrack(
@@ -41,6 +42,19 @@ public class SpotifyTrack {
             String albumName,
             String imageUrl,
             Integer durationMs) {
-        this(id, uri, externalUrl, title, null, artist, albumName, imageUrl, durationMs);
+        this(id, uri, externalUrl, title, null, artist, albumName, imageUrl, durationMs, null);
+    }
+
+    public SpotifyTrack(
+            String id,
+            String uri,
+            String externalUrl,
+            String title,
+            String artistId,
+            String artist,
+            String albumName,
+            String imageUrl,
+            Integer durationMs) {
+        this(id, uri, externalUrl, title, artistId, artist, albumName, imageUrl, durationMs, null);
     }
 }

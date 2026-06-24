@@ -48,6 +48,14 @@ spotify:
     - playlist-modify-public
   audio-feature-enrichment:
     enabled: ${SPOTIFY_AUDIO_FEATURE_ENRICHMENT_ENABLED:false}
+  metadata-enrichment:
+    enabled: ${SPOTIFY_METADATA_ENRICHMENT_ENABLED:true}
+    lastfm:
+      api-key: ${LASTFM_API_KEY:}
+      api-base-url: https://ws.audioscrobbler.com/2.0/
+    getsong:
+      api-key: ${GETSONG_API_KEY:}
+      api-base-url: https://api.getsong.co
 
 ssafit:
   frontend:

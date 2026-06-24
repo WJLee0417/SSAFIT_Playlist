@@ -1,7 +1,9 @@
 package com.ssafy.ssafit.spotify.service;
 
 import java.util.List;
+import java.util.Optional;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -10,15 +12,16 @@ import com.ssafy.ssafit.common.exception.ErrorCode;
 import com.ssafy.ssafit.music.domain.Music;
 import com.ssafy.ssafit.music.domain.SpotifyTrackMetadata;
 import com.ssafy.ssafit.music.service.MusicService;
+import com.ssafy.ssafit.music.tempo.MusicTempoEnrichmentProperties;
 import com.ssafy.ssafit.spotify.client.SpotifyApiClient;
 import com.ssafy.ssafit.spotify.domain.SpotifyTrack;
+import com.ssafy.ssafit.spotify.metadata.TrackMetadata;
+import com.ssafy.ssafit.spotify.metadata.TrackMetadataProvider;
 
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import jakarta.annotation.PostConstruct;
 
 @Service
-@RequiredArgsConstructor
 @Slf4j
 public class SpotifyService {
 
@@ -28,6 +31,30 @@ public class SpotifyService {
 
     private final SpotifyApiClient spotifyApiClient;
     private final MusicService musicService;
+    private final MusicTempoEnrichmentProperties tempoEnrichmentProperties;
+    private final TrackMetadataProvider trackMetadataProvider;
+
+    @Autowired
+    public SpotifyService(
+            SpotifyApiClient spotifyApiClient,
+            MusicService musicService,
+            MusicTempoEnrichmentProperties tempoEnrichmentProperties,
+            TrackMetadataProvider trackMetadataProvider) {
+        this.spotifyApiClient = spotifyApiClient;
+        this.musicService = musicService;
+        this.tempoEnrichmentProperties = tempoEnrichmentProperties;
+        this.trackMetadataProvider = trackMetadataProvider;
+    }
+
+    public SpotifyService(
+            SpotifyApiClient spotifyApiClient,
+            MusicService musicService) {
+        this(
+                spotifyApiClient,
+                musicService,
+                new MusicTempoEnrichmentProperties(),
+                track -> TrackMetadata.empty());
+    }
 
     @PostConstruct
     void logInjectedSpotifyClient() {
@@ -106,8 +133,29 @@ public class SpotifyService {
         if (!hasSpotifyIdentity(track)) {
             return null;
         }
-        Integer tempoBpm = resolveTempoBpm(accessToken, track);
-        String genre = resolveGenre(accessToken, track);
+        Optional<Music> cachedMusicResult = musicService
+                .findSpotifyMusicByTrackId(track.getId().trim());
+        Music cachedMusic = cachedMusicResult == null
+                ? null
+                : cachedMusicResult.orElse(null);
+        Integer tempoBpm = cachedMusic == null ? null : cachedMusic.getMusicBpm();
+        String genre = cachedMusic == null ? null : trimToNull(cachedMusic.getGenre());
+
+        if (tempoBpm == null || genre == null) {
+            TrackMetadata externalMetadata = trackMetadataProvider.resolve(track);
+            if (tempoBpm == null) {
+                tempoBpm = externalMetadata.musicBpm();
+            }
+            if (genre == null) {
+                genre = externalMetadata.genre();
+            }
+        }
+        if (tempoBpm == null) {
+            tempoBpm = resolveTempoBpm(accessToken, track);
+        }
+        if (genre == null) {
+            genre = resolveGenre(accessToken, track);
+        }
         return new SpotifyTrackMetadata(
                 track.getId().trim(),
                 track.getUri().trim(),
@@ -123,6 +171,9 @@ public class SpotifyService {
     }
 
     private Integer resolveTempoBpm(String accessToken, SpotifyTrack track) {
+        if (!tempoEnrichmentProperties.isEnabled()) {
+            return null;
+        }
         try {
             return spotifyApiClient.getTrackTempoBpm(accessToken, track.getId());
         } catch (RuntimeException exception) {

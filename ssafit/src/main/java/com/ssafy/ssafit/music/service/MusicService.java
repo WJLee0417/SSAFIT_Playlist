@@ -73,6 +73,14 @@ public class MusicService {
                 .orElseThrow(() -> new CustomException(ErrorCode.MUSIC_NOT_FOUND));
     }
 
+    public Optional<Music> findSpotifyMusicByTrackId(String spotifyTrackId) {
+        String normalizedTrackId = trimToNull(spotifyTrackId);
+        if (normalizedTrackId == null) {
+            return Optional.empty();
+        }
+        return musicMapper.selectBySpotifyTrackId(normalizedTrackId);
+    }
+
     @Transactional
     public Music createInternalMusic(Music music) {
         normalizeInternalMusic(music);

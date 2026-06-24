@@ -86,7 +86,8 @@ public class SpotifyRestApiClient implements SpotifyApiClient {
                     string(firstArtist.get("name")),
                     string(album.get("name")),
                     images.isEmpty() ? null : string(map(images.getFirst()).get("url")),
-                    integer(item.get("duration_ms"))));
+                    integer(item.get("duration_ms")),
+                    string(map(item.get("external_ids")).get("isrc"))));
         }
         return result;
     }
