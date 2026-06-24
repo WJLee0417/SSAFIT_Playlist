@@ -186,7 +186,6 @@ function normalizedCondition() {
     targetDistanceKm: Math.round(targetDistanceKm * 100) / 100,
     intensity: query.intensity,
     genre: query.genre.trim(),
-    limit: 50,
     page: 1,
   };
 }
