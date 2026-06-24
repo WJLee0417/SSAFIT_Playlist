@@ -56,6 +56,15 @@
         )
     </select>
 
+    <update id="updateIdentity"
+            parameterType="com.ssafy.ssafit.member.domain.Member">
+        UPDATE members
+        SET
+            login_id = #{loginId},
+            nickname = #{nickname}
+        WHERE id = #{id}
+    </update>
+
     <select id="existsByEmail" resultType="boolean">
         SELECT EXISTS (
             SELECT 1

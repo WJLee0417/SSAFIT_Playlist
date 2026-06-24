@@ -14,6 +14,7 @@ import com.ssafy.ssafit.common.exception.CustomException;
 import com.ssafy.ssafit.common.exception.ErrorCode;
 import com.ssafy.ssafit.common.web.FrontendReturnUrl;
 import com.ssafy.ssafit.member.domain.Member;
+import com.ssafy.ssafit.member.dto.MemberViewForms.IdentityForm;
 import com.ssafy.ssafit.member.dto.MemberViewForms.JoinForm;
 import com.ssafy.ssafit.member.dto.MemberViewForms.LoginForm;
 import com.ssafy.ssafit.member.service.AuthService;
@@ -33,6 +34,7 @@ public class MemberViewController {
     private final AuthService authService;
     private final RunningProfileService runningProfileService;
     private final SessionMemberResolver sessionMemberResolver;
+    private static final String SPOTIFY_LOGIN_ID_PREFIX = "spotify_";
 
     @GetMapping("/join")
     public String joinForm(HttpSession session, Model model) {
@@ -122,9 +124,44 @@ public class MemberViewController {
         }
 
         Member member = memberService.getMyInfo(memberId);
-        model.addAttribute("member", member);
-        model.addAttribute("runningProfile", findProfile(memberId));
+        RunningProfile runningProfile = findProfile(memberId);
+        populateMyPageModel(model, member, runningProfile);
         return "member/my-page";
+    }
+
+    @PostMapping("/members/me/identity")
+    public String updateIdentity(
+            @Valid @ModelAttribute("identityForm") IdentityForm form,
+            BindingResult bindingResult,
+            HttpSession session,
+            Model model,
+            RedirectAttributes redirectAttributes) {
+        Long memberId = sessionMemberResolver.optionalMemberId(session);
+        if (memberId == null) {
+            return "redirect:/login";
+        }
+
+        Member current = memberService.getMyInfo(memberId);
+        RunningProfile runningProfile = findProfile(memberId);
+        if (bindingResult.hasErrors()) {
+            populateMyPageModel(model, current, runningProfile);
+            model.addAttribute("forceIdentityOnboarding", true);
+            return "member/my-page";
+        }
+
+        try {
+            memberService.updateIdentity(memberId, form.toMember(memberId));
+        } catch (CustomException exception) {
+            applyIdentityError(bindingResult, exception);
+            populateMyPageModel(model, current, runningProfile);
+            model.addAttribute("forceIdentityOnboarding", true);
+            return "member/my-page";
+        }
+
+        redirectAttributes.addFlashAttribute(
+                "successMessage",
+                "계정 정보를 저장했습니다. 러닝 프로필을 이어서 등록해 주세요.");
+        return "redirect:/members/me/running-profile";
     }
 
     private RunningProfile findProfile(Long memberId) {
@@ -136,6 +173,30 @@ public class MemberViewController {
             }
             throw exception;
         }
+    }
+
+    private void populateMyPageModel(
+            Model model,
+            Member member,
+            RunningProfile runningProfile) {
+        boolean spotifyOnboardingRequired = isSpotifyTemporaryAccount(member);
+        model.addAttribute("member", member);
+        model.addAttribute("runningProfile", runningProfile);
+        model.addAttribute("profileRegistrationRequired", runningProfile == null);
+        model.addAttribute("spotifyOnboardingRequired", spotifyOnboardingRequired);
+        if (!model.containsAttribute("identityForm")) {
+            IdentityForm identityForm = IdentityForm.from(member);
+            if (spotifyOnboardingRequired) {
+                identityForm.setLoginId("");
+            }
+            model.addAttribute("identityForm", identityForm);
+        }
+    }
+
+    private boolean isSpotifyTemporaryAccount(Member member) {
+        return member != null
+                && member.getLoginId() != null
+                && member.getLoginId().startsWith(SPOTIFY_LOGIN_ID_PREFIX);
     }
 
     private void applyJoinError(
@@ -152,6 +213,20 @@ public class MemberViewController {
         if (errorCode == ErrorCode.DUPLICATE_EMAIL) {
             bindingResult.rejectValue(
                     "email",
+                    errorCode.name(),
+                    errorCode.getMessage());
+            return;
+        }
+        bindingResult.reject(errorCode.name(), errorCode.getMessage());
+    }
+
+    private void applyIdentityError(
+            BindingResult bindingResult,
+            CustomException exception) {
+        ErrorCode errorCode = exception.getErrorCode();
+        if (errorCode == ErrorCode.DUPLICATE_LOGIN_ID) {
+            bindingResult.rejectValue(
+                    "loginId",
                     errorCode.name(),
                     errorCode.getMessage());
             return;

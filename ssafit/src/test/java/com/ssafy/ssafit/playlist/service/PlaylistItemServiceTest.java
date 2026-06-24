@@ -183,6 +183,47 @@ class PlaylistItemServiceTest {
     }
 
     @Test
+    void ownerCanReorderItems() {
+        PlaylistItem first = item(1000L, 1L, 100L, 1);
+        PlaylistItem second = item(1001L, 1L, 101L, 2);
+        PlaylistItem requestedSecond = item(1001L, 1L, null, 1);
+        PlaylistItem requestedFirst = item(1000L, 1L, null, 2);
+        stubOwnedPlaylist();
+        when(playlistItemMapper.selectByPlaylistId(1L))
+                .thenReturn(List.of(first, second), List.of(requestedSecond, requestedFirst));
+        when(playlistItemMapper.shiftOrders(1L, 5)).thenReturn(2);
+        when(playlistItemMapper.bulkUpdateOrders(List.of(requestedSecond, requestedFirst)))
+                .thenReturn(2);
+
+        List<PlaylistItem> reordered = playlistItemService.reorder(
+                10L,
+                1L,
+                List.of(requestedSecond, requestedFirst));
+
+        assertThat(reordered).containsExactly(requestedSecond, requestedFirst);
+        assertThat(requestedSecond.getMusicId()).isEqualTo(101L);
+        assertThat(requestedFirst.getMusicId()).isEqualTo(100L);
+        verify(playlistItemMapper).shiftOrders(1L, 5);
+        verify(playlistItemMapper).bulkUpdateOrders(List.of(requestedSecond, requestedFirst));
+    }
+
+    @Test
+    void reorderRejectsMissingItem() {
+        PlaylistItem first = item(1000L, 1L, 100L, 1);
+        stubOwnedPlaylist();
+        when(playlistItemMapper.selectByPlaylistId(1L)).thenReturn(List.of(first));
+
+        assertError(
+                ErrorCode.PLAYLIST_ITEM_NOT_FOUND,
+                () -> playlistItemService.reorder(
+                        10L,
+                        1L,
+                        List.of(item(9999L, 1L, null, 1))));
+
+        verify(playlistItemMapper, never()).shiftOrders(1L, 3);
+    }
+
+    @Test
     void privateItemsRejectOtherMember() {
         when(playlistMapper.selectDetail(1L))
                 .thenReturn(Optional.of(userPlaylist(1L, 10L, PlaylistVisibility.PRIVATE)));

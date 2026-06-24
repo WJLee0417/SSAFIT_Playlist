@@ -14,10 +14,17 @@
             <a href="${frontendOrigin}/playlists">플레이리스트</a>
             <a href="${frontendOrigin}/running-records">러닝 기록</a>
             <a href="${frontendOrigin}/running-sessions">러닝 세션</a>
-            <a href="${homeUrl}">마이페이지</a>
-            <form class="nav-form" method="post" action="<c:url value='/logout'/>">
-                <button class="link-button" type="submit">로그아웃</button>
-            </form>
+            <c:choose>
+                <c:when test="${loggedIn}">
+                    <a href="${homeUrl}">마이페이지</a>
+                    <form class="nav-form" method="post" action="<c:url value='/logout'/>">
+                        <button class="link-button" type="submit">로그아웃</button>
+                    </form>
+                </c:when>
+                <c:otherwise>
+                    <a class="link-button nav-cta" href="<c:url value='/login'/>">로그인</a>
+                </c:otherwise>
+            </c:choose>
         </div>
     </nav>
 </header>

@@ -20,6 +20,7 @@ import com.ssafy.ssafit.music.service.MusicService;
 import com.ssafy.ssafit.playlist.domain.PlaylistItem;
 import com.ssafy.ssafit.playlist.dto.PlaylistApiDtos.ItemCreateRequest;
 import com.ssafy.ssafit.playlist.dto.PlaylistApiDtos.ItemOrderUpdateRequest;
+import com.ssafy.ssafit.playlist.dto.PlaylistApiDtos.ItemReorderRequest;
 import com.ssafy.ssafit.playlist.dto.PlaylistApiDtos.ItemResponse;
 import com.ssafy.ssafit.playlist.service.PlaylistItemService;
 
@@ -72,6 +73,20 @@ public class PlaylistItemApiController {
                 itemId,
                 request.orderNo());
         return ApiResponse.success("수록곡 순서를 변경했습니다.", toResponse(item));
+    }
+
+    @PatchMapping("/playlists/{playlistId}/items/order")
+    public ApiResponse<List<ItemResponse>> reorder(
+            @PathVariable Long playlistId,
+            @Valid @RequestBody ItemReorderRequest request,
+            HttpSession session) {
+        Long memberId = sessionMemberResolver.requireMemberId(session);
+        return ApiResponse.success(
+                "수록곡 순서를 변경했습니다.",
+                playlistItemService.reorder(memberId, playlistId, request.toDomain(playlistId))
+                        .stream()
+                        .map(this::toResponse)
+                        .toList());
     }
 
     @DeleteMapping("/playlist-items/{itemId}")

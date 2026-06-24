@@ -23,6 +23,7 @@ import com.ssafy.ssafit.common.exception.CustomException;
 import com.ssafy.ssafit.common.exception.ErrorCode;
 import com.ssafy.ssafit.spotify.config.SpotifyProperties;
 import com.ssafy.ssafit.spotify.domain.SpotifyPlaylistResult;
+import com.ssafy.ssafit.spotify.domain.SpotifyPlaylistSummary;
 import com.ssafy.ssafit.spotify.domain.SpotifyToken;
 import com.ssafy.ssafit.spotify.domain.SpotifyTrack;
 import com.ssafy.ssafit.spotify.domain.SpotifyUserProfile;
@@ -137,7 +138,10 @@ public class SpotifyRestApiClient implements SpotifyApiClient {
         Map<String, Object> response = get(
                 URI.create(properties.getApiBaseUrl() + "/me"),
                 accessToken);
-        return new SpotifyUserProfile(requiredString(response, "id"));
+        return new SpotifyUserProfile(
+                string(response.get("account_id")),
+                requiredString(response, "id"),
+                string(response.get("display_name")));
     }
 
     @Override
@@ -171,6 +175,85 @@ public class SpotifyRestApiClient implements SpotifyApiClient {
                         + "/items"),
                 accessToken,
                 Map.of("uris", uris));
+    }
+
+    @Override
+    public List<SpotifyPlaylistSummary> getCurrentUserPlaylists(
+            String accessToken,
+            int offset,
+            int limit) {
+        URI uri = UriComponentsBuilder
+                .fromUriString(properties.getApiBaseUrl())
+                .path("/me/playlists")
+                .queryParam("offset", offset)
+                .queryParam("limit", limit)
+                .build()
+                .encode()
+                .toUri();
+        Map<String, Object> response = get(uri, accessToken);
+        List<Object> items = list(response.get("items"));
+        List<SpotifyPlaylistSummary> result = new ArrayList<>(items.size());
+        for (Object value : items) {
+            Map<String, Object> item = map(value);
+            Map<String, Object> owner = map(item.get("owner"));
+            Map<String, Object> tracks = map(item.get("tracks"));
+            result.add(new SpotifyPlaylistSummary(
+                    requiredString(item, "id"),
+                    requiredString(item, "name"),
+                    string(map(item.get("external_urls")).get("spotify")),
+                    string(owner.get("id")),
+                    bool(item.get("public")),
+                    integer(tracks.get("total"))));
+        }
+        return result;
+    }
+
+    @Override
+    public List<SpotifyTrack> getPlaylistTracks(
+            String accessToken,
+            String spotifyPlaylistId,
+            int offset,
+            int limit) {
+        URI uri = UriComponentsBuilder
+                .fromUriString(properties.getApiBaseUrl())
+                .path("/playlists/")
+                .pathSegment(spotifyPlaylistId)
+                .path("/tracks")
+                .queryParam("offset", offset)
+                .queryParam("limit", limit)
+                .queryParam("fields", "items(track(id,uri,external_urls,name,artists,album(name,images),duration_ms))")
+                .build()
+                .encode()
+                .toUri();
+        Map<String, Object> response = get(uri, accessToken);
+        List<Object> items = list(response.get("items"));
+        List<SpotifyTrack> result = new ArrayList<>(items.size());
+        for (Object value : items) {
+            Map<String, Object> item = map(value);
+            Map<String, Object> track = map(item.get("track"));
+            String trackId = string(track.get("id"));
+            String trackUri = string(track.get("uri"));
+            if (!StringUtils.hasText(trackId) || !StringUtils.hasText(trackUri)) {
+                continue;
+            }
+            Map<String, Object> album = map(track.get("album"));
+            List<Object> artists = list(track.get("artists"));
+            Map<String, Object> firstArtist = artists.isEmpty()
+                    ? Map.of()
+                    : map(artists.getFirst());
+            List<Object> images = list(album.get("images"));
+            result.add(new SpotifyTrack(
+                    trackId,
+                    trackUri,
+                    string(map(track.get("external_urls")).get("spotify")),
+                    string(track.get("name")),
+                    string(firstArtist.get("id")),
+                    string(firstArtist.get("name")),
+                    string(album.get("name")),
+                    images.isEmpty() ? null : string(map(images.getFirst()).get("url")),
+                    integer(track.get("duration_ms"))));
+        }
+        return result;
     }
 
     private Map<String, Object> postToken(String body) {
@@ -373,5 +456,9 @@ public class SpotifyRestApiClient implements SpotifyApiClient {
 
     private Integer integer(Object value) {
         return value instanceof Number number ? number.intValue() : null;
+    }
+
+    private Boolean bool(Object value) {
+        return value instanceof Boolean bool ? bool : null;
     }
 }

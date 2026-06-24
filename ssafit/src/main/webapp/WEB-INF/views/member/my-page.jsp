@@ -1,5 +1,6 @@
 <%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" %>
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
+<%@ taglib prefix="form" uri="http://www.springframework.org/tags/form" %>
 <!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -10,6 +11,75 @@
 </head>
 <body class="mypage-body">
 <%@ include file="/WEB-INF/views/common/nav.jspf" %>
+
+<c:if test="${profileRegistrationRequired or spotifyOnboardingRequired or forceIdentityOnboarding}">
+    <div class="onboarding-modal-backdrop" role="presentation">
+        <section class="onboarding-modal"
+                 role="dialog"
+                 aria-modal="true"
+                 aria-labelledby="onboardingTitle"
+                 aria-describedby="onboardingDescription">
+            <c:choose>
+                <c:when test="${spotifyOnboardingRequired or forceIdentityOnboarding}">
+                    <span class="eyebrow">WELCOME</span>
+                    <h2 id="onboardingTitle">계정 정보를 입력해 주세요</h2>
+                    <p id="onboardingDescription">
+                        Spotify로 처음 로그인한 경우 ID와 닉네임을 설정하고 프로필을 등록해 주세요.
+                    </p>
+
+                    <c:url var="identityAction" value="/members/me/identity"/>
+                    <form:form method="post"
+                               action="${identityAction}"
+                               modelAttribute="identityForm"
+                               cssClass="stack-form onboarding-form">
+                        <form:errors path="*" element="div" cssClass="alert alert-error"/>
+
+                        <label for="onboardingLoginId">로그인 ID</label>
+                        <form:input path="loginId"
+                                    id="onboardingLoginId"
+                                    autocomplete="username"
+                                    maxlength="50"
+                                    placeholder="앞으로 사용할 로그인 ID"/>
+                        <form:errors path="loginId" cssClass="field-error"/>
+
+                        <label for="onboardingNickname">닉네임</label>
+                        <form:input path="nickname"
+                                    id="onboardingNickname"
+                                    autocomplete="nickname"
+                                    maxlength="100"
+                                    placeholder="화면에 표시할 이름"/>
+                        <form:errors path="nickname" cssClass="field-error"/>
+
+                        <div class="button-row onboarding-actions">
+                            <button class="secondary-button"
+                                    type="button"
+                                    data-onboarding-dismiss>나중에</button>
+                            <button class="primary-button inline-button" type="submit">
+                                저장하고 프로필 등록
+                            </button>
+                        </div>
+                    </form:form>
+                </c:when>
+                <c:otherwise>
+                    <span class="eyebrow">RUNNING PROFILE</span>
+                    <h2 id="onboardingTitle">러닝 프로필을 등록해 주세요</h2>
+                    <p id="onboardingDescription">
+                        추천 및 러닝 기록 기능을 사용하려면 프로필 등록이 필요합니다.
+                    </p>
+                    <div class="button-row onboarding-actions">
+                        <button class="secondary-button"
+                                type="button"
+                                data-onboarding-dismiss>나중에</button>
+                        <a class="primary-button inline-button"
+                           href="<c:url value='/members/me/running-profile'/>">
+                            프로필 등록하기
+                        </a>
+                    </div>
+                </c:otherwise>
+            </c:choose>
+        </section>
+    </div>
+</c:if>
 
 <main class="mypage-main">
     <section class="mypage-landing" id="mypageLanding" aria-labelledby="beatRateTitle">
@@ -118,6 +188,18 @@
 </main>
 
 <script>
+    (() => {
+        const dismissButton = document.querySelector("[data-onboarding-dismiss]");
+        const backdrop = document.querySelector(".onboarding-modal-backdrop");
+        if (!dismissButton || !backdrop) return;
+
+        dismissButton.addEventListener("click", () => {
+            backdrop.remove();
+            const dashboard = document.getElementById("mypageDashboard");
+            if (dashboard) dashboard.scrollIntoView({ behavior: "smooth", block: "start" });
+        });
+    })();
+
     (() => {
         const landing = document.getElementById("mypageLanding");
         if (!landing || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {

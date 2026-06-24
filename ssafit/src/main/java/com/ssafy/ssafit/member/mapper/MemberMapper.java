@@ -12,6 +12,8 @@ public interface MemberMapper {
 
     int insert(Member member);
 
+    int updateIdentity(Member member);
+
     boolean existsByLoginId(@Param("loginId") String loginId);
 
     boolean existsByEmail(@Param("email") String email);

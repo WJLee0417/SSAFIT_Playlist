@@ -47,6 +47,12 @@
 
             <button class="primary-button" type="submit">로그인</button>
         </form:form>
+        <c:url var="spotifyLoginUrl" value="/login/spotify">
+            <c:if test="${not empty returnTo}">
+                <c:param name="returnTo" value="${returnTo}"/>
+            </c:if>
+        </c:url>
+        <a class="spotify-login-button" href="${spotifyLoginUrl}">Spotify로 로그인</a>
         <p class="form-footer">아직 회원이 아닌가요? <a href="<c:url value='/join'/>">회원가입</a></p>
     </section>
 </main>

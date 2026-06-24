@@ -100,6 +100,10 @@ public class SpotifyService {
         return musicService.saveSelectedSpotifyTrack(metadata);
     }
 
+    public Music saveSpotifyTrack(String accessToken, SpotifyTrack track) {
+        return musicService.saveSelectedSpotifyTrack(toMetadata(accessToken, track));
+    }
+
     private SpotifyTrackMetadata toMetadata(
             String accessToken,
             SpotifyTrack track) {

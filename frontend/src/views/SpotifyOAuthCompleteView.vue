@@ -116,7 +116,19 @@ onMounted(async () => {
     ? route.query.oauthError[0]
     : route.query.oauthError;
   if (typeof oauthError === "string" && oauthError) {
-    oauthErrorMessage.value = spotifyErrorMessage({ errorCode: oauthError });
+    const oauthErrorObject = {
+      errorCode: oauthError,
+      message: spotifyErrorMessage({ errorCode: oauthError }),
+      status: oauthError === "SPOTIFY_FORBIDDEN" ? 403 : undefined,
+    };
+    error.value = oauthErrorObject;
+    status.value = "error";
+    oauthErrorMessage.value = oauthErrorObject.message;
+    await router.replace({
+      name: "spotify-oauth-complete",
+      query: safeReturnTo ? { returnTo: safeReturnTo } : {},
+    });
+    return;
   }
   const hasSensitiveQuery = ["code", "state", "token", "access_token", "refresh_token"]
     .some((key) => Object.prototype.hasOwnProperty.call(route.query, key));
