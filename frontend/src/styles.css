@@ -559,7 +559,18 @@ select option {
   margin-left: auto;
 }
 
+.running-session-form {
+  max-width: 980px;
+  margin-right: auto;
+  margin-left: auto;
+}
+
 .running-record-input-row {
+  display: grid;
+  gap: 1rem;
+}
+
+.running-session-input-row {
   display: grid;
   gap: 1rem;
 }
@@ -569,7 +580,20 @@ select option {
   align-items: start;
 }
 
+.running-session-primary-row {
+  grid-template-columns: minmax(0, 1fr) minmax(180px, 0.42fr);
+  align-items: start;
+}
+
 .running-record-secondary-row {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.running-session-secondary-row {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.running-session-goal-row {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
@@ -590,6 +614,56 @@ select option {
 
 .running-record-form input {
   width: 100%;
+}
+
+.running-session-form input {
+  width: 100%;
+}
+
+.running-session-pace-field {
+  display: grid;
+  gap: 0.45rem;
+  min-width: 0;
+  margin: 0;
+  border: 0;
+  padding: 0;
+}
+
+.running-session-pace-field legend {
+  color: var(--color-text);
+  font-weight: 750;
+}
+
+.running-session-pace-inputs {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 3.14rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 0.35rem 0.75rem;
+  background: rgba(7, 11, 9, 0.48);
+}
+
+.running-session-pace-inputs input {
+  border: 0;
+  border-radius: 0;
+  padding: 0.35rem 0;
+  background: transparent;
+  box-shadow: none;
+  text-align: right;
+}
+
+.running-session-pace-inputs input:focus {
+  background: transparent;
+  box-shadow: none;
+}
+
+.running-session-pace-inputs span {
+  color: var(--color-text-soft);
+  font-size: 0.8rem;
+  font-weight: 800;
 }
 
 .running-record-duration-inputs {
@@ -638,6 +712,10 @@ select option {
 
 .running-record-form textarea {
   min-height: 92px;
+}
+
+.running-session-form textarea {
+  min-height: 112px;
 }
 
 .card-grid,
@@ -1693,6 +1771,10 @@ dd {
   margin: 1.5rem 0 2rem;
 }
 
+.running-session-detail-metrics {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
 .running-record-metrics div,
 .running-record-detail-metrics div,
 .running-session-detail-metrics div {
@@ -1731,6 +1813,62 @@ dd {
   margin-top: 0.35rem;
   color: var(--color-brand-bright);
   font-size: clamp(1.05rem, 3vw, 1.55rem);
+}
+
+.running-session-detail-metrics div {
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  background: transparent;
+}
+
+.running-session-detail-metrics dd {
+  color: var(--color-text);
+  font-size: clamp(1rem, 2.2vw, 1.25rem);
+}
+
+.running-session-goal-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  margin: 0 0 2rem;
+}
+
+.running-session-goal-metrics div {
+  min-width: 0;
+}
+
+.running-session-goal-metrics dd {
+  margin: 0.35rem 0 0;
+  color: var(--color-brand-bright);
+  font-size: clamp(2rem, 5vw, 3.6rem);
+  font-weight: 800;
+  line-height: 1;
+}
+
+.running-session-detail-title {
+  min-width: 0;
+}
+
+.running-session-edit-link {
+  align-self: flex-start;
+  flex: 0 0 auto;
+  margin-top: 0.45rem;
+  font-size: 0.9rem;
+}
+
+.running-session-management {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin: 1.5rem 0 2.25rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--color-border);
+}
+
+.running-session-management h2 {
+  margin: 0;
 }
 
 .running-record-memo,
@@ -1852,6 +1990,44 @@ dd {
 .participant-card.mine {
   border-color: var(--color-border-strong);
   background: rgba(104, 166, 145, 0.12);
+}
+
+.running-session-participant-list {
+  display: grid;
+  max-height: 340px;
+  gap: 0;
+  margin-top: 1rem;
+  overflow-y: auto;
+  scrollbar-color: rgba(125, 210, 174, 0.45) transparent;
+}
+
+.running-session-participant-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  border-bottom: 1px solid var(--color-border);
+  padding: 0.95rem 0;
+}
+
+.running-session-participant-row strong {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--color-text);
+  font-size: clamp(1rem, 2vw, 1.18rem);
+  font-weight: 850;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.running-session-participant-row span {
+  flex: 0 0 auto;
+  color: var(--color-text-soft);
+  font-size: 0.86rem;
+}
+
+.running-session-participant-row.mine strong {
+  color: var(--color-brand-bright);
 }
 
 @media (max-width: 900px) {
@@ -1987,8 +2163,18 @@ dd {
   }
 
   .running-record-primary-row,
-  .running-record-secondary-row {
+  .running-record-secondary-row,
+  .running-session-primary-row,
+  .running-session-secondary-row,
+  .running-session-goal-row,
+  .running-session-detail-metrics,
+  .running-session-goal-metrics {
     grid-template-columns: 1fr;
+  }
+
+  .running-session-management {
+    align-items: flex-start;
+    flex-direction: column;
   }
 
   .running-record-duration-field {

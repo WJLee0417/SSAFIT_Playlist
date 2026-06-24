@@ -295,6 +295,8 @@ class MapperIntegrationTest {
         runningSession.setScheduledAt(
                 java.time.LocalDateTime.of(2026, 7, 1, 9, 0));
         runningSession.setCapacity(10);
+        runningSession.setTargetDistanceKm(new java.math.BigDecimal("10.00"));
+        runningSession.setTargetPaceSecondsPerKm(330);
         runningSession.setStatus(RunningSessionStatus.OPEN);
 
         runningSessionMapper.insert(runningSession);
@@ -302,9 +304,16 @@ class MapperIntegrationTest {
         assertThat(runningSession.getId()).isNotNull();
         assertThat(runningSessionMapper.selectHostId(runningSession.getId()))
                 .isEqualTo(host.getId());
-        assertThat(runningSessionMapper.selectList())
+        assertThat(runningSessionMapper.selectList(host.getId()))
                 .extracting(RunningSession::getId)
                 .contains(runningSession.getId());
+        assertThat(runningSessionMapper.selectList(host.getId()))
+                .filteredOn(session -> runningSession.getId().equals(session.getId()))
+                .first()
+                .satisfies(session -> {
+                    assertThat(session.getParticipantCount()).isZero();
+                    assertThat(session.getCurrentMemberHosting()).isTrue();
+                });
         assertThat(runningSessionMapper
                 .selectByIdForUpdate(runningSession.getId())
                 .orElseThrow()
@@ -864,6 +873,8 @@ class MapperIntegrationTest {
         runningSession.setScheduledAt(
                 java.time.LocalDateTime.of(2026, 7, 1, 9, 0));
         runningSession.setCapacity(capacity);
+        runningSession.setTargetDistanceKm(new java.math.BigDecimal("10.00"));
+        runningSession.setTargetPaceSecondsPerKm(330);
         runningSession.setStatus(RunningSessionStatus.OPEN);
         runningSessionMapper.insert(runningSession);
         return runningSession;

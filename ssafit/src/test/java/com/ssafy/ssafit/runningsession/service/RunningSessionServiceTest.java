@@ -7,6 +7,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -89,7 +90,7 @@ class RunningSessionServiceTest {
                 ErrorCode.AUTH_REQUIRED,
                 () -> runningSessionService.getSessionList(session));
 
-        verify(runningSessionMapper, never()).selectList();
+        verify(runningSessionMapper, never()).selectList(any());
     }
 
     @Test
@@ -97,7 +98,7 @@ class RunningSessionServiceTest {
         mockLoginMember(10L);
         RunningSession runningSession =
                 validSession(100L, 20L, RunningSessionStatus.OPEN);
-        when(runningSessionMapper.selectList()).thenReturn(List.of(runningSession));
+        when(runningSessionMapper.selectList(10L)).thenReturn(List.of(runningSession));
 
         List<RunningSession> result =
                 runningSessionService.getSessionList(session);
@@ -384,6 +385,8 @@ class RunningSessionServiceTest {
         runningSession.setMeetingPlace("  여의나루역  ");
         runningSession.setScheduledAt(LocalDateTime.of(2026, 7, 1, 9, 0));
         runningSession.setCapacity(10);
+        runningSession.setTargetDistanceKm(BigDecimal.valueOf(10.0));
+        runningSession.setTargetPaceSecondsPerKm(330);
         runningSession.setStatus(status);
         return runningSession;
     }

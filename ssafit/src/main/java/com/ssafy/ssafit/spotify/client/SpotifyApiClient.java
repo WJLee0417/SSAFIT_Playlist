@@ -1,5 +1,6 @@
 package com.ssafy.ssafit.spotify.client;
 
+import java.util.Collections;
 import java.util.List;
 
 import com.ssafy.ssafit.spotify.domain.SpotifyPlaylistResult;
@@ -22,6 +23,14 @@ public interface SpotifyApiClient {
             String query,
             int limit) {
         return searchTracks(accessToken, query, 0, limit);
+    }
+
+    default Integer getTrackTempoBpm(String accessToken, String trackId) {
+        return null;
+    }
+
+    default List<String> getArtistGenres(String accessToken, String artistId) {
+        return Collections.emptyList();
     }
 
     SpotifyToken exchangeAuthorizationCode(String code);

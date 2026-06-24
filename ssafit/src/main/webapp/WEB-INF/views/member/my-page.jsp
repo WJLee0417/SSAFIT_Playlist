@@ -28,7 +28,7 @@
             <article class="card mypage-tile mypage-profile-tile">
                 <div class="section-heading row-heading">
                     <div>
-                        <span class="eyebrow">RUNNING PROFILE</span>
+                        <span class="eyebrow">MY PROFILE</span>
                         <h2>러닝 프로필</h2>
                     </div>
                     <a class="text-link" href="<c:url value='/members/me/running-profile'/>">
@@ -69,7 +69,7 @@
 
             <a class="card mypage-tile mypage-link-tile"
                href="${frontendOrigin}/running-records">
-                <span class="eyebrow">RUNNING RECORDS</span>
+                <span class="eyebrow">RECORDS</span>
                 <div>
                     <strong>나의 러닝 기록</strong>
                     <p>거리와 페이스를 기록하고<br>지난 러닝의 흐름을 확인하세요.</p>
@@ -79,10 +79,10 @@
 
             <a class="card mypage-tile mypage-link-tile"
                href="${frontendOrigin}/running-sessions">
-                <span class="eyebrow">RUNNING SESSIONS</span>
+                <span class="eyebrow">SESSIONS</span>
                 <div>
-                    <strong>나의 러닝 모임</strong>
-                    <p>함께 달릴 모임을 찾고<br>참여 중인 일정을 관리하세요.</p>
+                    <strong>나의 러닝 세션</strong>
+                    <p>함께 달릴 세션을 찾고<br>참여 중인 일정을 관리하세요.</p>
                 </div>
                 <span class="mypage-tile-arrow" aria-hidden="true">↗</span>
             </a>
@@ -91,7 +91,6 @@
         <section class="card running-chart-card" aria-labelledby="runningChartTitle">
             <div class="running-chart-heading">
                 <div>
-                    <span class="eyebrow">LAST 7 DAYS</span>
                     <h2 id="runningChartTitle">최근 러닝 흐름</h2>
                     <p id="runningChartDescription">최근 7일 동안 기록한 러닝 거리를 보여줍니다.</p>
                 </div>

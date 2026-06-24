@@ -15,7 +15,7 @@
     <section class="auth-copy">
         <span class="eyebrow">WELCOME BACK</span>
         <h1>오늘의 러닝에도<br>좋은 리듬을.</h1>
-        <p>로그인하면 저장한 플레이리스트와 러닝 프로필을 이어서 사용할 수 있습니다.</p>
+        <p>로그인하여 오늘의 러닝 플로우를 이어가세요</p>
     </section>
 
     <section class="card form-card compact-card">

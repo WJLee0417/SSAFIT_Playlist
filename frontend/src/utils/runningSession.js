@@ -31,6 +31,31 @@ export function validateRunningSessionForm(form) {
   if (!Number.isSafeInteger(capacity) || capacity <= 0) {
     return "정원은 1명 이상의 정수로 입력해 주세요.";
   }
+
+  const targetDistance = Number(form.targetDistanceKm);
+  if (!Number.isFinite(targetDistance) || targetDistance <= 0) {
+    return "목표 거리는 0보다 큰 값으로 입력해 주세요.";
+  }
+  if (!/^\d{1,8}(\.\d{1,2})?$/.test(String(form.targetDistanceKm).trim())) {
+    return "목표 거리는 정수 8자리, 소수 2자리 이내로 입력해 주세요.";
+  }
+
+  const paceMinutes = Number(form.targetPaceMinutes || 0);
+  const paceSeconds = Number(form.targetPaceSeconds || 0);
+  if (!Number.isSafeInteger(paceMinutes) || paceMinutes < 0) {
+    return "목표 페이스의 분은 0 이상의 정수로 입력해 주세요.";
+  }
+  if (
+    !Number.isSafeInteger(paceSeconds)
+    || paceSeconds < 0
+    || paceSeconds > 59
+  ) {
+    return "목표 페이스의 초는 0부터 59까지의 정수로 입력해 주세요.";
+  }
+  if (runningSessionTargetPaceSeconds(form) <= 0) {
+    return "목표 페이스는 1초 이상으로 입력해 주세요.";
+  }
+
   if ((form.description || "").length > 2000) {
     return "설명은 2,000자 이내로 입력해 주세요.";
   }
@@ -44,7 +69,33 @@ export function runningSessionPayload(form) {
     meetingPlace: form.meetingPlace.trim(),
     scheduledAt: form.scheduledAt,
     capacity: Number(form.capacity),
+    targetDistanceKm: Number(form.targetDistanceKm),
+    targetPaceSecondsPerKm: runningSessionTargetPaceSeconds(form),
   };
+}
+
+export function runningSessionTargetPaceSeconds(form) {
+  return Number(form.targetPaceMinutes || 0) * 60
+    + Number(form.targetPaceSeconds || 0);
+}
+
+export function splitPaceSeconds(paceSecondsPerKm) {
+  const totalSeconds = Number(paceSecondsPerKm || 0);
+  if (!Number.isFinite(totalSeconds) || totalSeconds <= 0) {
+    return { minutes: "", seconds: "" };
+  }
+  return {
+    minutes: Math.floor(totalSeconds / 60),
+    seconds: totalSeconds % 60,
+  };
+}
+
+export function formatSessionPace(paceSecondsPerKm) {
+  const value = Number(paceSecondsPerKm);
+  if (!Number.isFinite(value) || value <= 0) return "-";
+  const minutes = Math.floor(value / 60);
+  const seconds = Math.floor(value % 60);
+  return `${minutes}'${String(seconds).padStart(2, "0")}" / km`;
 }
 
 export function formatSessionDateTime(value) {
@@ -56,6 +107,22 @@ export function formatSessionDateTime(value) {
       dateStyle: "full",
       timeStyle: "short",
     }).format(date);
+}
+
+export function formatSessionSchedule(value) {
+  if (!value) return "-";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  const year = String(date.getFullYear()).slice(2);
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  const weekday = new Intl.DateTimeFormat("en-US", { weekday: "short" })
+    .format(date)
+    .toUpperCase();
+  const period = date.getHours() < 12 ? "AM" : "PM";
+  const hour12 = date.getHours() % 12 || 12;
+  const minutes = String(date.getMinutes()).padStart(2, "0");
+  return `${year}/${month}/${day} (${weekday}) ${hour12}:${minutes} ${period}`;
 }
 
 export function formatSessionListDateTime(value) {

@@ -1,5 +1,21 @@
 @import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css");
 
+@font-face {
+    font-family: "Freesentation Logo Thin";
+    src: url("../fonts/Freesentation-1Thin.ttf") format("truetype");
+    font-weight: 100;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: "Freesentation Logo SemiBold";
+    src: url("../fonts/Freesentation-6SemiBold.ttf") format("truetype");
+    font-weight: 600;
+    font-style: normal;
+    font-display: swap;
+}
+
 :root {
     color: #f7faf8;
     background: #101412;
@@ -116,9 +132,26 @@ input:focus-visible {
     gap: .7rem;
     color: var(--color-brand-bright);
     font-size: clamp(1.05rem, 2vw, 1.35rem);
-    font-weight: 900;
-    letter-spacing: -.045em;
+    font-weight: 600;
+    letter-spacing: normal;
     white-space: nowrap;
+}
+
+.brand-wordmark {
+    display: inline-flex;
+    align-items: baseline;
+    gap: .28em;
+    line-height: 1;
+}
+
+.brand-ssafit {
+    font-family: "Freesentation Logo Thin", Pretendard, system-ui, sans-serif;
+    font-weight: 100;
+}
+
+.brand-playlist {
+    font-family: "Freesentation Logo SemiBold", Pretendard, system-ui, sans-serif;
+    font-weight: 600;
 }
 
 .brand-mark {
@@ -129,10 +162,8 @@ input:focus-visible {
     place-items: center;
     overflow: hidden;
     border-radius: 999px;
-    color: transparent;
     background: linear-gradient(to bottom, var(--color-brand-bright), var(--color-brand-hover));
     box-shadow: 0 0 22px rgba(139, 200, 179, .62);
-    font-size: 0;
     transform: skew(-9deg);
 }
 
@@ -161,6 +192,7 @@ input:focus-visible {
     letter-spacing: normal;
     line-height: 1.2;
     white-space: nowrap;
+    box-shadow: none;
     transition:
         border-color 160ms ease,
         color 160ms ease,
@@ -172,6 +204,8 @@ input:focus-visible {
 .link-button:hover {
     color: var(--color-text);
     background: rgba(255, 255, 255, .065);
+    box-shadow: none;
+    transform: none;
 }
 
 .nav-cta {

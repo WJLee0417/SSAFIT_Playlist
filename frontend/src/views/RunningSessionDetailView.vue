@@ -13,87 +13,80 @@
 
     <article v-if="status === 'ready'" class="detail-card running-session-detail">
       <div class="page-heading">
-        <div>
+        <div class="running-session-detail-title">
           <div class="badge-row">
             <span class="session-status-badge" :class="`session-status-${session.status?.toLowerCase()}`">
               {{ statusLabel(session.status) }}
             </span>
-            <span class="visibility-badge">주최자 #{{ session.hostMemberId }}</span>
           </div>
           <h1>{{ session.title }}</h1>
         </div>
-        <div v-if="isHost" class="form-actions">
-          <RouterLink
-            v-if="session.status !== 'CANCELLED'"
-            class="secondary-button"
-            :to="{
-              name: 'running-session-edit',
-              params: { runningSessionId },
-            }"
-          >
-            수정
-          </RouterLink>
-          <button
-            v-if="session.status !== 'CANCELLED'"
-            type="button"
-            class="danger-button"
-            :disabled="actionBusy"
-            @click="cancelSession"
-          >
-            모임 취소
-          </button>
-        </div>
+        <RouterLink
+          v-if="isHost && session.status !== 'CANCELLED'"
+          class="text-link running-session-edit-link"
+          :to="{
+            name: 'running-session-edit',
+            params: { runningSessionId },
+          }"
+        >
+          수정
+        </RouterLink>
       </div>
 
       <SaveStatus :type="actionType" :message="actionMessage" />
 
       <p class="lead">{{ session.description || "모임 설명이 없습니다." }}</p>
       <dl class="running-session-detail-metrics">
-        <div><dt>일정</dt><dd>{{ formatSessionDateTime(session.scheduledAt) }}</dd></div>
+        <div><dt>호스트</dt><dd>{{ session.hostNickname || `회원 #${session.hostMemberId}` }}</dd></div>
+        <div><dt>일정</dt><dd>{{ formatSessionSchedule(session.scheduledAt) }}</dd></div>
         <div><dt>집결 장소</dt><dd>{{ session.meetingPlace }}</dd></div>
         <div><dt>참여 현황</dt><dd>{{ participantCount }} / {{ session.capacity }}명</dd></div>
       </dl>
-
-      <section class="running-session-action-panel">
+      <dl class="running-session-goal-metrics">
         <div>
-          <span class="eyebrow">PARTICIPATION</span>
-          <h2>{{ participationTitle }}</h2>
-          <p>{{ participationDescription }}</p>
+          <dt>목표 거리</dt>
+          <dd>{{ formatDistance(session.targetDistanceKm) }}</dd>
         </div>
-        <div class="form-actions">
-          <button
-            v-if="canJoin"
-            type="button"
-            :disabled="actionBusy"
-            @click="join"
-          >
-            {{ actionBusy ? "처리 중..." : "모임 참여" }}
-          </button>
-          <button
-            v-if="isParticipating"
-            type="button"
-            class="secondary-button"
-            :disabled="actionBusy"
-            @click="leave"
-          >
-            {{ actionBusy ? "처리 중..." : "참여 취소" }}
-          </button>
-        </div>
-      </section>
-
-      <section v-if="isHost && session.status !== 'CANCELLED'" class="running-session-host-panel">
         <div>
-          <span class="eyebrow">HOST CONTROLS</span>
-          <h2>모집 상태 관리</h2>
-          <p>정원 도달만으로 모집 상태가 자동 변경되지는 않습니다.</p>
+          <dt>목표 페이스</dt>
+          <dd>{{ formatSessionPace(session.targetPaceSecondsPerKm) }}</dd>
         </div>
+      </dl>
+
+      <section class="running-session-management">
+        <h2>세션 관리</h2>
         <button
+          v-if="isHost && session.status !== 'CANCELLED'"
           type="button"
           class="secondary-button"
           :disabled="actionBusy"
           @click="toggleRecruitment"
         >
           {{ session.status === "OPEN" ? "모집 마감" : "모집 다시 열기" }}
+        </button>
+        <button
+          v-else-if="canJoin"
+          type="button"
+          :disabled="actionBusy"
+          @click="join"
+        >
+          {{ actionBusy ? "처리 중..." : "세션 참여" }}
+        </button>
+        <button
+          v-else-if="isParticipating"
+          type="button"
+          class="secondary-button"
+          :disabled="actionBusy"
+          @click="leave"
+        >
+          {{ actionBusy ? "처리 중..." : "참여 취소" }}
+        </button>
+        <button
+          v-else-if="!isHost"
+          type="button"
+          disabled
+        >
+          세션 참여
         </button>
       </section>
 
@@ -107,21 +100,17 @@
         <p v-if="!participants.length" class="empty-inline">
           아직 참여자가 없습니다.
         </p>
-        <div v-else class="participant-grid">
+        <div v-else class="running-session-participant-list">
           <article
             v-for="participant in participants"
             :key="participant.id"
-            class="participant-card"
+            class="running-session-participant-row"
             :class="{ mine: isMine(participant) }"
           >
-            <strong>회원 #{{ participant.memberId }}</strong>
-            <span v-if="isMine(participant)" class="saved-badge">나</span>
-            <small>{{ formatSessionDateTime(participant.joinedAt) }}</small>
+            <strong>{{ participant.memberNickname || `회원 #${participant.memberId}` }}</strong>
+            <span>{{ formatSessionSchedule(participant.joinedAt) }}</span>
           </article>
         </div>
-        <p class="contract-note">
-          현재 Backend 응답에는 참여자 닉네임이 없어 회원 ID만 표시합니다.
-        </p>
       </section>
 
       <dl class="summary-list running-session-timestamps">
@@ -146,6 +135,8 @@ import PageStatePanel from "../components/PageStatePanel.vue";
 import SaveStatus from "../components/SaveStatus.vue";
 import {
   formatSessionDateTime,
+  formatSessionPace,
+  formatSessionSchedule,
   runningSessionErrorMessage,
   statusLabel,
 } from "../utils/runningSession";
@@ -177,28 +168,32 @@ const isHost = computed(() => (
   && String(currentMember.value.id) === String(session.value.hostMemberId)
 ));
 const isParticipating = computed(() => participants.value.some(isMine));
-const canJoin = computed(() => (
-  session.value.status === "OPEN" && !isParticipating.value
+const isExpired = computed(() => {
+  if (typeof session.value.expired === "boolean") {
+    return session.value.expired;
+  }
+  if (!session.value.scheduledAt) return false;
+  const scheduledAt = new Date(session.value.scheduledAt);
+  return !Number.isNaN(scheduledAt.getTime()) && scheduledAt.getTime() < Date.now();
+});
+const isFull = computed(() => (
+  participantCount.value >= Number(session.value.capacity || 0)
 ));
-const participationTitle = computed(() => {
-  if (isParticipating.value) return "이 모임에 참여 중입니다";
-  if (session.value.status === "OPEN") return "모임에 참여할 수 있습니다";
-  if (session.value.status === "CLOSED") return "모집이 마감되었습니다";
-  return "취소된 모임입니다";
-});
-const participationDescription = computed(() => {
-  if (isParticipating.value) {
-    return "모집 상태와 관계없이 본인의 기존 참여를 취소할 수 있습니다.";
-  }
-  if (session.value.status === "OPEN") {
-    return "정원 초과와 중복 참여 여부는 서버 응답을 최종 기준으로 확인합니다.";
-  }
-  return "현재 상태에서는 새로운 참여를 받을 수 없습니다.";
-});
-
+const canJoin = computed(() => (
+  session.value.status === "OPEN"
+  && !isParticipating.value
+  && !isExpired.value
+  && !isFull.value
+));
 function isMine(participant) {
   return currentMember.value != null
     && String(currentMember.value.id) === String(participant.memberId);
+}
+
+function formatDistance(distanceKm) {
+  const distance = Number(distanceKm);
+  if (!Number.isFinite(distance) || distance <= 0) return "-";
+  return `${distance.toFixed(distance % 1 === 0 ? 0 : 2)} km`;
 }
 
 function setStateFromError(caught) {
@@ -288,14 +283,6 @@ function toggleRecruitment() {
   return runAction(
     () => runningSessionApi.changeStatus(props.runningSessionId, nextStatus),
     nextStatus === "OPEN" ? "모집을 다시 시작했습니다." : "모집을 마감했습니다.",
-  );
-}
-
-function cancelSession() {
-  if (!window.confirm(`"${session.value.title}" 모임을 취소하시겠습니까?`)) return;
-  return runAction(
-    () => runningSessionApi.cancel(props.runningSessionId),
-    "러닝 세션을 취소했습니다.",
   );
 }
 

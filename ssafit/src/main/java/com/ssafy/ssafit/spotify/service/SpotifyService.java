@@ -50,8 +50,9 @@ public class SpotifyService {
         int normalizedOffset = normalizeOffset(offset);
         int normalizedLimit = normalizeLimit(limit);
         List<SpotifyTrack> tracks;
+        String clientAccessToken;
         try {
-            String clientAccessToken = spotifyApiClient.issueClientAccessToken();
+            clientAccessToken = spotifyApiClient.issueClientAccessToken();
             if (!StringUtils.hasText(clientAccessToken)) {
                 throw new CustomException(ErrorCode.SPOTIFY_SEARCH_FAILED);
             }
@@ -91,7 +92,7 @@ public class SpotifyService {
         }
         return tracks.stream()
                 .filter(this::hasSpotifyIdentity)
-                .map(this::toMetadata)
+                .map(track -> toMetadata(clientAccessToken, track))
                 .toList();
     }
 
@@ -99,10 +100,14 @@ public class SpotifyService {
         return musicService.saveSelectedSpotifyTrack(metadata);
     }
 
-    private SpotifyTrackMetadata toMetadata(SpotifyTrack track) {
+    private SpotifyTrackMetadata toMetadata(
+            String accessToken,
+            SpotifyTrack track) {
         if (!hasSpotifyIdentity(track)) {
             return null;
         }
+        Integer tempoBpm = resolveTempoBpm(accessToken, track);
+        String genre = resolveGenre(accessToken, track);
         return new SpotifyTrackMetadata(
                 track.getId().trim(),
                 track.getUri().trim(),
@@ -112,9 +117,41 @@ public class SpotifyService {
                 trimToNull(track.getAlbumName()),
                 trimToNull(track.getImageUrl()),
                 track.getDurationMs(),
+                tempoBpm,
                 null,
-                null,
-                null);
+                genre);
+    }
+
+    private Integer resolveTempoBpm(String accessToken, SpotifyTrack track) {
+        try {
+            return spotifyApiClient.getTrackTempoBpm(accessToken, track.getId());
+        } catch (RuntimeException exception) {
+            log.warn(
+                    "Spotify tempo metadata is unavailable. trackId={}, exceptionType={}",
+                    track.getId(),
+                    exception.getClass().getSimpleName());
+            return null;
+        }
+    }
+
+    private String resolveGenre(String accessToken, SpotifyTrack track) {
+        if (!StringUtils.hasText(track.getArtistId())) {
+            return null;
+        }
+        try {
+            List<String> genres = spotifyApiClient.getArtistGenres(
+                    accessToken,
+                    track.getArtistId());
+            return genres == null || genres.isEmpty()
+                    ? null
+                    : trimToNull(genres.getFirst());
+        } catch (RuntimeException exception) {
+            log.warn(
+                    "Spotify genre metadata is unavailable. artistId={}, exceptionType={}",
+                    track.getArtistId(),
+                    exception.getClass().getSimpleName());
+            return null;
+        }
     }
 
     private boolean hasSpotifyIdentity(SpotifyTrack track) {

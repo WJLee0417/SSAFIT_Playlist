@@ -56,6 +56,9 @@
           <h2>{{ track.title }}</h2>
           <p>{{ track.artist }}</p>
           <dl class="playlist-meta">
+            <div><dt>장르</dt><dd>{{ track.genre || "정보 없음" }}</dd></div>
+            <div><dt>BPM</dt><dd>{{ track.musicBpm ? `${track.musicBpm} BPM` : "정보 없음" }}</dd></div>
+            <div><dt>재생 시간</dt><dd>{{ formatDuration(track.durationMs) }}</dd></div>
             <div><dt>Track ID</dt><dd>{{ track.spotifyTrackId }}</dd></div>
             <div><dt>URI</dt><dd>{{ track.spotifyUri }}</dd></div>
           </dl>
@@ -203,5 +206,14 @@ async function saveAndAdd(track) {
   } finally {
     selectedTrackId.value = null;
   }
+}
+
+function formatDuration(durationMs) {
+  const value = Number(durationMs);
+  if (!Number.isFinite(value) || value <= 0) return "정보 없음";
+  const totalSeconds = Math.round(value / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}:${String(seconds).padStart(2, "0")}`;
 }
 </script>

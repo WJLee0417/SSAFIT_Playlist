@@ -73,18 +73,48 @@ public class SpotifyRestApiClient implements SpotifyApiClient {
             Map<String, Object> item = map(value);
             Map<String, Object> album = map(item.get("album"));
             List<Object> artists = list(item.get("artists"));
+            Map<String, Object> firstArtist = artists.isEmpty()
+                    ? Map.of()
+                    : map(artists.getFirst());
             List<Object> images = list(album.get("images"));
             result.add(new SpotifyTrack(
                     string(item.get("id")),
                     string(item.get("uri")),
                     string(map(item.get("external_urls")).get("spotify")),
                     string(item.get("name")),
-                    artists.isEmpty() ? null : string(map(artists.getFirst()).get("name")),
+                    string(firstArtist.get("id")),
+                    string(firstArtist.get("name")),
                     string(album.get("name")),
                     images.isEmpty() ? null : string(map(images.getFirst()).get("url")),
                     integer(item.get("duration_ms"))));
         }
         return result;
+    }
+
+    @Override
+    public Integer getTrackTempoBpm(String accessToken, String trackId) {
+        URI uri = URI.create(properties.getApiBaseUrl()
+                + "/audio-features/"
+                + encodePath(trackId));
+        Map<String, Object> response = get(uri, accessToken);
+        Object tempo = response.get("tempo");
+        if (tempo instanceof Number number) {
+            return Math.round(number.floatValue());
+        }
+        return null;
+    }
+
+    @Override
+    public List<String> getArtistGenres(String accessToken, String artistId) {
+        URI uri = URI.create(properties.getApiBaseUrl()
+                + "/artists/"
+                + encodePath(artistId));
+        Map<String, Object> response = get(uri, accessToken);
+        return list(response.get("genres")).stream()
+                .map(this::string)
+                .filter(StringUtils::hasText)
+                .map(String::trim)
+                .toList();
     }
 
     @Override

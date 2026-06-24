@@ -3,7 +3,7 @@
     <div class="page-heading playlist-page-heading">
       <div>
         <span class="eyebrow">PLAYLISTS</span>
-        <h1>달리는 순간을 위한 플레이리스트</h1>
+        <h1>심장이 따라 반응하도록</h1>
       </div>
       <RouterLink class="primary-button" to="/playlists/new">새 플레이리스트</RouterLink>
     </div>
@@ -11,7 +11,7 @@
     <section class="playlist-spotify-discovery" aria-labelledby="spotify-search-title">
       <div class="playlist-search-copy">
         <span class="eyebrow">SPOTIFY TRACK SEARCH</span>
-        <h2 id="spotify-search-title">음악을 찾고, 내 러닝 플로우에 바로 담아보세요.</h2>
+        <h2 id="spotify-search-title">음악을 찾고, 내 러닝 플로우에 담아보세요</h2>
       </div>
 
       <form class="playlist-spotify-search-form" @submit.prevent="searchSpotify">
@@ -128,8 +128,8 @@
 
     <div v-if="status === 'ready'" class="playlist-library-toolbar">
       <div>
-        <span class="eyebrow">LIBRARY VIEW</span>
-        <h2>플레이리스트 둘러보기</h2>
+        
+        <h1>플레이리스트 </h1>
       </div>
       <div class="playlist-scope-toggle" role="group" aria-label="플레이리스트 조회 범위">
         <button
