@@ -53,11 +53,20 @@
           <dt>평균 페이스</dt>
           <dd>{{ formatPace(record.paceSecondsPerKm) }}</dd>
         </div>
+        <div>
+          <dt>케이던스</dt>
+          <dd>{{ record.averageCadence != null ? `${record.averageCadence} spm` : "-" }}</dd>
+        </div>
+        <div>
+          <dt>평균 심박수</dt>
+          <dd>
+            {{ record.averageHeartRateBpm != null ? `${record.averageHeartRateBpm} bpm` : "-" }}
+          </dd>
+        </div>
       </dl>
 
       <section class="running-record-note">
         <span class="eyebrow">MEMO</span>
-        <h2>러닝 메모</h2>
         <p>{{ record.memo || "작성한 메모가 없습니다." }}</p>
       </section>
 

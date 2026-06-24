@@ -60,7 +60,10 @@ test("러닝 기록 등록, 조회, 수정, 삭제", async ({ page }) => {
 
   await page.getByLabel("러닝 날짜").fill("2026-06-23");
   await page.getByLabel("거리 (km)").fill("5.25");
-  await page.getByLabel("운동 시간 (초)").fill("1890");
+  await page.getByLabel("분").fill("31");
+  await page.getByLabel("초").fill("30");
+  await page.getByLabel("케이던스").fill("172");
+  await page.getByLabel("평균심박수(bpm)").fill("154");
   await page.getByLabel("메모").fill("E2E 최초 러닝 기록");
   await page.getByRole("button", { name: "저장" }).click();
 
@@ -70,7 +73,8 @@ test("러닝 기록 등록, 조회, 수정, 삭제", async ({ page }) => {
 
   await page.getByRole("link", { name: "수정" }).click();
   await page.getByLabel("거리 (km)").fill("7.50");
-  await page.getByLabel("운동 시간 (초)").fill("2700");
+  await page.getByLabel("분").fill("45");
+  await page.getByLabel("초").fill("0");
   await page.getByLabel("메모").fill("E2E 수정 완료 기록");
   await page.getByRole("button", { name: "저장" }).click();
 

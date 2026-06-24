@@ -1,10 +1,10 @@
 const RUNNING_SESSION_ERROR_MESSAGES = {
   AUTH_REQUIRED: "로그인이 필요한 기능입니다.",
   ACCESS_DENIED: "이 모임을 변경하거나 참여를 취소할 권한이 없습니다.",
-  SESSION_NOT_FOUND: "러닝 모임이 없거나 접근할 수 없습니다.",
-  SESSION_CLOSED: "모집이 마감되었거나 취소된 러닝 모임입니다.",
-  SESSION_FULL: "러닝 모임 정원이 모두 찼습니다.",
-  DUPLICATE_SESSION_JOIN: "이미 참여 중인 러닝 모임입니다.",
+  SESSION_NOT_FOUND: "러닝 세션이 없거나 접근할 수 없습니다.",
+  SESSION_CLOSED: "모집이 마감되었거나 취소된 러닝 세션입니다.",
+  SESSION_FULL: "러닝 세션 정원이 모두 찼습니다.",
+  DUPLICATE_SESSION_JOIN: "이미 참여 중인 러닝 세션입니다.",
   INVALID_REQUEST: "모임 제목, 장소, 일정, 정원을 다시 확인해 주세요.",
 };
 
@@ -12,7 +12,7 @@ export function runningSessionErrorMessage(error) {
   return RUNNING_SESSION_ERROR_MESSAGES[error?.errorCode]
     || (error?.status >= 500
       ? "서버에서 요청을 처리하지 못했습니다. 잠시 후 다시 시도해 주세요."
-      : error?.message || "러닝 모임 요청을 처리하지 못했습니다.");
+      : error?.message || "러닝 세션 요청을 처리하지 못했습니다.");
 }
 
 export function validateRunningSessionForm(form) {
@@ -56,6 +56,19 @@ export function formatSessionDateTime(value) {
       dateStyle: "full",
       timeStyle: "short",
     }).format(date);
+}
+
+export function formatSessionListDateTime(value) {
+  if (!value) return "-";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  const year = String(date.getFullYear()).slice(2);
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  const weekday = new Intl.DateTimeFormat("ko-KR", { weekday: "short" }).format(date);
+  const hours = String(date.getHours()).padStart(2, "0");
+  const minutes = String(date.getMinutes()).padStart(2, "0");
+  return `${year}${month}${day} (${weekday}) ${hours}:${minutes}`;
 }
 
 export function toDateTimeLocalValue(value) {

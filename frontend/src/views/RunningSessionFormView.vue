@@ -4,13 +4,13 @@
       ← 돌아가기
     </RouterLink>
     <span class="eyebrow">RUNNING SESSION EDITOR</span>
-    <h1>{{ isEdit ? "러닝 모임 수정" : "러닝 모임 생성" }}</h1>
+    <h1>{{ isEdit ? "러닝 세션 수정" : "러닝 세션 생성" }}</h1>
 
     <PageStatePanel
       v-if="status !== 'ready'"
       :status="status"
       :error="error"
-      error-title="러닝 모임을 준비하지 못했습니다"
+      error-title="러닝 세션을 준비하지 못했습니다"
       @retry="initialize"
     />
 
@@ -157,7 +157,7 @@ async function initialize() {
       error.value = {
         status: 403,
         errorCode: "ACCESS_DENIED",
-        message: "주최한 러닝 모임만 수정할 수 있습니다.",
+        message: "주최한 러닝 세션만 수정할 수 있습니다.",
       };
       status.value = "unauthorized";
       return;
@@ -166,7 +166,7 @@ async function initialize() {
       error.value = {
         status: 409,
         errorCode: "SESSION_CLOSED",
-        message: "취소된 러닝 모임은 수정할 수 없습니다.",
+        message: "취소된 러닝 세션은 수정할 수 없습니다.",
       };
       status.value = "error";
       return;

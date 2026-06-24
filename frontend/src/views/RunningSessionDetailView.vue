@@ -7,7 +7,7 @@
     <PageStatePanel
       :status="status"
       :error="error"
-      error-title="러닝 모임 상세를 불러오지 못했습니다"
+      error-title="러닝 세션 상세를 불러오지 못했습니다"
       @retry="load"
     />
 
@@ -219,8 +219,8 @@ async function load({ preserveMessage = false } = {}) {
   error.value = null;
   if (!preserveMessage) {
     actionMessage.value = route.query.saved === "created"
-      ? "러닝 모임을 생성했습니다."
-      : (route.query.saved === "updated" ? "러닝 모임을 수정했습니다." : "");
+      ? "러닝 세션을 생성했습니다."
+      : (route.query.saved === "updated" ? "러닝 세션을 수정했습니다." : "");
     if (route.query.saved) {
       const { saved, ...query } = route.query;
       void router.replace({ query });
@@ -271,15 +271,15 @@ async function runAction(action, successMessage) {
 function join() {
   return runAction(
     () => runningSessionApi.join(props.runningSessionId),
-    "러닝 모임에 참여했습니다.",
+    "러닝 세션에 참여했습니다.",
   );
 }
 
 function leave() {
-  if (!window.confirm("이 러닝 모임의 참여를 취소하시겠습니까?")) return;
+  if (!window.confirm("이 러닝 세션의 참여를 취소하시겠습니까?")) return;
   return runAction(
     () => runningSessionApi.leave(props.runningSessionId),
-    "러닝 모임 참여를 취소했습니다.",
+    "러닝 세션 참여를 취소했습니다.",
   );
 }
 
@@ -295,7 +295,7 @@ function cancelSession() {
   if (!window.confirm(`"${session.value.title}" 모임을 취소하시겠습니까?`)) return;
   return runAction(
     () => runningSessionApi.cancel(props.runningSessionId),
-    "러닝 모임을 취소했습니다.",
+    "러닝 세션을 취소했습니다.",
   );
 }
 
