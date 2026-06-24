@@ -1628,8 +1628,26 @@ dd {
   padding: 1rem;
 }
 
+.recommendation-log-row.selected {
+  border-color: var(--color-brand-bright);
+  background: rgba(128, 214, 183, 0.08);
+}
+
 .recommendation-log-row div {
   display: grid;
+}
+
+.recommendation-log-actions {
+  justify-items: end;
+  gap: 0.35rem;
+}
+
+.recommendation-log-detail {
+  margin-top: 1rem;
+}
+
+.recommendation-log-detail .policy-callout {
+  margin-top: 1rem;
 }
 
 .spotify-search-form {

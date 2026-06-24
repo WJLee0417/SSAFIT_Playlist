@@ -79,24 +79,85 @@
       <p v-if="logsError" class="save-status save-error">{{ recommendationErrorMessage(logsError) }}</p>
       <p v-else-if="!logsLoading && logs.length === 0" class="empty-inline">추천 로그가 없습니다.</p>
       <div v-else class="stack-list">
-        <article v-for="log in logs" :key="log.id" class="recommendation-log-row">
+        <article
+          v-for="log in logs"
+          :key="log.id"
+          class="recommendation-log-row"
+          :class="{ selected: selectedLog?.id === log.id }"
+        >
           <div>
-            <strong>로그 #{{ log.id }} · {{ intensityLabel(log.requestedIntensity) }}</strong>
+            <strong>로그 #{{ displayLogNumber(log) }} · {{ intensityLabel(log.requestedIntensity) }}</strong>
             <small>
               {{ log.requestedBpmMin }}~{{ log.requestedBpmMax }} BPM ·
               {{ log.requestedGenre || "장르 제한 없음" }}
             </small>
+            <small>{{ formatDateTime(log.createdAt) }}</small>
           </div>
-          <RouterLink
-            v-if="log.savedPlaylistId"
-            class="text-link"
-            :to="{ name: 'playlist-detail', params: { playlistId: log.savedPlaylistId }, query: { returnTo: '/recommendations' } }"
-          >
-            저장된 플레이리스트 #{{ log.savedPlaylistId }}
-          </RouterLink>
-          <span v-else class="muted">아직 저장하지 않음</span>
+          <div class="recommendation-log-actions">
+            <button type="button" class="secondary-button inline-button" @click="selectLog(log)">
+              {{ selectedLog?.id === log.id ? "상세 닫기" : "상세 보기" }}
+            </button>
+            <RouterLink
+              v-if="log.savedPlaylistId"
+              class="text-link"
+              :to="{ name: 'playlist-detail', params: { playlistId: log.savedPlaylistId }, query: { returnTo: '/recommendations' } }"
+            >
+              저장된 플레이리스트 #{{ log.savedPlaylistId }}
+            </RouterLink>
+            <span v-else class="muted">아직 저장하지 않음</span>
+          </div>
         </article>
       </div>
+
+      <article v-if="selectedLog" class="detail-card recommendation-log-detail">
+        <div class="page-heading">
+          <div>
+            <span class="eyebrow">LOG DETAIL</span>
+            <h3>이전 AI 추천 로그 #{{ displayLogNumber(selectedLog) }}</h3>
+          </div>
+          <span class="source-badge">{{ formatDateTime(selectedLog.createdAt) }}</span>
+        </div>
+        <dl class="summary-list recommendation-summary">
+          <div>
+            <dt>운동 강도</dt>
+            <dd>{{ intensityLabel(selectedLog.requestedIntensity) }}</dd>
+          </div>
+          <div>
+            <dt>요청 BPM</dt>
+            <dd>{{ selectedLog.requestedBpmMin }}~{{ selectedLog.requestedBpmMax }} BPM</dd>
+          </div>
+          <div>
+            <dt>선호 장르</dt>
+            <dd>{{ selectedLog.requestedGenre || "장르 제한 없음" }}</dd>
+          </div>
+          <div>
+            <dt>추천 곡 수</dt>
+            <dd>{{ selectedLogSummary.count ?? "확인 불가" }}</dd>
+          </div>
+          <div>
+            <dt>목표 거리</dt>
+            <dd>{{ selectedLogConditions.targetDistanceKm ? `${selectedLogConditions.targetDistanceKm}km` : "기록 없음" }}</dd>
+          </div>
+          <div>
+            <dt>저장 여부</dt>
+            <dd>{{ selectedLog.savedPlaylistId ? `플레이리스트 #${selectedLog.savedPlaylistId}` : "아직 저장하지 않음" }}</dd>
+          </div>
+        </dl>
+        <section v-if="selectedWorkoutPlan" class="workout-segment-list" aria-label="이전 추천 운동 계획">
+          <article
+            v-for="segment in selectedWorkoutPlan.segments"
+            :key="`${segment.name}-${segment.durationMinutes}`"
+          >
+            <strong>{{ segment.name }}</strong>
+            <span>{{ segment.durationMinutes }}분 · {{ segment.bpmMin }}~{{ segment.bpmMax }} BPM</span>
+            <small>{{ segment.purpose }}</small>
+          </article>
+        </section>
+        <aside class="policy-callout">
+          <strong>AI 추천 사유</strong>
+          <span>{{ selectedLog.recommendationReason || "추천 사유가 기록되지 않았습니다." }}</span>
+        </aside>
+      </article>
     </section>
   </AppLayout>
 </template>
@@ -136,6 +197,7 @@ const saveMessageType = ref("success");
 const logs = ref([]);
 const logsLoading = ref(false);
 const logsError = ref(null);
+const selectedLog = ref(null);
 let querySequence = 0;
 
 const intensityLabels = {
@@ -168,6 +230,20 @@ const queryDisplayError = computed(() => {
     notFound: queryError.value.notFound,
     conflict: queryError.value.conflict,
     upstreamUnavailable: queryError.value.upstreamUnavailable,
+  };
+});
+const selectedLogConditions = computed(() => (
+  parseJsonObject(selectedLog.value?.requestConditions)
+));
+const selectedLogSummary = computed(() => (
+  parseJsonObject(selectedLog.value?.resultSummary)
+));
+const selectedWorkoutPlan = computed(() => {
+  const plan = selectedLogSummary.value?.workoutPlan;
+  if (!plan || typeof plan !== "object") return null;
+  return {
+    ...plan,
+    segments: Array.isArray(plan.segments) ? plan.segments : [],
   };
 });
 
@@ -211,6 +287,17 @@ async function requestRecommendation() {
     result.value = response;
     queryStatus.value = "ready";
     await loadLogs();
+    const createdLog = logs.value.find((log) => log.id === response.log.id);
+    if (createdLog) {
+      result.value = {
+        ...response,
+        log: {
+          ...response.log,
+          displayNumber: createdLog.displayNumber,
+        },
+      };
+      selectedLog.value = createdLog;
+    }
   } catch (caught) {
     if (sequence !== querySequence) return;
     queryError.value = caught;
@@ -256,6 +343,9 @@ async function loadLogs() {
   try {
     const response = await recommendationApi.getMyLogs();
     logs.value = Array.isArray(response) ? response : [];
+    if (selectedLog.value) {
+      selectedLog.value = logs.value.find((log) => log.id === selectedLog.value.id) || null;
+    }
   } catch (caught) {
     logsError.value = caught;
   } finally {
@@ -263,8 +353,39 @@ async function loadLogs() {
   }
 }
 
+function selectLog(log) {
+  selectedLog.value = selectedLog.value?.id === log.id ? null : log;
+}
+
+function displayLogNumber(log) {
+  return log?.displayNumber || log?.id || "-";
+}
+
 function intensityLabel(value) {
   return intensityLabels[value] || value || "UNKNOWN";
+}
+
+function parseJsonObject(value) {
+  if (!value) return {};
+  if (typeof value === "object") return value;
+  try {
+    const parsed = JSON.parse(value);
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed)
+      ? parsed
+      : {};
+  } catch {
+    return {};
+  }
+}
+
+function formatDateTime(value) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat("ko-KR", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(date);
 }
 
 onMounted(loadLogs);

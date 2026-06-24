@@ -510,11 +510,15 @@ class RecommendationServiceTest {
 
     @Test
     void memberCanReadOwnRecommendationLogs() {
-        RecommendationLog log = log(100L, 10L, "{\"count\":1,\"musicIds\":[1]}");
-        when(recommendationLogMapper.selectByMemberId(10L)).thenReturn(List.of(log));
+        RecommendationLog newestLog = log(120L, 10L, "{\"count\":1,\"musicIds\":[1]}");
+        RecommendationLog oldestLog = log(100L, 10L, "{\"count\":1,\"musicIds\":[2]}");
+        when(recommendationLogMapper.selectByMemberId(10L))
+                .thenReturn(List.of(newestLog, oldestLog));
 
         assertThat(recommendationService.getMyRecommendationLogs(10L))
-                .containsExactly(log);
+                .containsExactly(newestLog, oldestLog)
+                .extracting(RecommendationLog::getDisplayNumber)
+                .containsExactly(2, 1);
     }
 
     @Test

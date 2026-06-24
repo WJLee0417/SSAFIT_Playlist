@@ -47,6 +47,7 @@ public final class RecommendationApiDtos {
 
     public record LogResponse(
             Long id,
+            Integer displayNumber,
             Long memberId,
             RunningIntensity requestedIntensity,
             Integer requestedBpmMin,
@@ -61,6 +62,7 @@ public final class RecommendationApiDtos {
         public static LogResponse from(RecommendationLog log) {
             return new LogResponse(
                     log.getId(),
+                    log.getDisplayNumber(),
                     log.getMemberId(),
                     log.getRequestedIntensity(),
                     log.getRequestedBpmMin(),

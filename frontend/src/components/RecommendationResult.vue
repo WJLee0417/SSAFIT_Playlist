@@ -5,7 +5,7 @@
         <span class="eyebrow">AI WORKOUT PLAN</span>
         <h2>{{ distanceLabel }} · {{ result.log.requestedIntensity }}</h2>
       </div>
-      <span class="source-badge">로그 #{{ result.log.id }}</span>
+      <span class="source-badge">로그 #{{ logNumber }}</span>
     </div>
 
     <aside class="policy-callout">
@@ -180,6 +180,9 @@ const distanceLabel = computed(() => (
 ));
 const defaultTitle = computed(() => (
   `${distanceLabel.value} ${props.result.log.requestedIntensity} 러닝`
+));
+const logNumber = computed(() => (
+  props.result?.log?.displayNumber || props.result?.log?.id
 ));
 const playlistDurationLabel = computed(() => {
   const totalMs = music.value.reduce((sum, track) => (

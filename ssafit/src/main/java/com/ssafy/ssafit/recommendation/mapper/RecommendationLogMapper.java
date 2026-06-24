@@ -21,6 +21,8 @@ public interface RecommendationLogMapper {
             @Param("memberId") Long memberId,
             @Param("limit") int limit);
 
+    int countByMemberId(@Param("memberId") Long memberId);
+
     int updateSavedPlaylistId(
             @Param("id") Long id,
             @Param("savedPlaylistId") Long savedPlaylistId);

@@ -80,6 +80,12 @@
         LIMIT #{limit}
     </select>
 
+    <select id="countByMemberId" resultType="int">
+        SELECT COUNT(*)
+        FROM recommendation_logs
+        WHERE member_id = #{memberId}
+    </select>
+
     <update id="updateSavedPlaylistId">
         UPDATE recommendation_logs
         SET saved_playlist_id = #{savedPlaylistId}

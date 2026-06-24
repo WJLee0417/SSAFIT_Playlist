@@ -357,6 +357,7 @@ public class RecommendationService {
         if (recommendationLogMapper.insert(log) != 1) {
             throw new CustomException(ErrorCode.INTERNAL_SERVER_ERROR);
         }
+        log.setDisplayNumber(recommendationLogMapper.countByMemberId(loginMemberId));
         return new RecommendationResult(
                 log,
                 List.copyOf(musicList),
@@ -424,7 +425,12 @@ public class RecommendationService {
 
     public List<RecommendationLog> getMyRecommendationLogs(Long loginMemberId) {
         validateAuthenticated(loginMemberId);
-        return recommendationLogMapper.selectByMemberId(loginMemberId);
+        List<RecommendationLog> logs = recommendationLogMapper.selectByMemberId(loginMemberId);
+        int displayNumber = logs.size();
+        for (RecommendationLog log : logs) {
+            log.setDisplayNumber(displayNumber--);
+        }
+        return logs;
     }
 
     private RecommendationLog createLog(
