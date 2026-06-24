@@ -104,7 +104,7 @@ class RecommendationServiceTest {
                 runningFitnessMetricService,
                 runningRecordMapper,
                 List.of(),
-                null);
+                new ObjectMapper());
         lenient().when(runningFitnessMetricService.calculate(any()))
                 .thenReturn(com.ssafy.ssafit.runningprofile.domain.RunningFitnessMetric.empty());
         lenient().when(runningRecordMapper.selectRecentByMemberId(any(), anyInt()))
@@ -519,6 +519,70 @@ class RecommendationServiceTest {
                 .containsExactly(newestLog, oldestLog)
                 .extracting(RecommendationLog::getDisplayNumber)
                 .containsExactly(2, 1);
+    }
+
+    @Test
+    void memberCanRestoreOwnRecommendationResultFromLog() {
+        RecommendationLog log = log(
+                100L,
+                10L,
+                """
+                {
+                  "count": 1,
+                  "musicIds": [1],
+                  "music": [{
+                    "id": 1,
+                    "cadenceScore": 90.0,
+                    "intensityScore": 80.0,
+                    "preferenceScore": 3.0,
+                    "finalScore": 82.0,
+                    "tempoMatchMode": "DIRECT",
+                    "recommendationReason": "170 SPM에 맞는 곡"
+                  }],
+                  "workoutPlan": {
+                    "totalDurationMinutes": 30,
+                    "targetPace": "6'00\\"/km",
+                    "targetPaceSecondsPerKm": 360,
+                    "cadenceMinSpm": 166,
+                    "cadenceMaxSpm": 174,
+                    "heartRateMinBpm": 140,
+                    "heartRateMaxBpm": 165,
+                    "musicBpmMin": 165,
+                    "musicBpmMax": 175,
+                    "coachingSummary": "30분 지속주",
+                    "musicStrategy": "중반부 BPM 유지",
+                    "provider": "fallback",
+                    "modelName": null,
+                    "fallback": true,
+                    "segments": [{
+                      "name": "메인",
+                      "durationMinutes": 30,
+                      "bpmMin": 165,
+                      "bpmMax": 175,
+                      "purpose": "목표 페이스 유지"
+                    }]
+                  }
+                }
+                """);
+        log.setRequestConditions(
+                "{\"targetDistanceKm\":5.0,\"targetCadenceSpm\":170,"
+                        + "\"runningIntensityGoal\":\"MODERATE\",\"page\":1}");
+        Music music = music(1L);
+        when(recommendationLogMapper.selectById(100L)).thenReturn(Optional.of(log));
+        when(recommendationLogMapper.selectByMemberId(10L)).thenReturn(List.of(log));
+        when(musicMapper.selectByIds(List.of(1L))).thenReturn(List.of(music));
+
+        RecommendationResult result =
+                recommendationService.getMyRecommendationResult(10L, 100L);
+
+        assertThat(result.getRecommendationLog().getId()).isEqualTo(100L);
+        assertThat(result.getRecommendationLog().getDisplayNumber()).isEqualTo(1);
+        assertThat(result.getTargetDistanceKm()).isEqualTo(5.0);
+        assertThat(result.getWorkoutPlan().totalDurationMinutes()).isEqualTo(30);
+        assertThat(result.getMusicList()).hasSize(1);
+        assertThat(result.getMusicList().getFirst().finalScore()).isEqualTo(82.0);
+        assertThat(result.getMusicList().getFirst().recommendationReason())
+                .isEqualTo("170 SPM에 맞는 곡");
     }
 
     @Test

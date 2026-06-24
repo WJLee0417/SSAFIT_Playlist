@@ -35,6 +35,9 @@ export const recommendationApi = {
   getMyLogs() {
     return apiClient.get("/recommendations/logs/me");
   },
+  getResult(logId) {
+    return apiClient.get(`/recommendations/${logId}`);
+  },
   save(logId, payload) {
     return apiClient.post(
       `/recommendations/${logId}/save`,

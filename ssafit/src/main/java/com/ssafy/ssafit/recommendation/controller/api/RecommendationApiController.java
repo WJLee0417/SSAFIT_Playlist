@@ -64,6 +64,15 @@ public class RecommendationApiController {
                         .toList());
     }
 
+    @GetMapping("/{logId}")
+    public ApiResponse<ResultResponse> getMyRecommendationResult(
+            @PathVariable Long logId,
+            HttpSession session) {
+        Long memberId = sessionMemberResolver.requireMemberId(session);
+        return ApiResponse.success(ResultResponse.from(
+                recommendationService.getMyRecommendationResult(memberId, logId)));
+    }
+
     @PostMapping("/{logId}/save")
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<SaveResponse> save(

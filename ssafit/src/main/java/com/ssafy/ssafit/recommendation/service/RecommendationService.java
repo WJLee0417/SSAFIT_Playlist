@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -40,6 +41,7 @@ import com.ssafy.ssafit.recommendation.domain.RecommendationResult;
 import com.ssafy.ssafit.recommendation.domain.CadenceResolutionResult;
 import com.ssafy.ssafit.recommendation.domain.IntensityResolutionResult;
 import com.ssafy.ssafit.recommendation.domain.RunningIntensityGoal;
+import com.ssafy.ssafit.recommendation.domain.TempoMatchMode;
 import com.ssafy.ssafit.recommendation.domain.WorkoutPlan;
 import com.ssafy.ssafit.recommendation.domain.WorkoutPlanSegment;
 import com.ssafy.ssafit.recommendation.policy.CadenceMatchingPolicy;
@@ -59,6 +61,7 @@ import com.ssafy.ssafit.spotify.service.SpotifyService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import tools.jackson.core.JacksonException;
+import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 @Service
@@ -426,11 +429,64 @@ public class RecommendationService {
     public List<RecommendationLog> getMyRecommendationLogs(Long loginMemberId) {
         validateAuthenticated(loginMemberId);
         List<RecommendationLog> logs = recommendationLogMapper.selectByMemberId(loginMemberId);
-        int displayNumber = logs.size();
-        for (RecommendationLog log : logs) {
-            log.setDisplayNumber(displayNumber--);
-        }
+        assignDisplayNumbers(logs);
         return logs;
+    }
+
+    public RecommendationResult getMyRecommendationResult(
+            Long loginMemberId,
+            Long recommendationLogId) {
+        validateAuthenticated(loginMemberId);
+        RecommendationLog log = getOwnedLog(loginMemberId, recommendationLogId);
+        assignDisplayNumber(loginMemberId, log);
+
+        List<Long> musicIds = parseMusicIds(log.getResultSummary());
+        if (musicIds.isEmpty()) {
+            throw new CustomException(ErrorCode.RECOMMENDATION_DATA_NOT_ENOUGH);
+        }
+        Map<Long, Music> musicById = musicMapper.selectByIds(musicIds)
+                .stream()
+                .collect(java.util.stream.Collectors.toMap(
+                        Music::getId,
+                        music -> music));
+        Map<Long, JsonNode> musicSnapshots = parseMusicSnapshots(log.getResultSummary());
+        List<RecommendedMusic> musicList = musicIds.stream()
+                .map(musicById::get)
+                .filter(Objects::nonNull)
+                .map(music -> restoreRecommendedMusic(
+                        music,
+                        musicSnapshots.get(music.getId()),
+                        log))
+                .toList();
+        if (musicList.isEmpty()) {
+            throw new CustomException(ErrorCode.RECOMMENDATION_DATA_NOT_ENOUGH);
+        }
+
+        JsonNode conditions = parseJson(log.getRequestConditions());
+        WorkoutPlan workoutPlan = parseWorkoutPlan(log.getResultSummary());
+        Integer targetCadenceSpm = intValue(conditions == null ? null : conditions.get("targetCadenceSpm"));
+        RunningIntensityGoal intensityGoal =
+                runningIntensityGoalValue(conditions == null ? null : conditions.get("runningIntensityGoal"));
+        Double targetDistanceKm =
+                doubleValue(conditions == null ? null : conditions.get("targetDistanceKm"));
+        Integer page = intValue(conditions == null ? null : conditions.get("page"));
+        return new RecommendationResult(
+                log,
+                musicList,
+                targetCadenceSpm,
+                targetCadenceSpm == null ? null : "이전 AI 추천 로그에서 복원한 케이던스 목표입니다.",
+                intensityGoal,
+                null,
+                null,
+                intensityGoal == null ? null : "이전 AI 추천 로그에서 복원한 운동 강도 목표입니다.",
+                page == null ? 1 : page,
+                musicList.size(),
+                false,
+                false,
+                musicList.stream().anyMatch(value -> value.cadenceScore() != null),
+                musicList.stream().anyMatch(value -> value.intensityScore() != null),
+                targetDistanceKm,
+                workoutPlan);
     }
 
     private RecommendationLog createLog(
@@ -601,30 +657,38 @@ public class RecommendationService {
     private String buildResultSummary(
             List<RecommendedMusic> musicList,
             WorkoutPlan workoutPlan) {
-        String musicIds = musicList.stream()
+        List<Long> musicIds = musicList.stream()
                 .map(RecommendedMusic::music)
                 .map(Music::getId)
-                .map(String::valueOf)
-                .reduce((left, right) -> left + "," + right)
-                .orElse("");
-        String planSummary = workoutPlan == null
-                ? "null"
-                : "{\"totalDurationMinutes\":"
-                        + workoutPlan.totalDurationMinutes()
-                        + ",\"targetPace\":"
-                        + jsonString(workoutPlan.targetPace())
-                        + ",\"musicBpmMin\":"
-                        + workoutPlan.musicBpmMin()
-                        + ",\"musicBpmMax\":"
-                        + workoutPlan.musicBpmMax()
-                        + "}";
-        return "{\"count\":"
-                + musicList.size()
-                + ",\"musicIds\":["
-                + musicIds
-                + "],\"workoutPlan\":"
-                + planSummary
-                + "}";
+                .toList();
+        Map<String, Object> summary = new LinkedHashMap<>();
+        summary.put("count", musicList.size());
+        summary.put("musicIds", musicIds);
+        summary.put("music", musicList.stream()
+                .map(this::musicSnapshot)
+                .toList());
+        summary.put("workoutPlan", workoutPlan);
+        try {
+            return objectMapper.writeValueAsString(summary);
+        } catch (JacksonException exception) {
+            throw new CustomException(ErrorCode.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    private Map<String, Object> musicSnapshot(RecommendedMusic recommendedMusic) {
+        Map<String, Object> snapshot = new LinkedHashMap<>();
+        snapshot.put("id", recommendedMusic.music().getId());
+        snapshot.put("cadenceScore", recommendedMusic.cadenceScore());
+        snapshot.put("intensityScore", recommendedMusic.intensityScore());
+        snapshot.put("preferenceScore", recommendedMusic.preferenceScore());
+        snapshot.put("finalScore", recommendedMusic.finalScore());
+        snapshot.put(
+                "tempoMatchMode",
+                recommendedMusic.tempoMatchMode() == null
+                        ? null
+                        : recommendedMusic.tempoMatchMode().name());
+        snapshot.put("recommendationReason", recommendedMusic.recommendationReason());
+        return snapshot;
     }
 
     private Map<Long, Double> preferenceScores(Long memberId) {
@@ -1438,11 +1502,23 @@ public class RecommendationService {
         if (resultSummary == null) {
             return List.of();
         }
+        JsonNode summary = parseJson(resultSummary);
+        JsonNode idsNode = summary == null ? null : summary.get("musicIds");
+        if (idsNode != null && idsNode.isArray()) {
+            List<Long> musicIds = new ArrayList<>();
+            for (JsonNode idNode : idsNode) {
+                Long id = longValue(idNode);
+                if (id != null) {
+                    musicIds.add(id);
+                }
+            }
+            return musicIds;
+        }
+
         Matcher matcher = MUSIC_IDS_PATTERN.matcher(resultSummary);
         if (!matcher.find() || matcher.group(1).isBlank()) {
             return List.of();
         }
-
         List<Long> musicIds = new ArrayList<>();
         for (String value : matcher.group(1).split(",")) {
             try {
@@ -1452,6 +1528,146 @@ public class RecommendationService {
             }
         }
         return musicIds;
+    }
+
+    private void assignDisplayNumber(Long memberId, RecommendationLog target) {
+        List<RecommendationLog> logs = recommendationLogMapper.selectByMemberId(memberId);
+        assignDisplayNumbers(logs);
+        logs.stream()
+                .filter(log -> Objects.equals(log.getId(), target.getId()))
+                .findFirst()
+                .map(RecommendationLog::getDisplayNumber)
+                .ifPresent(target::setDisplayNumber);
+    }
+
+    private void assignDisplayNumbers(List<RecommendationLog> logs) {
+        int displayNumber = logs.size();
+        for (RecommendationLog log : logs) {
+            log.setDisplayNumber(displayNumber--);
+        }
+    }
+
+    private RecommendedMusic restoreRecommendedMusic(
+            Music music,
+            JsonNode snapshot,
+            RecommendationLog log) {
+        return new RecommendedMusic(
+                music,
+                doubleValue(snapshot == null ? null : snapshot.get("cadenceScore")),
+                doubleValue(snapshot == null ? null : snapshot.get("intensityScore")),
+                doubleValue(snapshot == null ? null : snapshot.get("preferenceScore")),
+                doubleValue(snapshot == null ? null : snapshot.get("finalScore")),
+                tempoMatchModeValue(snapshot == null ? null : snapshot.get("tempoMatchMode")),
+                firstText(
+                        textValue(snapshot == null ? null : snapshot.get("recommendationReason")),
+                        log.getRecommendationReason()));
+    }
+
+    private Map<Long, JsonNode> parseMusicSnapshots(String resultSummary) {
+        JsonNode summary = parseJson(resultSummary);
+        JsonNode musicNode = summary == null ? null : summary.get("music");
+        if (musicNode == null || !musicNode.isArray()) {
+            return Map.of();
+        }
+        Map<Long, JsonNode> snapshots = new HashMap<>();
+        for (JsonNode node : musicNode) {
+            Long musicId = longValue(node.get("id"));
+            if (musicId != null) {
+                snapshots.put(musicId, node);
+            }
+        }
+        return snapshots;
+    }
+
+    private WorkoutPlan parseWorkoutPlan(String resultSummary) {
+        JsonNode summary = parseJson(resultSummary);
+        JsonNode plan = summary == null ? null : summary.get("workoutPlan");
+        if (plan == null || plan.isNull() || !plan.isObject()) {
+            return null;
+        }
+        List<WorkoutPlanSegment> segments = new ArrayList<>();
+        JsonNode segmentsNode = plan.get("segments");
+        if (segmentsNode != null && segmentsNode.isArray()) {
+            for (JsonNode segment : segmentsNode) {
+                segments.add(new WorkoutPlanSegment(
+                        textValue(segment.get("name")),
+                        intValue(segment.get("durationMinutes")),
+                        intValue(segment.get("bpmMin")),
+                        intValue(segment.get("bpmMax")),
+                        textValue(segment.get("purpose"))));
+            }
+        }
+        return new WorkoutPlan(
+                intValue(plan.get("totalDurationMinutes")),
+                textValue(plan.get("targetPace")),
+                intValue(plan.get("targetPaceSecondsPerKm")),
+                intValue(plan.get("cadenceMinSpm")),
+                intValue(plan.get("cadenceMaxSpm")),
+                intValue(plan.get("heartRateMinBpm")),
+                intValue(plan.get("heartRateMaxBpm")),
+                intValue(plan.get("musicBpmMin")),
+                intValue(plan.get("musicBpmMax")),
+                textValue(plan.get("coachingSummary")),
+                textValue(plan.get("musicStrategy")),
+                textValue(plan.get("provider")),
+                textValue(plan.get("modelName")),
+                booleanValue(plan.get("fallback")),
+                segments);
+    }
+
+    private JsonNode parseJson(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        try {
+            return objectMapper.readTree(value);
+        } catch (JacksonException exception) {
+            return null;
+        }
+    }
+
+    private String textValue(JsonNode node) {
+        return node == null || node.isNull() ? null : node.asText();
+    }
+
+    private Integer intValue(JsonNode node) {
+        return node == null || node.isNull() ? null : node.asInt();
+    }
+
+    private Long longValue(JsonNode node) {
+        return node == null || node.isNull() ? null : node.asLong();
+    }
+
+    private Double doubleValue(JsonNode node) {
+        return node == null || node.isNull() ? null : node.asDouble();
+    }
+
+    private boolean booleanValue(JsonNode node) {
+        return node != null && !node.isNull() && node.asBoolean();
+    }
+
+    private RunningIntensityGoal runningIntensityGoalValue(JsonNode node) {
+        String value = textValue(node);
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        try {
+            return RunningIntensityGoal.valueOf(value);
+        } catch (IllegalArgumentException exception) {
+            return null;
+        }
+    }
+
+    private TempoMatchMode tempoMatchModeValue(JsonNode node) {
+        String value = textValue(node);
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        try {
+            return TempoMatchMode.valueOf(value);
+        } catch (IllegalArgumentException exception) {
+            return null;
+        }
     }
 
     private String jsonString(String value) {

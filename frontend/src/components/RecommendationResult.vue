@@ -85,21 +85,21 @@
             v-model="saveForm.title"
             maxlength="200"
             :placeholder="defaultTitle"
-            :disabled="saving || savedPlaylist != null"
+            :disabled="saving || alreadySaved"
           />
         </label>
         <label>
           공개 범위
-          <select v-model="saveForm.visibility" :disabled="saving || savedPlaylist != null">
+          <select v-model="saveForm.visibility" :disabled="saving || alreadySaved">
             <option value="PRIVATE">PRIVATE</option>
             <option value="PUBLIC">PUBLIC</option>
           </select>
         </label>
         <button
           type="submit"
-          :disabled="!canSave || saving || savedPlaylist != null"
+          :disabled="!canSave || saving || alreadySaved"
         >
-          {{ saving ? "저장 중..." : "플레이리스트 제안 수락" }}
+          {{ alreadySaved ? "이미 저장된 로그" : saving ? "저장 중..." : "플레이리스트 제안 수락" }}
         </button>
       </form>
     </section>
@@ -173,6 +173,10 @@ const canSave = computed(() => (
   && Number(props.result.log.id) >= 1
   && music.value.length > 0
 ));
+const alreadySaved = computed(() => (
+  props.savedPlaylist != null
+  || Number.isSafeInteger(Number(props.result?.log?.savedPlaylistId))
+));
 const distanceLabel = computed(() => (
   props.result.targetDistanceKm
     ? `${props.result.targetDistanceKm}km`
@@ -192,7 +196,7 @@ const playlistDurationLabel = computed(() => {
 });
 
 function submitSave() {
-  if (!canSave.value || props.saving || props.savedPlaylist) return;
+  if (!canSave.value || props.saving || alreadySaved.value) return;
   emit("save", {
     title: saveForm.title.trim() || defaultTitle.value,
     visibility: saveForm.visibility,
