@@ -1,5 +1,153 @@
 # SSAFIT PlayList
 
+## Docker Quick Start
+
+Use this path when a teammate needs to run the full local stack with Docker
+Desktop and Git only. The Compose stack contains `mysql`, `backend`, and
+`frontend`.
+
+### Prerequisites
+
+- Docker Desktop installed and running
+- Docker Compose v2, included with current Docker Desktop
+- Git
+- A local `.env` file copied from `.env.example`
+
+### Clone And Create `.env`
+
+Windows PowerShell:
+
+```powershell
+git clone <repository-url>
+Set-Location SSAFIT_Playlist
+Copy-Item .env.example .env
+```
+
+macOS/Linux:
+
+```bash
+git clone <repository-url>
+cd SSAFIT_Playlist
+cp .env.example .env
+```
+
+Replace only the placeholder values in `.env`. Do not commit `.env`.
+
+### Environment Variables
+
+| Variable | Purpose | Secret | Example placeholder |
+|---|---|---:|---|
+| `SPRING_PROFILES_ACTIVE` | Spring profile for containers | No | `docker` |
+| `SERVER_PORT` | backend container port | No | `8080` |
+| `MYSQL_HOST_PORT` | host port for MySQL, useful for STS | No | `3306` |
+| `MYSQL_DATABASE` | database created on a fresh volume | No | `ssafit_playlist` |
+| `MYSQL_USER` | MySQL app user created on a fresh volume | No | `ssafit` |
+| `MYSQL_PASSWORD` | MySQL app user password | Yes | `change-me` |
+| `MYSQL_ROOT_PASSWORD` | MySQL root password | Yes | `change-me` |
+| `SSAFIT_DB_HOST` | backend DB host inside Compose | No | `mysql` |
+| `SSAFIT_DB_PORT` | backend DB port inside Compose | No | `3306` |
+| `SSAFIT_DB_NAME` | backend datasource database | No | `ssafit_playlist` |
+| `SSAFIT_DB_USERNAME` | backend datasource user | No | `ssafit` |
+| `SSAFIT_DB_PASSWORD` | backend datasource password | Yes | `change-me` |
+| `FRONTEND_HOST_PORT` | browser port for the app | No | `5173` |
+| `FRONTEND_PUBLIC_ORIGIN` | browser-visible frontend origin | No | `http://localhost:5173` |
+| `SSAFIT_FRONTEND_ORIGIN` | backend redirects to Vue | No | `http://localhost:5173` |
+| `SSAFIT_CORS_ALLOWED_ORIGINS` | allowed browser origins | No | `http://localhost:5173,http://127.0.0.1:5173` |
+| `VITE_API_BASE_URL` | Vue API base path through Nginx | No | `/api` |
+| `VITE_JSP_BASE_URL` | Vue links to JSP pages | No | `http://localhost:5173` |
+| `SPOTIFY_CLIENT_ID` | Spotify app client ID | No | `change-me` |
+| `SPOTIFY_CLIENT_SECRET` | Spotify app client secret | Yes | `change-me` |
+| `SPOTIFY_REDIRECT_URI` | Spotify OAuth callback URL | No | `http://localhost:5173/api/spotify/oauth/callback` |
+| `SPOTIFY_AUDIO_FEATURE_ENRICHMENT_ENABLED` | optional Spotify audio feature enrichment | No | `false` |
+
+`SPOTIFY_REDIRECT_URI` must exactly match the Docker browser URL and must also
+be registered in the Spotify Developer Dashboard. If your Spotify app is in
+Development Mode, configure the allowlist in the Dashboard separately.
+
+### Run
+
+Validate the resolved Compose configuration:
+
+```bash
+docker compose config
+```
+
+Run the full stack in the foreground:
+
+```bash
+docker compose up --build
+```
+
+Run the full stack in the background:
+
+```bash
+docker compose up --build -d
+```
+
+Open the app:
+
+```text
+http://localhost:5173/
+```
+
+Run only MySQL for STS/local backend development:
+
+```bash
+docker compose up -d mysql
+```
+
+The backend container talks to MySQL through the Compose service name
+`mysql:3306`. A browser talks to the app through `localhost:5173`.
+
+### Status And Logs
+
+```bash
+docker compose ps
+docker compose logs -f mysql
+docker compose logs -f backend
+docker compose logs -f frontend
+```
+
+### Stop
+
+Stop containers and keep the MySQL named volume:
+
+```bash
+docker compose down
+```
+
+Delete containers and the MySQL named volume:
+
+```bash
+docker compose down -v
+```
+
+Warning: `docker compose down -v` deletes the local Docker database. Use it only
+when you intentionally want a fresh DB initialized from `schema.sql`.
+
+### Database Initialization
+
+Fresh Docker volumes are initialized from:
+
+```text
+ssafit/src/main/resources/sql/schema.sql
+```
+
+The file is mounted into MySQL as
+`/docker-entrypoint-initdb.d/01-schema.sql` and runs only when the named volume
+is empty. It does not run again on the second start of the same volume.
+
+### Troubleshooting
+
+| Symptom | Check |
+|---|---|
+| Port already in use | Change `FRONTEND_HOST_PORT` or `MYSQL_HOST_PORT` in `.env`, then run `docker compose up --build -d` again. |
+| MySQL init SQL did not rerun | This is normal for an existing named volume. Use `docker compose down -v` only if you intentionally want to delete DB data and reinitialize. |
+| backend cannot connect to DB | Confirm `MYSQL_PASSWORD` and `SSAFIT_DB_PASSWORD` match for a fresh volume. For an existing volume, keep the password used when that volume was first initialized. |
+| Docker image seems stale | Run `docker compose build --no-cache backend frontend`, then `docker compose up -d`. |
+| OAuth callback mismatch | Keep `SPOTIFY_REDIRECT_URI`, `SSAFIT_FRONTEND_ORIGIN`, `VITE_JSP_BASE_URL`, and Spotify Dashboard Redirect URI aligned with `http://localhost:5173`. |
+| Need logs | Run `docker compose logs -f <service>` where `<service>` is `mysql`, `backend`, or `frontend`. |
+
 ## 개발 환경
 
 - STS 5.0.1
@@ -116,7 +264,7 @@ CREATE DATABASE ssafit_playlist
 DEFAULT CHARACTER SET utf8mb4
 COLLATE utf8mb4_0900_ai_ci;
 
-CREATE USER 'ssafit'@'localhost' IDENTIFIED BY 'ssafit1234!';
+CREATE USER 'ssafit'@'localhost' IDENTIFIED BY 'change-me-local-password';
 GRANT ALL PRIVILEGES ON ssafit_playlist.* TO 'ssafit'@'localhost';
 FLUSH PRIVILEGES;
 ```

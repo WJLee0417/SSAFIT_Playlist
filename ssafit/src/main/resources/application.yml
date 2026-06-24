@@ -1,5 +1,5 @@
 server:
-  port: 8080
+  port: ${SERVER_PORT:8080}
   error:
     include-binding-errors: never
     include-exception: false
@@ -48,3 +48,8 @@ spotify:
     - playlist-modify-public
   audio-feature-enrichment:
     enabled: ${SPOTIFY_AUDIO_FEATURE_ENRICHMENT_ENABLED:false}
+
+ssafit:
+  frontend:
+    origin: ${SSAFIT_FRONTEND_ORIGIN:http://127.0.0.1:5173}
+    cors-allowed-origins: ${SSAFIT_CORS_ALLOWED_ORIGINS:http://127.0.0.1:5173,http://localhost:5173}

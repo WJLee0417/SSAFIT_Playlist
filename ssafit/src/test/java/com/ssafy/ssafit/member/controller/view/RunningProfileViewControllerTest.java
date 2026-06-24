@@ -123,8 +123,7 @@ class RunningProfileViewControllerTest {
                                 "returnTo",
                                 "http://127.0.0.1:5173/recommendations"))
                 .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl(
-                        "http://127.0.0.1:5173/recommendations"));
+                .andExpect(redirectedUrl("/recommendations"));
     }
 
     @Test

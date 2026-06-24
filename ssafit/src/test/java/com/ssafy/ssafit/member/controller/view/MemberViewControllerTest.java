@@ -182,8 +182,7 @@ class MemberViewControllerTest {
                                 "returnTo",
                                 "http://127.0.0.1:5173/playlists/10?tab=items"))
                 .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl(
-                        "http://127.0.0.1:5173/playlists/10?tab=items"));
+                .andExpect(redirectedUrl("/playlists/10?tab=items"));
     }
 
     @Test

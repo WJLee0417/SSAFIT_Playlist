@@ -18,7 +18,7 @@
         <div class="mypage-landing-content" id="mypageLandingContent">
             <h1 id="beatRateTitle">오늘의<br>BEAT RATE</h1>
             <a class="primary-button mypage-playlist-button"
-               href="http://127.0.0.1:5173/playlists">플레이리스트</a>
+               href="${frontendOrigin}/playlists">플레이리스트</a>
         </div>
         <span class="mypage-scroll-cue" aria-hidden="true"></span>
     </section>
@@ -68,7 +68,7 @@
             </article>
 
             <a class="card mypage-tile mypage-link-tile"
-               href="http://127.0.0.1:5173/running-records">
+               href="${frontendOrigin}/running-records">
                 <span class="eyebrow">RUNNING RECORDS</span>
                 <div>
                     <strong>나의 러닝 기록</strong>
@@ -78,7 +78,7 @@
             </a>
 
             <a class="card mypage-tile mypage-link-tile"
-               href="http://127.0.0.1:5173/running-sessions">
+               href="${frontendOrigin}/running-sessions">
                 <span class="eyebrow">RUNNING SESSIONS</span>
                 <div>
                     <strong>나의 러닝 모임</strong>

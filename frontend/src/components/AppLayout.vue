@@ -10,8 +10,8 @@
           <RouterLink to="/playlists">플레이리스트</RouterLink>
           <RouterLink to="/running-records">러닝 기록</RouterLink>
           <RouterLink to="/running-sessions">러닝 모임</RouterLink>
-          <a href="http://127.0.0.1:8080/members/me">마이페이지</a>
-          <form class="nav-form" method="post" action="http://127.0.0.1:8080/logout">
+          <a :href="myPageUrl">마이페이지</a>
+          <form class="nav-form" method="post" :action="logoutUrl">
             <button class="link-button" type="submit">로그아웃</button>
           </form>
         </div>
@@ -25,4 +25,8 @@
 
 <script setup>
 import { RouterLink } from "vue-router";
+import { buildJspUrl } from "../utils/navigation";
+
+const myPageUrl = buildJspUrl("/members/me");
+const logoutUrl = buildJspUrl("/logout");
 </script>
