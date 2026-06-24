@@ -104,7 +104,7 @@
         @remove="removeItem"
       />
 
-      <div v-if="canManage" class="playlist-spotify-export-row">
+      <div v-if="canExportToSpotify" class="playlist-spotify-export-row">
         <a
           v-if="playlist.spotifyPlaylistUrl"
           class="secondary-button spotify-export-capsule"
@@ -182,6 +182,14 @@ const isOwner = computed(() => (
   && String(currentMember.value.id) === String(playlist.value.ownerId)
 ));
 const canManage = computed(() => isOwner.value && !isOfficial.value);
+const canExportToSpotify = computed(() => (
+  viewerStatus.value === "authenticated"
+  && (
+    canManage.value
+    || isOfficial.value
+    || playlist.value.visibility === "PUBLIC"
+  )
+));
 const canAttemptSave = computed(() => (
   viewerStatus.value === "authenticated"
   && !isOwner.value
@@ -295,7 +303,7 @@ async function load() {
     await resolveViewerAndSaveState(response.playlist.id);
     if (sequence !== requestSequence) return;
     status.value = "ready";
-    if (canManage.value) checkSpotifyConnection();
+    if (canExportToSpotify.value) checkSpotifyConnection();
   } catch (caught) {
     if (sequence !== requestSequence) return;
     error.value = caught;

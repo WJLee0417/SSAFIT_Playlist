@@ -5,20 +5,87 @@
         <span class="eyebrow">MUSIC</span>
         <h1>음악 둘러보기</h1>
       </div>
-      <RouterLink class="secondary-button" to="/spotify/search">Spotify 검색</RouterLink>
     </div>
 
-    <div class="form-actions">
-      <RouterLink class="secondary-button" to="/music-manage/new">내부 음악 등록</RouterLink>
-    </div>
+    <section class="playlist-spotify-discovery music-spotify-discovery" aria-labelledby="music-spotify-search-title">
+      <div class="playlist-search-copy">
+        <span class="eyebrow">SPOTIFY TRACK SEARCH</span>
+        <h2 id="music-spotify-search-title">Spotify에서 음악 찾기</h2>
+      </div>
 
-    <MusicSearchBar
-      :model="filters"
-      :validation-message="validationMessage"
-      @search="applyFilters"
-      @sort-change="applySort"
-      @reset="resetFilters"
-    />
+      <form class="playlist-spotify-search-form" @submit.prevent="searchSpotify">
+        <div class="playlist-search-control">
+          <input
+            id="music-spotify-query"
+            v-model="spotifyQuery"
+            aria-label="Spotify 음악 검색"
+            maxlength="200"
+            placeholder="곡명 또는 아티스트를 검색하세요"
+            autocomplete="off"
+          />
+
+          <div v-if="shouldShowSpotifyDropdown" class="playlist-search-dropdown">
+            <p v-if="spotifySearchFeedbackMessage" class="playlist-search-state">
+              {{ spotifySearchFeedbackMessage }}
+            </p>
+            <article
+              v-for="track in spotifyTracks"
+              :key="track.spotifyTrackId"
+              class="playlist-search-result"
+            >
+              <img v-if="track.imageUrl" :src="track.imageUrl" :alt="`${track.title} 앨범 커버`" />
+              <div v-else class="playlist-result-placeholder" aria-hidden="true">♫</div>
+              <div class="playlist-result-copy">
+                <strong>{{ track.title }}</strong>
+                <span>{{ track.artist }}</span>
+              </div>
+              <button
+                type="button"
+                class="secondary-button playlist-add-trigger"
+                :class="{ active: isSpotifyTrackSaved(track) }"
+                :disabled="spotifySavingTrackId != null || isSpotifyTrackSaved(track)"
+                @click="saveSpotifyTrack(track)"
+              >
+                {{
+                  isSpotifyTrackSaved(track)
+                    ? "저장됨"
+                    : spotifySavingTrackId === track.spotifyTrackId
+                      ? "저장 중..."
+                      : "저장"
+                }}
+              </button>
+            </article>
+          </div>
+        </div>
+        <button type="submit" :disabled="spotifySearching">
+          {{ spotifySearching ? "검색 중..." : "Spotify 검색" }}
+        </button>
+      </form>
+      <p v-if="spotifyValidationMessage" class="field-error" role="alert">
+        {{ spotifyValidationMessage }}
+      </p>
+      <SaveStatus :type="spotifyActionType" :message="spotifyActionMessage" />
+    </section>
+
+    <section class="music-filter-section">
+      <button
+        type="button"
+        class="music-filter-toggle"
+        :aria-expanded="filterExpanded"
+        @click="filterExpanded = !filterExpanded"
+      >
+        <span>검색 필터링</span>
+        <small>{{ filterExpanded ? "접기" : "펼치기" }}</small>
+      </button>
+      <MusicSearchBar
+        v-if="filterExpanded"
+        :model="filters"
+        :validation-message="validationMessage"
+        @search="applyFilters"
+        @sort-change="applySort"
+        @reset="resetFilters"
+      />
+    </section>
 
     <PageStatePanel
       v-if="status !== 'idle'"
@@ -63,14 +130,16 @@
 </template>
 
 <script setup>
-import { onMounted, reactive, ref, watch } from "vue";
-import { RouterLink, useRoute, useRouter } from "vue-router";
+import { computed, onMounted, reactive, ref, watch } from "vue";
+import { useRoute, useRouter } from "vue-router";
 import { authApi } from "../api/authApi";
 import { musicApi } from "../api/musicApi";
+import { spotifyApi } from "../api/spotifyApi";
 import AppLayout from "../components/AppLayout.vue";
 import MusicCard from "../components/MusicCard.vue";
 import MusicSearchBar from "../components/MusicSearchBar.vue";
 import PageStatePanel from "../components/PageStatePanel.vue";
+import SaveStatus from "../components/SaveStatus.vue";
 import {
   DEFAULT_MUSIC_QUERY,
   musicQueryFromRoute,
@@ -79,6 +148,7 @@ import {
   normalizeMusicPage,
   validateMusicQuery,
 } from "../utils/musicQuery";
+import { spotifyErrorMessage, spotifyErrorState } from "../utils/spotifyError";
 
 const route = useRoute();
 const router = useRouter();
@@ -88,7 +158,19 @@ const status = ref("idle");
 const error = ref(null);
 const currentMember = ref(null);
 const validationMessage = ref("");
+const filterExpanded = ref(false);
+const spotifyQuery = ref("");
+const spotifyTracks = ref([]);
+const spotifySearchStatus = ref("idle");
+const spotifySearchError = ref(null);
+const spotifyValidationMessage = ref("");
+const spotifySearching = ref(false);
+const spotifySavingTrackId = ref(null);
+const savedSpotifyTrackIds = ref(new Set());
+const spotifyActionMessage = ref("");
+const spotifyActionType = ref("success");
 let requestSequence = 0;
+let spotifySearchSequence = 0;
 
 function assignFilters(query) {
   Object.assign(filters, musicQueryFromRoute(query));
@@ -160,6 +242,71 @@ function resetFilters() {
 function movePage(page) {
   if (page < 1 || page > pageData.value.totalPages) return;
   updateRoute({ ...filters, page });
+}
+
+const spotifySearchFeedbackMessage = computed(() => {
+  if (spotifySearchStatus.value === "loading") return "Spotify에서 검색 중입니다.";
+  if (spotifySearchStatus.value === "empty") return "검색 결과가 없습니다. 다른 곡명이나 아티스트로 검색해 보세요.";
+  if (spotifySearchStatus.value === "error") return spotifyErrorMessage(spotifySearchError.value);
+  if (["loginRequired", "unauthorized"].includes(spotifySearchStatus.value)) {
+    return spotifyErrorMessage(spotifySearchError.value);
+  }
+  return "";
+});
+const shouldShowSpotifyDropdown = computed(() => (
+  spotifySearchStatus.value !== "idle"
+  && (spotifyTracks.value.length > 0 || Boolean(spotifySearchFeedbackMessage.value))
+));
+
+async function searchSpotify() {
+  const normalizedQuery = spotifyQuery.value.trim();
+  spotifyValidationMessage.value = "";
+  spotifyActionMessage.value = "";
+  if (!normalizedQuery) {
+    spotifyValidationMessage.value = "검색할 곡명이나 아티스트를 입력해 주세요.";
+    return;
+  }
+  if (spotifySearching.value) return;
+
+  const sequence = ++spotifySearchSequence;
+  spotifySearching.value = true;
+  spotifySearchStatus.value = "loading";
+  spotifySearchError.value = null;
+  spotifyTracks.value = [];
+  try {
+    const response = await spotifyApi.searchTracks({ query: normalizedQuery, limit: 10 });
+    if (sequence !== spotifySearchSequence) return;
+    spotifyTracks.value = Array.isArray(response) ? response : [];
+    spotifySearchStatus.value = spotifyTracks.value.length ? "ready" : "empty";
+  } catch (caught) {
+    if (sequence !== spotifySearchSequence) return;
+    spotifySearchError.value = caught;
+    spotifySearchStatus.value = spotifyErrorState(caught);
+  } finally {
+    if (sequence === spotifySearchSequence) spotifySearching.value = false;
+  }
+}
+
+async function saveSpotifyTrack(track) {
+  if (spotifySavingTrackId.value != null || !track?.spotifyTrackId) return;
+  spotifySavingTrackId.value = track.spotifyTrackId;
+  spotifyActionMessage.value = "";
+  try {
+    await spotifyApi.importTrack(track);
+    savedSpotifyTrackIds.value = new Set([...savedSpotifyTrackIds.value, track.spotifyTrackId]);
+    spotifyActionType.value = "success";
+    spotifyActionMessage.value = `"${track.title}"을(를) 음악 목록에 저장했습니다.`;
+    await loadFromRoute();
+  } catch (caught) {
+    spotifyActionType.value = "error";
+    spotifyActionMessage.value = spotifyErrorMessage(caught);
+  } finally {
+    spotifySavingTrackId.value = null;
+  }
+}
+
+function isSpotifyTrackSaved(track) {
+  return Boolean(track?.spotifyTrackId && savedSpotifyTrackIds.value.has(track.spotifyTrackId));
 }
 
 watch(() => route.query, loadFromRoute, { immediate: true, deep: true });

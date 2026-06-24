@@ -16,8 +16,7 @@ services:
     volumes:
       - ssafit-mysql-data:/var/lib/mysql
       - ./ssafit/src/main/resources/sql/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
-      - ./ssafit/src/main/resources/sql/captured-spotify-playlist.sql:/docker-entrypoint-initdb.d/02-captured-spotify-playlist.sql:ro
-      - ./ssafit/src/main/resources/sql/zone2-spotify-playlist.sql:/docker-entrypoint-initdb.d/03-zone2-spotify-playlist.sql:ro
+      - ./ssafit/src/main/resources/sql/demo-snapshot.sql:/docker-entrypoint-initdb.d/02-demo-snapshot.sql:ro
     healthcheck:
       test:
         [

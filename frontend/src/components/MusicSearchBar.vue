@@ -34,16 +34,6 @@
         />
       </label>
       <label>
-        러닝 강도
-        <select v-model="model.runningIntensity">
-          <option value="">전체</option>
-          <option value="LOW">LOW</option>
-          <option value="MODERATE">MODERATE</option>
-          <option value="HIGH">HIGH</option>
-          <option value="INTERVAL">INTERVAL</option>
-        </select>
-      </label>
-      <label>
         정렬
         <select v-model="model.sortType" @change="$emit('sort-change')">
           <option value="CREATED_DESC">최신순</option>
@@ -58,7 +48,7 @@
       {{ validationMessage }}
     </p>
     <div class="form-actions">
-      <button type="submit">조건 적용</button>
+      <button type="submit">검색</button>
       <button type="button" class="secondary-button" @click="$emit('reset')">초기화</button>
     </div>
   </form>

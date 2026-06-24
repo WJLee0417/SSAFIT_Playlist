@@ -21,16 +21,25 @@
           </div>
           <h1>{{ session.title }}</h1>
         </div>
-        <RouterLink
-          v-if="isHost && session.status !== 'CANCELLED'"
-          class="text-link running-session-edit-link"
-          :to="{
-            name: 'running-session-edit',
-            params: { runningSessionId },
-          }"
-        >
-          수정
-        </RouterLink>
+        <div v-if="isHost && session.status !== 'CANCELLED'" class="form-actions">
+          <RouterLink
+            class="secondary-button running-session-edit-link"
+            :to="{
+              name: 'running-session-edit',
+              params: { runningSessionId },
+            }"
+          >
+            수정
+          </RouterLink>
+          <button
+            type="button"
+            class="danger-button"
+            :disabled="actionBusy"
+            @click="deleteSession"
+          >
+            삭제
+          </button>
+        </div>
       </div>
 
       <SaveStatus :type="actionType" :message="actionMessage" />
@@ -284,6 +293,25 @@ function toggleRecruitment() {
     () => runningSessionApi.changeStatus(props.runningSessionId, nextStatus),
     nextStatus === "OPEN" ? "모집을 다시 시작했습니다." : "모집을 마감했습니다.",
   );
+}
+
+async function deleteSession() {
+  if (!window.confirm(`"${session.value.title}" 러닝 세션을 삭제하시겠습니까?`)) return;
+  if (actionBusy.value) return;
+  actionBusy.value = true;
+  actionMessage.value = "";
+  try {
+    await runningSessionApi.cancel(props.runningSessionId);
+    await router.push({ name: "running-session-list" });
+  } catch (caught) {
+    actionType.value = "error";
+    actionMessage.value = runningSessionErrorMessage(caught);
+    if (isApiError(caught) && caught.loginRequired) {
+      setStateFromError(caught);
+    }
+  } finally {
+    actionBusy.value = false;
+  }
 }
 
 watch(() => props.runningSessionId, () => load(), { immediate: true });

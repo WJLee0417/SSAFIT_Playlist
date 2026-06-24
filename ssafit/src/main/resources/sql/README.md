@@ -3,18 +3,23 @@
 ## 파일 역할
 
 - `schema.sql`: MVP 테이블, 제약조건, FK, 인덱스
-- `data.sql`: 애플리케이션 구동에 필요한 기준 데이터
-- `dummy.sql`: 로컬 개발 및 테스트용 더미 데이터
+- `demo-snapshot.sql`: 시연용 통합 스냅샷 데이터
+  - 공식 데모 플레이리스트
+  - Zone 2 데모
+  - WORKOUT K-POP 데모
+  - 데모 회원, 러닝 프로필, 러닝 기록, 러닝 세션, 참여 관계
+  - 플레이리스트 저장 관계와 음악 리뷰
 
 ## 실행 정책
 
 `application.yml`의 `spring.sql.init.mode`는 `never`입니다. SQL 파일은 애플리케이션
 시작 시 자동 실행하지 않고 MySQL Workbench 또는 MySQL CLI에서 직접 실행합니다.
+Docker Compose의 MySQL 신규 볼륨 초기화는 `schema.sql` 실행 후
+`demo-snapshot.sql`을 자동 실행합니다.
 
 ```bash
 mysql -u ssafit -p ssafit_playlist < src/main/resources/sql/schema.sql
-mysql -u ssafit -p ssafit_playlist < src/main/resources/sql/data.sql
-mysql -u ssafit -p ssafit_playlist < src/main/resources/sql/dummy.sql
+mysql -u ssafit -p ssafit_playlist < src/main/resources/sql/demo-snapshot.sql
 ```
 
 기존 테이블이 있는 DB에 `schema.sql`을 반복 실행하지 않습니다. 스키마 변경이 필요한
@@ -27,7 +32,9 @@ Spotify 음악 메타데이터 확장은 `spotify_uri` 중복을 먼저 정리�
 `migrations/20260623_add_music_energy_level.sql`을 한 번만 실행합니다.
 Spotify 부분 내보내기 상태 확장은
 `migrations/20260623_add_spotify_partial_export_status.sql`을 한 번만 실행합니다.
-`data.sql`과 `dummy.sql`은 중복 방지 구문을 사용해 반복 실행할 수 있습니다.
+`demo-snapshot.sql`은 중복 방지 구문을 사용해 반복 실행할 수 있습니다.
+실제 개인 계정, Spotify OAuth 토큰, refresh token, Spotify user id, 운영 DB 덤프는
+저장소에 커밋하지 않습니다.
 
 ## 명명과 매핑
 

@@ -3,6 +3,9 @@ import { apiClient } from "./http";
 function cleanRecommendationParams(condition) {
   return {
     intensity: condition.intensity,
+    ...(condition.targetDistanceKm != null
+      ? { targetDistanceKm: condition.targetDistanceKm }
+      : {}),
     ...(condition.targetCadenceSpm != null
       ? { targetCadenceSpm: condition.targetCadenceSpm }
       : {}),

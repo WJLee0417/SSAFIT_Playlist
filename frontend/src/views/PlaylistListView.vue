@@ -15,14 +15,88 @@
       </div>
 
       <form class="playlist-spotify-search-form" @submit.prevent="searchSpotify">
-        <input
-          id="playlist-spotify-query"
-          v-model="spotifyQuery"
-          aria-label="Spotify 음악 검색"
-          maxlength="200"
-          placeholder="곡명 또는 아티스트를 검색하세요"
-          autocomplete="off"
-        />
+        <div class="playlist-search-control">
+          <input
+            id="playlist-spotify-query"
+            v-model="spotifyQuery"
+            aria-label="Spotify 음악 검색"
+            maxlength="200"
+            placeholder="곡명 또는 아티스트를 검색하세요"
+            autocomplete="off"
+          />
+
+          <div v-if="shouldShowSearchDropdown" class="playlist-search-dropdown">
+            <p v-if="searchFeedbackMessage" class="playlist-search-state">
+              {{ searchFeedbackMessage }}
+            </p>
+
+            <article
+              v-for="track in spotifyTracks"
+              :key="track.spotifyTrackId"
+              class="playlist-search-result"
+            >
+              <img
+                v-if="track.imageUrl"
+                :src="track.imageUrl"
+                :alt="`${track.title} 앨범 커버`"
+              />
+              <div v-else class="playlist-result-placeholder" aria-hidden="true">♫</div>
+
+              <div class="playlist-result-copy">
+                <strong>{{ track.title }}</strong>
+                <span>{{ track.artist }}</span>
+              </div>
+
+              <div class="playlist-add-control">
+                <button
+                  type="button"
+                  class="secondary-button playlist-add-trigger"
+                  :class="{ active: isTrackAdded(track) }"
+                  :aria-expanded="openTrackId === track.spotifyTrackId"
+                  :disabled="addingTrackId != null || isTrackAdded(track)"
+                  @click="togglePlaylistMenu(track.spotifyTrackId)"
+                >
+                  {{
+                    isTrackAdded(track)
+                      ? "추가됨"
+                      : addingTrackId === track.spotifyTrackId
+                        ? "추가 중..."
+                        : "플레이리스트에 추가"
+                  }}
+                </button>
+
+                <div
+                  v-if="openTrackId === track.spotifyTrackId"
+                  class="playlist-add-menu"
+                >
+                  <div class="playlist-add-menu-heading">
+                    <strong>추가할 플레이리스트</strong>
+                    <span>BPM과 장르가 가까운 순서예요.</span>
+                  </div>
+
+                  <button
+                    v-for="candidate in compatiblePlaylists(track)"
+                    :key="candidate.id"
+                    type="button"
+                    class="playlist-add-option"
+                    :disabled="addingTrackId != null"
+                    @click="addTrackToPlaylist(track, candidate)"
+                  >
+                    <span>
+                      <strong>{{ candidate.title }}</strong>
+                      <small>{{ candidate.genreLabel }} · {{ candidate.bpmLabel }}</small>
+                    </span>
+                    <em v-if="candidate.genreMatch">장르 일치</em>
+                  </button>
+
+                  <p v-if="!compatiblePlaylists(track).length" class="empty-inline">
+                    이 곡을 추가할 수 있는 내 플레이리스트가 없습니다.
+                  </p>
+                </div>
+              </div>
+            </article>
+          </div>
+        </div>
         <button type="submit" :disabled="searching">
           {{ searching ? "검색 중..." : "Spotify 검색" }}
         </button>
@@ -33,89 +107,6 @@
       </p>
       <SaveStatus :type="actionType" :message="actionMessage" />
 
-      <PageStatePanel
-        v-if="searchStatus !== 'idle' && searchStatus !== 'ready'"
-        class="playlist-search-state"
-        :status="searchStatus"
-        :error="searchDisplayError"
-        empty-title="검색 결과가 없습니다"
-        empty-message="다른 곡명이나 아티스트로 검색해 보세요."
-        :retryable="searchStatus === 'error'"
-        @retry="searchSpotify"
-      />
-
-      <div
-        v-if="searchStatus === 'ready'"
-        class="playlist-search-results"
-        aria-label="Spotify 검색 결과"
-      >
-        <article
-          v-for="track in spotifyTracks"
-          :key="track.spotifyTrackId"
-          class="playlist-search-result"
-        >
-          <img
-            v-if="track.imageUrl"
-            :src="track.imageUrl"
-            :alt="`${track.title} 앨범 커버`"
-          />
-          <div v-else class="playlist-result-placeholder" aria-hidden="true">♫</div>
-
-          <div class="playlist-result-copy">
-            <strong>{{ track.title }}</strong>
-            <span>{{ track.artist }}</span>
-            <div class="playlist-result-tags">
-              <span>{{ track.genre || "장르 미정" }}</span>
-              <span>{{ track.musicBpm ? `${track.musicBpm} BPM` : "BPM 미정" }}</span>
-            </div>
-          </div>
-
-          <div class="playlist-add-control">
-            <button
-              type="button"
-              class="secondary-button playlist-add-trigger"
-              :aria-expanded="openTrackId === track.spotifyTrackId"
-              :disabled="addingTrackId != null"
-              @click="togglePlaylistMenu(track.spotifyTrackId)"
-            >
-              {{
-                addingTrackId === track.spotifyTrackId
-                  ? "추가 중..."
-                  : "플레이리스트에 추가"
-              }}
-            </button>
-
-            <div
-              v-if="openTrackId === track.spotifyTrackId"
-              class="playlist-add-menu"
-            >
-              <div class="playlist-add-menu-heading">
-                <strong>추가할 플레이리스트</strong>
-                <span>BPM과 장르가 가까운 순서예요.</span>
-              </div>
-
-              <button
-                v-for="candidate in compatiblePlaylists(track)"
-                :key="candidate.id"
-                type="button"
-                class="playlist-add-option"
-                :disabled="addingTrackId != null"
-                @click="addTrackToPlaylist(track, candidate)"
-              >
-                <span>
-                  <strong>{{ candidate.title }}</strong>
-                  <small>{{ candidate.genreLabel }} · {{ candidate.bpmLabel }}</small>
-                </span>
-                <em v-if="candidate.genreMatch">장르 일치</em>
-              </button>
-
-              <p v-if="!compatiblePlaylists(track).length" class="empty-inline">
-                이 곡을 추가할 수 있는 내 플레이리스트가 없습니다.
-              </p>
-            </div>
-          </div>
-        </article>
-      </div>
     </section>
 
     <PageStatePanel
@@ -168,41 +159,6 @@
             <span class="eyebrow">{{ group.eyebrow }}</span>
             <h2>{{ group.title }}</h2>
           </div>
-          <div v-if="group.key === 'UNCLASSIFIED' && currentMember" class="spotify-import-control">
-            <button
-              type="button"
-              class="secondary-button spotify-import-trigger"
-              :aria-expanded="spotifyImportOpen"
-              :disabled="spotifyImportingId != null"
-              @click="toggleSpotifyImportMenu"
-            >
-              {{ spotifyImportLoading ? "Spotify 확인 중..." : "Spotify에서 가져오기" }}
-            </button>
-
-            <div v-if="spotifyImportOpen" class="spotify-import-menu">
-              <div class="spotify-import-menu-heading">
-                <strong>가져올 Spotify 플레이리스트</strong>
-                <span>선택하면 사용자 플레이리스트로 생성됩니다.</span>
-              </div>
-              <button
-                v-for="playlist in spotifyPlaylists"
-                :key="playlist.spotifyPlaylistId"
-                type="button"
-                class="spotify-import-option"
-                :disabled="spotifyImportingId != null"
-                @click="importSpotifyPlaylist(playlist)"
-              >
-                <span>
-                  <strong>{{ playlist.name }}</strong>
-                  <small>{{ playlist.tracksTotal ?? 0 }}곡</small>
-                </span>
-                <em>{{ spotifyImportingId === playlist.spotifyPlaylistId ? "가져오는 중" : "가져오기" }}</em>
-              </button>
-              <p v-if="spotifyImportEmpty" class="empty-inline">
-                가져올 Spotify 플레이리스트가 없습니다.
-              </p>
-            </div>
-          </div>
         </div>
 
         <div class="playlist-horizontal-scroll">
@@ -237,14 +193,12 @@ import { computed, ref } from "vue";
 import { RouterLink, useRoute } from "vue-router";
 import { authApi } from "../api/authApi";
 import { playlistApi } from "../api/playlistApi";
-import { playlistSaveApi } from "../api/playlistSaveApi";
 import { spotifyApi } from "../api/spotifyApi";
 import AppLayout from "../components/AppLayout.vue";
 import PageStatePanel from "../components/PageStatePanel.vue";
 import SaveStatus from "../components/SaveStatus.vue";
-import { rememberSpotifyReturnPath } from "../utils/oauthReturn";
 import { usePageState } from "../utils/pageState";
-import { requiresSpotifyReconnect, spotifyErrorMessage, spotifyErrorState } from "../utils/spotifyError";
+import { spotifyErrorMessage, spotifyErrorState } from "../utils/spotifyError";
 
 const INTENSITY_GROUPS = [
   {
@@ -293,7 +247,6 @@ const FILTER_OPTIONS = [
 const route = useRoute();
 const { data, status, error, run } = usePageState([]);
 const currentMember = ref(null);
-const savedPlaylistIds = ref(new Set());
 const activeFilter = ref("ALL");
 const spotifyQuery = ref("");
 const spotifyTracks = ref([]);
@@ -303,12 +256,9 @@ const searchValidationMessage = ref("");
 const searching = ref(false);
 const openTrackId = ref(null);
 const addingTrackId = ref(null);
+const addedTrackIds = ref(new Set());
 const actionMessage = ref("");
 const actionType = ref("success");
-const spotifyImportOpen = ref(false);
-const spotifyImportLoading = ref(false);
-const spotifyPlaylists = ref([]);
-const spotifyImportingId = ref(null);
 let searchSequence = 0;
 
 const searchDisplayError = computed(() => {
@@ -322,10 +272,23 @@ const searchDisplayError = computed(() => {
     upstreamUnavailable: searchError.value.upstreamUnavailable,
   };
 });
+const searchFeedbackMessage = computed(() => {
+  if (searchStatus.value === "loading") return "Spotify에서 검색 중입니다.";
+  if (searchStatus.value === "empty") return "검색 결과가 없습니다. 다른 곡명이나 아티스트로 검색해 보세요.";
+  if (searchStatus.value === "error") return searchDisplayError.value?.message || "검색에 실패했습니다.";
+  if (["loginRequired", "unauthorized"].includes(searchStatus.value)) {
+    return searchDisplayError.value?.message || "Spotify 검색 권한을 확인해 주세요.";
+  }
+  return "";
+});
+const shouldShowSearchDropdown = computed(() => (
+  searchStatus.value !== "idle"
+  && (spotifyTracks.value.length > 0 || Boolean(searchFeedbackMessage.value))
+));
 
 const filteredPlaylists = computed(() => {
   if (activeFilter.value === "MY") {
-    return data.value.filter((playlist) => savedPlaylistIds.value.has(String(playlist.id)));
+    return data.value.filter((playlist) => isOwnedPlaylist(playlist));
   }
   if (activeFilter.value === "PUBLIC") {
     return data.value.filter((playlist) => playlist.visibility === "PUBLIC");
@@ -335,21 +298,24 @@ const filteredPlaylists = computed(() => {
 
 const filterEmptyTitle = computed(() => (
   activeFilter.value === "MY"
-    ? "저장한 플레이리스트가 없습니다"
+    ? "내 플레이리스트가 없습니다"
     : "공개 플레이리스트가 없습니다"
 ));
 
 const filterEmptyMessage = computed(() => (
   activeFilter.value === "MY"
-    ? "마음에 드는 플레이리스트를 저장하거나 새 플레이리스트를 만들어 보세요."
+    ? "새 플레이리스트를 만들거나 Spotify에서 가져와 보세요."
     : "현재 조회할 수 있는 공개 플레이리스트가 없습니다."
 ));
 
 const visibleGroups = computed(() => INTENSITY_GROUPS
   .map((group) => ({
     ...group,
-    playlists: filteredPlaylists.value.filter(
-      (playlist) => playlist.intensityKey === group.key,
+    playlists: sortGroupPlaylists(
+      group,
+      filteredPlaylists.value.filter(
+        (playlist) => playlist.intensityKey === group.key,
+      ),
     ),
   }))
   .filter((group) => (
@@ -357,20 +323,33 @@ const visibleGroups = computed(() => INTENSITY_GROUPS
     || (group.key === "UNCLASSIFIED" && currentMember.value)
   )));
 
-const manageablePlaylists = computed(() => data.value.filter((playlist) => (
-  currentMember.value
-  && playlist.playlistType !== "OFFICIAL"
-  && String(playlist.ownerId) === String(currentMember.value.id)
-)));
-const spotifyImportEmpty = computed(() => (
-  !spotifyImportLoading.value && !spotifyPlaylists.value.length
-));
+const manageablePlaylists = computed(() => data.value.filter((playlist) => isOwnedPlaylist(playlist)));
 
 function normalizeGenre(value) {
   return String(value || "")
     .trim()
     .toLocaleLowerCase()
     .replace(/\s+/g, "");
+}
+
+function isOwnedPlaylist(playlist) {
+  return Boolean(
+    currentMember.value
+      && playlist?.playlistType !== "OFFICIAL"
+      && playlist?.ownerId != null
+      && String(playlist.ownerId) === String(currentMember.value.id),
+  );
+}
+
+function sortGroupPlaylists(group, playlists) {
+  if (group.key !== "UNCLASSIFIED") return playlists;
+  return [...playlists].sort((left, right) => (
+    Number(isFavoritePlaylist(right)) - Number(isFavoritePlaylist(left))
+  ));
+}
+
+function isFavoritePlaylist(playlist) {
+  return playlist?.playlistType === "USER" && playlist?.title === "좋아요한 노래";
 }
 
 function summarizePlaylist(playlist, detail) {
@@ -409,7 +388,9 @@ function summarizePlaylist(playlist, detail) {
       : bpmMin === bpmMax
         ? `${bpmMin} BPM`
         : `${bpmMin}–${bpmMax} BPM`,
-    intensityKey: resolveIntensityKey(bpmMin, bpmMax, bpmAverage),
+    intensityKey: isFavoritePlaylist(playlist)
+      ? "UNCLASSIFIED"
+      : resolveIntensityKey(bpmMin, bpmMax, bpmAverage),
   };
 }
 
@@ -423,16 +404,11 @@ function resolveIntensityKey(bpmMin, bpmMax, bpmAverage) {
 }
 
 async function load() {
-  let savedPlaylists = [];
   try {
     currentMember.value = await authApi.getSession();
-    savedPlaylists = await playlistSaveApi.getMine();
   } catch {
     currentMember.value = null;
   }
-  savedPlaylistIds.value = new Set(
-    savedPlaylists.map((playlist) => String(playlist.id)),
-  );
 
   return run(async () => {
     const playlists = await playlistApi.getList();
@@ -548,6 +524,7 @@ async function addTrackToPlaylist(track, playlist) {
 
     actionType.value = "success";
     actionMessage.value = `"${track.title}"을(를) "${playlist.title}"에 추가했습니다.`;
+    addedTrackIds.value = new Set([...addedTrackIds.value, track.spotifyTrackId]);
     openTrackId.value = null;
     await load();
   } catch (caught) {
@@ -558,60 +535,8 @@ async function addTrackToPlaylist(track, playlist) {
   }
 }
 
-async function toggleSpotifyImportMenu() {
-  if (spotifyImportOpen.value) {
-    spotifyImportOpen.value = false;
-    return;
-  }
-  spotifyImportOpen.value = true;
-  if (spotifyPlaylists.value.length) return;
-  await loadSpotifyImportPlaylists();
-}
-
-async function loadSpotifyImportPlaylists() {
-  if (spotifyImportLoading.value) return;
-  spotifyImportLoading.value = true;
-  actionMessage.value = "";
-  try {
-    const response = await spotifyApi.getMyPlaylists({ limit: 20 });
-    spotifyPlaylists.value = Array.isArray(response) ? response : [];
-  } catch (caught) {
-    if (requiresSpotifyReconnect(caught)) {
-      rememberSpotifyReturnPath(route.fullPath);
-      await spotifyApi.startAuthorization();
-      return;
-    }
-    actionType.value = "error";
-    actionMessage.value = spotifyErrorMessage(caught);
-  } finally {
-    spotifyImportLoading.value = false;
-  }
-}
-
-async function importSpotifyPlaylist(playlist) {
-  if (spotifyImportingId.value != null) return;
-  spotifyImportingId.value = playlist.spotifyPlaylistId;
-  actionMessage.value = "";
-  try {
-    const response = await spotifyApi.importPlaylist({
-      spotifyPlaylistId: playlist.spotifyPlaylistId,
-      title: playlist.name,
-    });
-    actionType.value = "success";
-    actionMessage.value = `"${playlist.name}"을(를) 사용자 플레이리스트로 가져왔습니다. (${response.importedCount}곡)`;
-    spotifyImportOpen.value = false;
-    await load();
-  } catch (caught) {
-    if (requiresSpotifyReconnect(caught)) {
-      rememberSpotifyReturnPath(route.fullPath);
-      await spotifyApi.startAuthorization();
-      return;
-    }
-    actionType.value = "error";
-    actionMessage.value = spotifyErrorMessage(caught);
-  } finally {
-    spotifyImportingId.value = null;
-  }
+function isTrackAdded(track) {
+  return Boolean(track?.spotifyTrackId && addedTrackIds.value.has(track.spotifyTrackId));
 }
 
 load();

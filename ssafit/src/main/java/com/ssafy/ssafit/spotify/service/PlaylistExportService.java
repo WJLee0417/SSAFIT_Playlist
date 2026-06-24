@@ -45,15 +45,16 @@ public class PlaylistExportService {
     public SpotifyExportResult exportWithResult(
             Long loginMemberId,
             Long playlistId) {
-        Playlist playlist = playlistService.getExportTarget(
+        Playlist playlist = playlistService.prepareExportTarget(
                 loginMemberId,
                 playlistId);
         validateExportable(playlist);
+        Long exportPlaylistId = playlist.getId();
 
         // Connection validation happens before changing the playlist export state.
         spotifyOAuthService.getValidConnection(loginMemberId);
         List<PlaylistExportTrack> requestedTracks =
-                playlistItemService.getExportTracks(loginMemberId, playlistId);
+                playlistItemService.getExportTracks(loginMemberId, exportPlaylistId);
         List<Long> skippedMusicIds = requestedTracks.stream()
                 .filter(track -> !track.exportable())
                 .map(PlaylistExportTrack::getMusicId)
@@ -66,7 +67,7 @@ public class PlaylistExportService {
 
         playlistService.updateSpotifyExportStatus(
                 loginMemberId,
-                playlistId,
+                exportPlaylistId,
                 SpotifyExportStatus.PENDING);
 
         SpotifyPlaylistResult spotifyPlaylist = null;
@@ -81,14 +82,14 @@ public class PlaylistExportService {
             validateSpotifyPlaylist(spotifyPlaylist);
             playlistService.saveSpotifyExportPending(
                     loginMemberId,
-                    playlistId,
+                    exportPlaylistId,
                     spotifyPlaylist.getId(),
                     spotifyPlaylist.getExternalUrl());
         } catch (RuntimeException exception) {
             ErrorCode errorCode = createErrorCode(exception);
             playlistService.saveSpotifyExportFailure(
                     loginMemberId,
-                    playlistId,
+                    exportPlaylistId,
                     spotifyPlaylist == null ? null : spotifyPlaylist.getId(),
                     spotifyPlaylist == null ? null : spotifyPlaylist.getExternalUrl(),
                     errorCode);
@@ -103,27 +104,27 @@ public class PlaylistExportService {
         if (chunkResult.failedChunkIndexes().isEmpty()) {
             savedPlaylist = playlistService.saveSpotifyExportResult(
                     loginMemberId,
-                    playlistId,
+                    exportPlaylistId,
                     spotifyPlaylist.getId(),
                     spotifyPlaylist.getExternalUrl());
         } else if (chunkResult.exportedCount() > 0) {
             savedPlaylist = playlistService.saveSpotifyExportPartial(
                     loginMemberId,
-                    playlistId,
+                    exportPlaylistId,
                     spotifyPlaylist.getId(),
                     spotifyPlaylist.getExternalUrl(),
                     chunkResult.errorCode());
         } else {
             savedPlaylist = playlistService.saveSpotifyExportFailure(
                     loginMemberId,
-                    playlistId,
+                    exportPlaylistId,
                     spotifyPlaylist.getId(),
                     spotifyPlaylist.getExternalUrl(),
                     chunkResult.errorCode());
         }
 
         return new SpotifyExportResult(
-                playlistId,
+                exportPlaylistId,
                 requestedTracks.size(),
                 chunkResult.exportedCount(),
                 skippedMusicIds.size(),

@@ -44,6 +44,15 @@ SPOTIFY_CLIENT_SECRET=<Spotify 클라이언트 비밀 키>
 ```
 
 Spotify를 사용하지 않을 때는 `SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET`을 비워 둘 수 있습니다.
+AI 러닝 리포트와 AI 운동 계획 추천을 실제 LLM 호출로 시연하려면 아래 값도 설정합니다.
+비워 두면 서버 계산 기반 fallback 결과가 표시됩니다.
+
+```text
+AI_RUNNING_REPORT_ENABLED=true
+AI_RUNNING_REPORT_PROVIDER=openai
+AI_RUNNING_REPORT_API_KEY=<OpenAI 또는 호환 API 키>
+```
+
 Docker 브라우저 주소는 기본적으로 아래 값으로 맞춰져 있습니다.
 
 ```text
@@ -94,6 +103,92 @@ frontend   healthy
 http://127.0.0.1:5173/
 ```
 
+### 4-1. 시연용 DB 스냅샷 사전 작업
+
+시연용 데이터는 아래 파일 하나로 통합되어 있습니다.
+
+```text
+ssafit/src/main/resources/sql/demo-snapshot.sql
+```
+
+이 스냅샷에는 공식 데모 플레이리스트, `Zone 2 러닝`, `WORKOUT K-POP 데모`,
+`16반의 플레이리스트`, 데모 회원, 러닝 프로필, 러닝 기록, 러닝 세션,
+참여 관계, 저장 관계, 음악 리뷰가 포함됩니다.
+
+시연 로그인용 데모 계정은 아래와 같습니다. 비밀번호는 모두 같습니다.
+
+```text
+runner_low / e2e-password
+runner_high / e2e-password
+runner_interval / e2e-password
+admin_candidate / e2e-password
+```
+
+신규 PC 또는 빈 Docker MySQL 볼륨에서 실행하는 경우 별도 SQL 명령은 필요 없습니다.
+`docker compose up -d --build`를 실행하면 MySQL 컨테이너가 처음 생성될 때 다음 순서로
+자동 실행합니다.
+
+```text
+/docker-entrypoint-initdb.d/01-schema.sql
+/docker-entrypoint-initdb.d/02-demo-snapshot.sql
+```
+
+이미 `ssafit-mysql-data` 볼륨이 만들어진 PC에서는 Docker entrypoint SQL이 다시
+실행되지 않습니다. 기존 DB를 시연 스냅샷 상태로 맞추려면 둘 중 하나를 선택합니다.
+
+방법 A: DB를 완전히 초기화하고 시연 스냅샷을 자동 재적용합니다.
+
+```bash
+docker compose down -v
+docker compose up -d --build
+```
+
+`docker compose down -v`는 기존 회원, 플레이리스트, 러닝 기록을 모두 삭제합니다.
+시연 직전에 실제로 지워도 되는 DB인지 확인한 뒤 실행하세요.
+
+방법 B: 기존 DB는 유지하고 시연 스냅샷만 수동으로 덮어 넣습니다.
+
+Windows PowerShell:
+
+```powershell
+docker compose up -d mysql
+Get-Content .\ssafit\src\main\resources\sql\demo-snapshot.sql |
+  docker compose exec -T mysql sh -c 'mysql -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE"'
+docker compose up -d --build
+```
+
+macOS/Linux:
+
+```bash
+docker compose up -d mysql
+docker compose exec -T mysql sh -c 'mysql -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE"' \
+  < ssafit/src/main/resources/sql/demo-snapshot.sql
+docker compose up -d --build
+```
+
+이제 `data.sql`, `dummy.sql`, `captured-spotify-playlist.sql`,
+`zone2-spotify-playlist.sql`은 사용하지 않습니다. 시연 데이터는
+`demo-snapshot.sql`만 실행하면 됩니다.
+
+현재 로컬 PC의 실제 DB 상태를 다른 시연 PC에 그대로 옮겨야 한다면, 스냅샷 SQL 대신
+덤프/복원을 사용합니다. 이 파일에는 실제 개인 계정, Spotify OAuth token,
+refresh token, Spotify user id가 들어갈 수 있으므로 Git에 커밋하지 않습니다.
+
+백업:
+
+```powershell
+docker compose exec -T mysql sh -c 'mysqldump -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE"' > demo-data.local.sql
+```
+
+복원:
+
+```powershell
+docker compose up -d mysql
+Get-Content .\demo-data.local.sql |
+  docker compose exec -T mysql sh -c 'mysql -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE"'
+docker compose up -d --build
+```
+
 ### 5. JSP 로그인 흐름 확인
 
 Docker 환경에서는 JSP 화면도 프론트엔드 Nginx를 통해 접근합니다. 주소는 항상 `:5173` 포트를 유지해야 합니다.
@@ -137,9 +232,11 @@ docker compose up -d --build
 
 ```text
 ssafit/src/main/resources/sql/schema.sql
+ssafit/src/main/resources/sql/demo-snapshot.sql
 ```
 
-이미 생성된 볼륨에는 이 SQL이 다시 실행되지 않습니다. 스키마를 처음부터 다시 만들려면 `docker compose down -v`가 필요합니다.
+이미 생성된 볼륨에는 이 SQL이 다시 실행되지 않습니다. 스키마와 시연 데이터를
+처음부터 다시 만들려면 `docker compose down -v`가 필요합니다.
 
 ### 9. 자주 나는 문제
 

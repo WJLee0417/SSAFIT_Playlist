@@ -105,7 +105,15 @@
         LEFT JOIN running_session_participants mp
             ON mp.session_id = rs.id
            AND mp.member_id = #{memberId}
-        ORDER BY rs.scheduled_at ASC, rs.id ASC
+        ORDER BY
+            CASE
+                WHEN rs.status = 'OPEN'
+                     AND rs.scheduled_at >= CURRENT_TIMESTAMP(6)
+                     AND COALESCE(pc.participant_count, 0) &lt; rs.capacity THEN 0
+                ELSE 1
+            END ASC,
+            rs.scheduled_at DESC,
+            rs.id DESC
     </select>
 
     <select id="selectDetail" resultMap="runningSessionResultMap">

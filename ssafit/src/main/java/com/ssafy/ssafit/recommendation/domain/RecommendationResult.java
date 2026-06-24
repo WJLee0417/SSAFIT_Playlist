@@ -27,6 +27,8 @@ public class RecommendationResult {
     private boolean hasNext;
     private boolean cadenceApplied;
     private boolean intensityApplied;
+    private Double targetDistanceKm;
+    private WorkoutPlan workoutPlan;
 
     public RecommendationResult(
             RecommendationLog recommendationLog,

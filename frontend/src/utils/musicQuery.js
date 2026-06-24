@@ -3,13 +3,11 @@ export const DEFAULT_MUSIC_QUERY = Object.freeze({
   genre: "",
   minBpm: "",
   maxBpm: "",
-  runningIntensity: "",
   sortType: "CREATED_DESC",
   page: 1,
   size: 20,
 });
 
-const INTENSITIES = new Set(["LOW", "MODERATE", "HIGH", "INTERVAL"]);
 const SORT_TYPES = new Set([
   "CREATED_DESC",
   "TITLE_ASC",
@@ -35,14 +33,12 @@ function optionalBpm(value) {
 }
 
 export function musicQueryFromRoute(query = {}) {
-  const intensity = first(query.runningIntensity);
   const sortType = first(query.sortType);
   return {
     keyword: String(first(query.keyword) || "").trim(),
     genre: String(first(query.genre) || "").trim(),
     minBpm: optionalBpm(query.minBpm),
     maxBpm: optionalBpm(query.maxBpm),
-    runningIntensity: INTENSITIES.has(intensity) ? intensity : "",
     sortType: SORT_TYPES.has(sortType) ? sortType : DEFAULT_MUSIC_QUERY.sortType,
     page: positiveInteger(query.page, DEFAULT_MUSIC_QUERY.page),
     size: Math.min(100, positiveInteger(query.size, DEFAULT_MUSIC_QUERY.size)),
@@ -72,7 +68,6 @@ export function musicQueryToApi(query) {
     genre: query.genre || undefined,
     minBpm: query.minBpm === "" ? undefined : query.minBpm,
     maxBpm: query.maxBpm === "" ? undefined : query.maxBpm,
-    runningIntensity: query.runningIntensity || undefined,
     sortType: query.sortType || DEFAULT_MUSIC_QUERY.sortType,
     page: query.page,
     size: query.size,

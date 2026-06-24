@@ -12,6 +12,7 @@ import com.ssafy.ssafit.playlist.domain.PlaylistSourceType;
 import com.ssafy.ssafit.playlist.domain.PlaylistType;
 import com.ssafy.ssafit.playlist.domain.PlaylistVisibility;
 import com.ssafy.ssafit.playlist.domain.SpotifyExportStatus;
+import com.ssafy.ssafit.playlist.mapper.PlaylistItemMapper;
 import com.ssafy.ssafit.playlist.mapper.PlaylistMapper;
 
 import lombok.RequiredArgsConstructor;
@@ -24,6 +25,7 @@ public class PlaylistService {
     private static final int MAX_TITLE_LENGTH = 200;
 
     private final PlaylistMapper playlistMapper;
+    private final PlaylistItemMapper playlistItemMapper;
 
     @Transactional
     public Playlist create(Long loginMemberId, Playlist playlist) {
@@ -100,6 +102,32 @@ public class PlaylistService {
                 .orElseThrow(() -> new CustomException(ErrorCode.PLAYLIST_NOT_FOUND));
         validateOwner(loginMemberId, playlist);
         return playlist;
+    }
+
+    @Transactional
+    public Playlist prepareExportTarget(Long loginMemberId, Long playlistId) {
+        validateAuthenticated(loginMemberId);
+        Playlist playlist = getPlaylist(playlistId);
+        validateViewAccess(loginMemberId, playlist);
+        if (playlist.getPlaylistType() == PlaylistType.USER
+                && playlist.getOwnerId() != null
+                && loginMemberId.equals(playlist.getOwnerId())) {
+            return playlist;
+        }
+
+        Playlist copy = new Playlist();
+        copy.setOwnerId(loginMemberId);
+        copy.setPlaylistType(PlaylistType.USER);
+        copy.setSourceType(PlaylistSourceType.CURATION_COPY);
+        copy.setVisibility(PlaylistVisibility.PRIVATE);
+        copy.setTitle(playlist.getTitle());
+        copy.setDescription(playlist.getDescription());
+        copy.setSpotifyExportStatus(SpotifyExportStatus.NOT_EXPORTED);
+        if (playlistMapper.insert(copy) != 1) {
+            throw new CustomException(ErrorCode.INTERNAL_SERVER_ERROR);
+        }
+        playlistItemMapper.copyItems(playlist.getId(), copy.getId());
+        return copy;
     }
 
     @Transactional

@@ -88,13 +88,13 @@ const filterOptions = [
 
 const filteredSessions = computed(() => {
   const sessions = Array.isArray(data.value) ? data.value : [];
+  let filtered = sessions;
   if (activeFilter.value === "open") {
-    return sessions.filter(isRecruitingSession);
+    filtered = sessions.filter(isRecruitingSession);
+  } else if (activeFilter.value === "my") {
+    filtered = sessions.filter(isMySession);
   }
-  if (activeFilter.value === "my") {
-    return sessions.filter(isMySession);
-  }
-  return sessions;
+  return sortSessions(filtered);
 });
 
 function load() {
@@ -140,6 +140,22 @@ function isInactiveSession(session) {
     || session.status === "CLOSED"
     || isExpiredSession(session)
     || participantCount(session) >= Number(session.capacity || 0);
+}
+
+function sortSessions(sessions) {
+  return [...sessions].sort((left, right) => {
+    const activeDiff = Number(isInactiveSession(left)) - Number(isInactiveSession(right));
+    if (activeDiff !== 0) return activeDiff;
+    const rightTime = sessionTime(right);
+    const leftTime = sessionTime(left);
+    if (rightTime !== leftTime) return rightTime - leftTime;
+    return Number(right.id || 0) - Number(left.id || 0);
+  });
+}
+
+function sessionTime(session) {
+  const time = new Date(session.scheduledAt || session.createdAt || 0).getTime();
+  return Number.isNaN(time) ? 0 : time;
 }
 
 load();

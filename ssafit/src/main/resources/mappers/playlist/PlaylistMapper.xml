@@ -88,6 +88,10 @@
             </choose> AS saved
         FROM playlists p
         WHERE p.deleted_at IS NULL
+          AND NOT (
+              p.source_type = 'CURATION_COPY'
+              AND p.spotify_playlist_id IS NOT NULL
+          )
           AND (
               p.visibility = 'PUBLIC'
               OR p.playlist_type = 'OFFICIAL'

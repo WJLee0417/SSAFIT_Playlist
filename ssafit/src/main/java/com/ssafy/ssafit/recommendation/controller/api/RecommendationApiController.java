@@ -44,6 +44,7 @@ public class RecommendationApiController {
         RecommendationResult result = recommendationService.recommend(
                 memberId,
                 request.intensity(),
+                request.targetDistanceKm(),
                 request.targetCadenceSpm(),
                 request.runningIntensityGoal(),
                 request.genre(),

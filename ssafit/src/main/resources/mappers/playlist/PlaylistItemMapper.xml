@@ -124,6 +124,21 @@
         </foreach>
     </insert>
 
+    <insert id="copyItems">
+        INSERT INTO playlist_items (
+            playlist_id,
+            music_id,
+            order_no
+        )
+        SELECT
+            #{targetPlaylistId},
+            music_id,
+            order_no
+        FROM playlist_items
+        WHERE playlist_id = #{sourcePlaylistId}
+        ORDER BY order_no ASC, id ASC
+    </insert>
+
     <!-- Export에서는 Spotify URI가 준비된 곡만 재생 순서대로 반환한다. -->
     <select id="selectSpotifyUrisByPlaylistId" resultType="string">
         SELECT m.spotify_uri

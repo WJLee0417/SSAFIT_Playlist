@@ -3,6 +3,7 @@ package com.ssafy.ssafit.recommendation.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
@@ -46,6 +47,8 @@ import com.ssafy.ssafit.recommendation.mapper.RecommendationLogMapper;
 import com.ssafy.ssafit.runningprofile.domain.RunningIntensity;
 import com.ssafy.ssafit.runningprofile.domain.RunningProfile;
 import com.ssafy.ssafit.runningprofile.mapper.RunningProfileMapper;
+import com.ssafy.ssafit.runningprofile.service.RunningFitnessMetricService;
+import com.ssafy.ssafit.runningrecord.mapper.RunningRecordMapper;
 import com.ssafy.ssafit.spotify.service.SpotifyService;
 
 @ExtendWith(MockitoExtension.class)
@@ -75,6 +78,12 @@ class RecommendationServiceTest {
     @Mock
     private SpotifyService spotifyService;
 
+    @Mock
+    private RunningFitnessMetricService runningFitnessMetricService;
+
+    @Mock
+    private RunningRecordMapper runningRecordMapper;
+
     private RecommendationService recommendationService;
 
     @BeforeEach
@@ -89,7 +98,15 @@ class RecommendationServiceTest {
                 cadenceResolutionService,
                 new CadenceMatchingPolicy(),
                 new IntensityMatchingPolicy(),
-                spotifyService);
+                spotifyService,
+                runningFitnessMetricService,
+                runningRecordMapper,
+                List.of(),
+                null);
+        lenient().when(runningFitnessMetricService.calculate(any()))
+                .thenReturn(com.ssafy.ssafit.runningprofile.domain.RunningFitnessMetric.empty());
+        lenient().when(runningRecordMapper.selectRecentByMemberId(any(), anyInt()))
+                .thenReturn(List.of());
         lenient().when(cadenceResolutionService.resolve(any(), any(), any()))
                 .thenReturn(new CadenceResolutionResult(null, "UNKNOWN", "none"));
         lenient().when(intensityResolutionService.resolve(any(), any()))

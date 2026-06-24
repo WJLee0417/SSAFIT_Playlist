@@ -13,11 +13,15 @@ import com.ssafy.ssafit.recommendation.domain.RecommendationResult;
 import com.ssafy.ssafit.recommendation.domain.IntensitySource;
 import com.ssafy.ssafit.recommendation.domain.RunningIntensityGoal;
 import com.ssafy.ssafit.recommendation.domain.TempoMatchMode;
+import com.ssafy.ssafit.recommendation.domain.WorkoutPlan;
+import com.ssafy.ssafit.recommendation.domain.WorkoutPlanSegment;
 import com.ssafy.ssafit.runningprofile.domain.RunningIntensity;
 
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.DecimalMax;
+import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Size;
 
 public final class RecommendationApiDtos {
@@ -27,6 +31,7 @@ public final class RecommendationApiDtos {
 
     public record RecommendRequest(
             @NotNull RunningIntensity intensity,
+            @NotNull @DecimalMin("0.5") @DecimalMax("100.0") Double targetDistanceKm,
             @Min(60) @Max(240) Integer targetCadenceSpm,
             RunningIntensityGoal runningIntensityGoal,
             @Size(max = 100) String genre,
@@ -83,7 +88,9 @@ public final class RecommendationApiDtos {
             boolean hasPrevious,
             boolean hasNext,
             boolean cadenceApplied,
-            boolean intensityApplied) {
+            boolean intensityApplied,
+            Double targetDistanceKm,
+            WorkoutPlanResponse workoutPlan) {
 
         public ResultResponse {
             music = music == null ? List.of() : List.copyOf(music);
@@ -106,7 +113,72 @@ public final class RecommendationApiDtos {
                     result.isHasPrevious(),
                     result.isHasNext(),
                     result.isCadenceApplied(),
-                    result.isIntensityApplied());
+                    result.isIntensityApplied(),
+                    result.getTargetDistanceKm(),
+                    WorkoutPlanResponse.from(result.getWorkoutPlan()));
+        }
+    }
+
+    public record WorkoutPlanResponse(
+            Integer totalDurationMinutes,
+            String targetPace,
+            Integer targetPaceSecondsPerKm,
+            Integer cadenceMinSpm,
+            Integer cadenceMaxSpm,
+            Integer heartRateMinBpm,
+            Integer heartRateMaxBpm,
+            Integer musicBpmMin,
+            Integer musicBpmMax,
+            String coachingSummary,
+            String musicStrategy,
+            String provider,
+            String modelName,
+            boolean fallback,
+            List<WorkoutPlanSegmentResponse> segments) {
+
+        public WorkoutPlanResponse {
+            segments = segments == null ? List.of() : List.copyOf(segments);
+        }
+
+        public static WorkoutPlanResponse from(WorkoutPlan plan) {
+            if (plan == null) {
+                return null;
+            }
+            return new WorkoutPlanResponse(
+                    plan.totalDurationMinutes(),
+                    plan.targetPace(),
+                    plan.targetPaceSecondsPerKm(),
+                    plan.cadenceMinSpm(),
+                    plan.cadenceMaxSpm(),
+                    plan.heartRateMinBpm(),
+                    plan.heartRateMaxBpm(),
+                    plan.musicBpmMin(),
+                    plan.musicBpmMax(),
+                    plan.coachingSummary(),
+                    plan.musicStrategy(),
+                    plan.provider(),
+                    plan.modelName(),
+                    plan.fallback(),
+                    plan.segments().stream()
+                            .map(WorkoutPlanSegmentResponse::from)
+                            .toList());
+        }
+    }
+
+    public record WorkoutPlanSegmentResponse(
+            String name,
+            Integer durationMinutes,
+            Integer bpmMin,
+            Integer bpmMax,
+            String purpose) {
+
+        public static WorkoutPlanSegmentResponse from(WorkoutPlanSegment segment) {
+            return new WorkoutPlanSegmentResponse(
+                    segment.name(),
+                    segment.durationMinutes(),
+                    segment.bpmMin(),
+                    segment.bpmMax(),
+                    segment.purpose());
         }
     }
 

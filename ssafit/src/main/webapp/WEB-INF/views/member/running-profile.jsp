@@ -89,17 +89,15 @@
 
             <section class="auto-target-summary" aria-label="자동 산출 기준값">
                 <span class="eyebrow">SUMMARY</span>
-                <div class="summary-highlight-grid">
-                    <div class="summary-highlight">
+                <div class="summary-inline">
+                    <p>
                         <span>누적 거리</span>
-                        <strong><c:out value="${totalDistanceKmText}"/></strong>
-                        <small>km</small>
-                    </div>
-                    <div class="summary-highlight">
+                        <em><c:out value="${totalDistanceKmText}"/> km</em>
+                    </p>
+                    <p>
                         <span>평균 페이스</span>
-                        <strong><c:out value="${averagePaceText}"/></strong>
-                        <small>/km</small>
-                    </div>
+                        <em><c:out value="${averagePaceText}"/>/km</em>
+                    </p>
                 </div>
                 <dl>
                     <div>

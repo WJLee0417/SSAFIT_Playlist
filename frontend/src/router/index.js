@@ -142,11 +142,6 @@ const routes = [
     meta: { requiresAuth: true },
   },
   {
-    path: "/spotify/search",
-    name: "spotify-search",
-    component: () => import("../views/SpotifySearchView.vue"),
-  },
-  {
     path: "/oauth/spotify/complete",
     name: "spotify-oauth-complete",
     component: () => import("../views/SpotifyOAuthCompleteView.vue"),

@@ -15,6 +15,7 @@ public class MusicReview {
 
     private Long id;
     private Long memberId;
+    private String authorLoginId;
     private Long musicId;
     private Integer preferenceScore;
     private Integer runningFitScore;

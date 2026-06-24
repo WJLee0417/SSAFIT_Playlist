@@ -12,6 +12,7 @@
         </a>
         <div class="nav-links">
             <a href="${frontendOrigin}/playlists">플레이리스트</a>
+            <a href="${frontendOrigin}/recommendations">음악 추천</a>
             <a href="${frontendOrigin}/running-records">러닝 기록</a>
             <a href="${frontendOrigin}/running-sessions">러닝 세션</a>
             <c:choose>

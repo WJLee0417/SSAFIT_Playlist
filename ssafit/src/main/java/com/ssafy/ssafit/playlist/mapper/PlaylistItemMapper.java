@@ -47,6 +47,10 @@ public interface PlaylistItemMapper {
     int bulkInsertFromRecommendation(
             @Param("items") List<PlaylistItem> items);
 
+    int copyItems(
+            @Param("sourcePlaylistId") Long sourcePlaylistId,
+            @Param("targetPlaylistId") Long targetPlaylistId);
+
     List<String> selectSpotifyUrisByPlaylistId(
             @Param("playlistId") Long playlistId);
 

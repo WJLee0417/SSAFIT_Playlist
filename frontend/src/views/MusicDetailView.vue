@@ -103,7 +103,7 @@
             <template v-else>
               <div class="review-list-heading">
                 <div>
-                  <strong>작성자 : 회원 ID {{ review.memberId }}</strong>
+                  <strong>작성자 : {{ reviewAuthorLabel(review) }}</strong>
                   <small>러닝 적합도 {{ review.runningFitScore }}점</small>
                 </div>
                 <div v-if="isMine(review)" class="review-actions">
@@ -173,6 +173,12 @@ const loginUrl = computed(() => buildJspLoginUrl(window.location.href));
 function isMine(review) {
   return currentMember.value != null
     && String(currentMember.value.id) === String(review.memberId);
+}
+
+function reviewAuthorLabel(review) {
+  if (review?.authorLoginId) return review.authorLoginId;
+  if (isMine(review) && currentMember.value?.loginId) return currentMember.value.loginId;
+  return review?.memberId != null ? `#${review.memberId}` : "알 수 없음";
 }
 
 function formatAverage(value) {
