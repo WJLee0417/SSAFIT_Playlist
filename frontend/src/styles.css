@@ -1807,8 +1807,31 @@ dd {
 }
 
 .playlist-library-toolbar h2 {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.45rem;
   margin-bottom: 0;
   font-size: clamp(1.45rem, 3vw, 2rem);
+}
+
+.playlist-library-separator {
+  color: var(--color-text-faint);
+  font-weight: inherit;
+}
+
+.playlist-library-link {
+  color: var(--color-text-faint);
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: inherit;
+  text-decoration: none;
+  transition: color 0.18s ease;
+}
+
+.playlist-library-link:hover {
+  color: var(--color-text);
+  text-decoration: none;
 }
 
 .playlist-scope-toggle {

@@ -127,9 +127,12 @@
     />
 
     <div v-if="status === 'ready'" class="playlist-library-toolbar">
-      <div>
-
-        <h2>플레이리스트 </h2>
+      <div class="playlist-library-title">
+        <h2>
+          <span>플레이리스트</span>
+          <span class="playlist-library-separator" aria-hidden="true">|</span>
+          <RouterLink class="playlist-library-link" to="/music">음악 둘러보기</RouterLink>
+        </h2>
       </div>
       <div class="playlist-scope-toggle" role="group" aria-label="플레이리스트 조회 범위">
         <button
