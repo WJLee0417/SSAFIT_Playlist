@@ -1,19 +1,17 @@
 # SSAFIT PlayList
 
-## Docker Quick Start
+## 다른 PC에서 Docker로 실행하기
 
-Use this path when a teammate needs to run the full local stack with Docker
-Desktop and Git only. The Compose stack contains `mysql`, `backend`, and
-`frontend`.
+이 프로젝트는 Docker Compose로 `mysql`, `backend`, `frontend` 서비스를 한 번에 실행합니다.
+다른 PC에서는 Java, Node.js, MySQL을 따로 설치하지 않아도 됩니다. Docker Desktop과 Git만 있으면 됩니다.
 
-### Prerequisites
+### 1. 준비물
 
-- Docker Desktop installed and running
-- Docker Compose v2, included with current Docker Desktop
-- Git
-- A local `.env` file copied from `.env.example`
+- Docker Desktop 설치 및 실행
+- Git 설치
+- Spotify 기능을 테스트할 경우 Spotify 개발자 대시보드 접근 권한
 
-### Clone And Create `.env`
+### 2. 프로젝트 받기
 
 Windows PowerShell:
 
@@ -31,122 +29,128 @@ cd SSAFIT_Playlist
 cp .env.example .env
 ```
 
-Replace only the placeholder values in `.env`. Do not commit `.env`.
+`.env`는 개인 실행 환경 파일입니다. 실제 비밀번호와 Spotify 비밀 키를 넣어도 되지만 Git에 커밋하면 안 됩니다.
 
-### Environment Variables
+### 3. `.env` 수정
 
-| Variable | Purpose | Secret | Example placeholder |
-|---|---|---:|---|
-| `SPRING_PROFILES_ACTIVE` | Spring profile for containers | No | `docker` |
-| `SERVER_PORT` | backend container port | No | `8080` |
-| `MYSQL_HOST_PORT` | host port for MySQL, useful for STS | No | `3306` |
-| `MYSQL_DATABASE` | database created on a fresh volume | No | `ssafit_playlist` |
-| `MYSQL_USER` | MySQL app user created on a fresh volume | No | `ssafit` |
-| `MYSQL_PASSWORD` | MySQL app user password | Yes | `change-me` |
-| `MYSQL_ROOT_PASSWORD` | MySQL root password | Yes | `change-me` |
-| `SSAFIT_DB_HOST` | backend DB host inside Compose | No | `mysql` |
-| `SSAFIT_DB_PORT` | backend DB port inside Compose | No | `3306` |
-| `SSAFIT_DB_NAME` | backend datasource database | No | `ssafit_playlist` |
-| `SSAFIT_DB_USERNAME` | backend datasource user | No | `ssafit` |
-| `SSAFIT_DB_PASSWORD` | backend datasource password | Yes | `change-me` |
-| `FRONTEND_HOST_PORT` | browser port for the app | No | `5173` |
-| `FRONTEND_PUBLIC_ORIGIN` | browser-visible frontend origin | No | `http://localhost:5173` |
-| `SSAFIT_FRONTEND_ORIGIN` | backend redirects to Vue | No | `http://localhost:5173` |
-| `SSAFIT_CORS_ALLOWED_ORIGINS` | allowed browser origins | No | `http://localhost:5173,http://127.0.0.1:5173` |
-| `VITE_API_BASE_URL` | Vue API base path through Nginx | No | `/api` |
-| `VITE_JSP_BASE_URL` | Vue links to JSP pages | No | `http://localhost:5173` |
-| `SPOTIFY_CLIENT_ID` | Spotify app client ID | No | `change-me` |
-| `SPOTIFY_CLIENT_SECRET` | Spotify app client secret | Yes | `change-me` |
-| `SPOTIFY_REDIRECT_URI` | Spotify OAuth callback URL | No | `http://localhost:5173/api/spotify/oauth/callback` |
-| `SPOTIFY_AUDIO_FEATURE_ENRICHMENT_ENABLED` | optional Spotify audio feature enrichment | No | `false` |
-
-`SPOTIFY_REDIRECT_URI` must exactly match the Docker browser URL and must also
-be registered in the Spotify Developer Dashboard. If your Spotify app is in
-Development Mode, configure the allowlist in the Dashboard separately.
-
-### Run
-
-Validate the resolved Compose configuration:
-
-```bash
-docker compose config
-```
-
-Run the full stack in the foreground:
-
-```bash
-docker compose up --build
-```
-
-Run the full stack in the background:
-
-```bash
-docker compose up --build -d
-```
-
-Open the app:
+새 PC에서 최소로 바꿔야 하는 값은 아래 값들입니다.
 
 ```text
-http://localhost:5173/
+MYSQL_PASSWORD=<로컬 DB 비밀번호>
+MYSQL_ROOT_PASSWORD=<로컬 MySQL root 비밀번호>
+SSAFIT_DB_PASSWORD=<MYSQL_PASSWORD와 같은 값>
+SPOTIFY_CLIENT_ID=<Spotify 클라이언트 ID>
+SPOTIFY_CLIENT_SECRET=<Spotify 클라이언트 비밀 키>
 ```
 
-Run only MySQL for STS/local backend development:
+Spotify를 사용하지 않을 때는 `SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET`을 비워 둘 수 있습니다.
+Docker 브라우저 주소는 기본적으로 아래 값으로 맞춰져 있습니다.
+
+```text
+FRONTEND_HOST_PORT=5173
+FRONTEND_PUBLIC_ORIGIN=http://127.0.0.1:5173
+SSAFIT_FRONTEND_ORIGIN=http://127.0.0.1:5173
+VITE_API_BASE_URL=/api
+VITE_JSP_BASE_URL=http://127.0.0.1:5173
+```
+
+Spotify OAuth까지 확인하려면 Spotify 개발자 대시보드의 리다이렉트 URI에도 다음 값을 등록해야 합니다.
+
+```text
+http://127.0.0.1:5173/api/spotify/oauth/callback
+```
+
+### 4. 실행
+
+Docker Compose 설정이 정상인지 먼저 확인합니다.
 
 ```bash
-docker compose up -d mysql
+docker compose config --quiet
 ```
 
-The backend container talks to MySQL through the Compose service name
-`mysql:3306`. A browser talks to the app through `localhost:5173`.
+처음 실행하거나 코드가 바뀐 뒤에는 빌드와 실행을 같이 합니다.
 
-### Status And Logs
+```bash
+docker compose up -d --build
+```
+
+상태를 확인합니다.
 
 ```bash
 docker compose ps
+```
+
+정상 상태 예시는 아래와 같습니다.
+
+```text
+mysql      healthy
+backend    healthy
+frontend   healthy
+```
+
+브라우저에서 접속합니다.
+
+```text
+http://127.0.0.1:5173/
+```
+
+### 5. JSP 로그인 흐름 확인
+
+Docker 환경에서는 JSP 화면도 프론트엔드 Nginx를 통해 접근합니다. 주소는 항상 `:5173` 포트를 유지해야 합니다.
+
+```text
+회원가입: http://127.0.0.1:5173/join
+로그인:   http://127.0.0.1:5173/login
+마이페이지: http://127.0.0.1:5173/members/me
+```
+
+회원가입, 로그인, 로그아웃 후 브라우저 주소가 `http://127.0.0.1:5173/...` 형태를 유지하면 정상입니다.
+
+### 6. 로그 보기
+
+```bash
 docker compose logs -f mysql
 docker compose logs -f backend
 docker compose logs -f frontend
 ```
 
-### Stop
+### 7. 중지와 초기화
 
-Stop containers and keep the MySQL named volume:
+컨테이너만 중지하고 DB 데이터는 유지합니다.
 
 ```bash
 docker compose down
 ```
 
-Delete containers and the MySQL named volume:
+DB까지 완전히 지우고 새로 시작할 때만 아래 명령을 사용합니다.
 
 ```bash
 docker compose down -v
+docker compose up -d --build
 ```
 
-Warning: `docker compose down -v` deletes the local Docker database. Use it only
-when you intentionally want a fresh DB initialized from `schema.sql`.
+`docker compose down -v`는 Docker MySQL 볼륨을 삭제합니다. 회원 데이터와 테스트 데이터도 같이 사라집니다.
 
-### Database Initialization
+### 8. DB 초기화 방식
 
-Fresh Docker volumes are initialized from:
+새 MySQL 볼륨은 아래 파일로 한 번만 초기화됩니다.
 
 ```text
 ssafit/src/main/resources/sql/schema.sql
 ```
 
-The file is mounted into MySQL as
-`/docker-entrypoint-initdb.d/01-schema.sql` and runs only when the named volume
-is empty. It does not run again on the second start of the same volume.
+이미 생성된 볼륨에는 이 SQL이 다시 실행되지 않습니다. 스키마를 처음부터 다시 만들려면 `docker compose down -v`가 필요합니다.
 
-### Troubleshooting
+### 9. 자주 나는 문제
 
-| Symptom | Check |
+| 증상 | 해결 |
 |---|---|
-| Port already in use | Change `FRONTEND_HOST_PORT` or `MYSQL_HOST_PORT` in `.env`, then run `docker compose up --build -d` again. |
-| MySQL init SQL did not rerun | This is normal for an existing named volume. Use `docker compose down -v` only if you intentionally want to delete DB data and reinitialize. |
-| backend cannot connect to DB | Confirm `MYSQL_PASSWORD` and `SSAFIT_DB_PASSWORD` match for a fresh volume. For an existing volume, keep the password used when that volume was first initialized. |
-| Docker image seems stale | Run `docker compose build --no-cache backend frontend`, then `docker compose up -d`. |
-| OAuth callback mismatch | Keep `SPOTIFY_REDIRECT_URI`, `SSAFIT_FRONTEND_ORIGIN`, `VITE_JSP_BASE_URL`, and Spotify Dashboard Redirect URI aligned with `http://localhost:5173`. |
-| Need logs | Run `docker compose logs -f <service>` where `<service>` is `mysql`, `backend`, or `frontend`. |
+| `5173` 포트가 이미 사용 중 | `.env`의 `FRONTEND_HOST_PORT`를 다른 포트로 바꾸고 `FRONTEND_PUBLIC_ORIGIN`, `SSAFIT_FRONTEND_ORIGIN`, `VITE_JSP_BASE_URL`도 같은 포트로 맞춥니다. |
+| MySQL 포트가 이미 사용 중 | `.env`의 `MYSQL_HOST_PORT`를 `33306` 같은 값으로 바꿉니다. 백엔드 컨테이너는 내부 `mysql:3306`으로 붙으므로 보통 추가 수정이 필요 없습니다. |
+| 백엔드가 DB 접속 실패 | 새 볼륨에서는 `MYSQL_PASSWORD`와 `SSAFIT_DB_PASSWORD`가 같아야 합니다. 기존 볼륨이면 처음 만들 때 사용한 비밀번호를 유지해야 합니다. |
+| `/login` 이동 후 포트가 빠짐 | `.env`의 `FRONTEND_PUBLIC_ORIGIN`, `SSAFIT_FRONTEND_ORIGIN`, `VITE_JSP_BASE_URL`이 `http://127.0.0.1:5173`인지 확인하고 `docker compose up -d --build`를 다시 실행합니다. |
+| 이미지가 예전 코드처럼 동작 | `docker compose build --no-cache backend frontend` 후 `docker compose up -d`를 실행합니다. |
+| Spotify 콜백 주소 불일치 | `SPOTIFY_REDIRECT_URI`, `SSAFIT_FRONTEND_ORIGIN`, `VITE_JSP_BASE_URL`, Spotify 개발자 대시보드의 리다이렉트 URI를 같은 origin으로 맞춥니다. |
 
 ## 개발 환경
 
