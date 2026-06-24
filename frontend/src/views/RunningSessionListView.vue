@@ -71,7 +71,6 @@
 <script setup>
 import { computed, ref } from "vue";
 import { RouterLink } from "vue-router";
-import { authApi } from "../api/authApi";
 import { runningSessionApi } from "../api/runningSessionApi";
 import AppLayout from "../components/AppLayout.vue";
 import PageStatePanel from "../components/PageStatePanel.vue";
@@ -80,7 +79,6 @@ import { formatSessionListDateTime, statusLabel } from "../utils/runningSession"
 
 const { data, status, error, run } = usePageState([]);
 const activeFilter = ref("all");
-const currentMember = ref(null);
 
 const filterOptions = [
   { value: "all", label: "전체" },
@@ -94,25 +92,15 @@ const filteredSessions = computed(() => {
     return sessions.filter(isRecruitingSession);
   }
   if (activeFilter.value === "my") {
-    return sessions.filter((session) => session.isMine);
+    return sessions.filter(isMySession);
   }
   return sessions;
 });
 
 function load() {
   return run(async () => {
-    const [member, response] = await Promise.all([
-      authApi.getSession(),
-      runningSessionApi.getList(),
-    ]);
-    const sessions = Array.isArray(response) ? response : [];
-    currentMember.value = member;
-
-    const details = await Promise.all(
-      sessions.map((session) => runningSessionApi.getDetail(session.id).catch(() => null)),
-    );
-
-    return sessions.map((session, index) => enrichSession(session, details[index]));
+    const response = await runningSessionApi.getList();
+    return Array.isArray(response) ? response : [];
   });
 }
 
@@ -120,29 +108,28 @@ function participantCount(session) {
   return Number(session.participantCount ?? session.currentParticipantCount ?? 0);
 }
 
-function enrichSession(session, detail) {
-  const participants = Array.isArray(detail?.participants) ? detail.participants : [];
-  const detailSession = detail?.session || {};
-  return {
-    ...session,
-    participantCount: Number(detail?.participantCount ?? session.participantCount ?? participants.length),
-    isMine: participants.some((participant) => (
-      currentMember.value != null
-      && String(participant.memberId) === String(currentMember.value.id)
-    )),
-    status: detailSession.status || session.status,
-    capacity: detailSession.capacity ?? session.capacity,
-    scheduledAt: detailSession.scheduledAt || session.scheduledAt,
-  };
+function isMySession(session) {
+  return Boolean(
+    session.isMine
+    || session.mine
+    || session.currentMemberHosting
+    || session.currentMemberParticipating,
+  );
 }
 
 function isRecruitingSession(session) {
+  if (typeof session.recruiting === "boolean") {
+    return session.recruiting;
+  }
   return session.status === "OPEN"
-    && !isPastSession(session)
+    && !isExpiredSession(session)
     && participantCount(session) < Number(session.capacity || 0);
 }
 
-function isPastSession(session) {
+function isExpiredSession(session) {
+  if (typeof session.expired === "boolean") {
+    return session.expired;
+  }
   if (!session.scheduledAt) return false;
   const scheduledAt = new Date(session.scheduledAt);
   return !Number.isNaN(scheduledAt.getTime()) && scheduledAt.getTime() < Date.now();
@@ -151,7 +138,7 @@ function isPastSession(session) {
 function isInactiveSession(session) {
   return session.status === "CANCELLED"
     || session.status === "CLOSED"
-    || isPastSession(session)
+    || isExpiredSession(session)
     || participantCount(session) >= Number(session.capacity || 0);
 }
 

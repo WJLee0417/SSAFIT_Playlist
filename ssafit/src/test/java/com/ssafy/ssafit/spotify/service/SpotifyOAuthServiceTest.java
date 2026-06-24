@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -22,6 +23,9 @@ import org.springframework.web.util.UriComponentsBuilder;
 
 import com.ssafy.ssafit.common.exception.CustomException;
 import com.ssafy.ssafit.common.exception.ErrorCode;
+import com.ssafy.ssafit.common.auth.PasswordHashService;
+import com.ssafy.ssafit.member.mapper.MemberMapper;
+import com.ssafy.ssafit.member.service.AuthService;
 import com.ssafy.ssafit.spotify.client.SpotifyApiClient;
 import com.ssafy.ssafit.spotify.config.SpotifyProperties;
 import com.ssafy.ssafit.spotify.domain.SpotifyConnection;
@@ -38,6 +42,15 @@ class SpotifyOAuthServiceTest {
     @Mock
     private SpotifyConnectionMapper spotifyConnectionMapper;
 
+    @Mock
+    private MemberMapper memberMapper;
+
+    @Mock
+    private PasswordHashService passwordHashService;
+
+    @Mock
+    private AuthService authService;
+
     private SpotifyProperties properties;
     private SpotifyOAuthService spotifyOAuthService;
     private SpotifyOAuthStateManager stateManager;
@@ -53,9 +66,14 @@ class SpotifyOAuthServiceTest {
         properties.setScopes(List.of("user-read-private", "playlist-modify-private"));
         stateManager = new SpotifyOAuthStateManager();
         session = new MockHttpSession();
+        lenient().when(spotifyConnectionMapper.selectBySpotifyUserId(any()))
+                .thenReturn(Optional.empty());
         spotifyOAuthService = new SpotifyOAuthService(
                 spotifyApiClient,
                 spotifyConnectionMapper,
+                memberMapper,
+                passwordHashService,
+                authService,
                 properties,
                 stateManager);
     }

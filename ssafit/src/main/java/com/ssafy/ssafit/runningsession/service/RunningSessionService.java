@@ -48,8 +48,8 @@ public class RunningSessionService {
     }
 
     public List<RunningSession> getSessionList(HttpSession session) {
-        getLoginMemberId(session);
-        return runningSessionMapper.selectList();
+        Long loginMemberId = getLoginMemberId(session);
+        return runningSessionMapper.selectList(loginMemberId);
     }
 
     public RunningSession getSessionDetail(HttpSession session, Long sessionId) {
@@ -160,6 +160,10 @@ public class RunningSessionService {
                 || runningSession.getScheduledAt() == null
                 || runningSession.getCapacity() == null
                 || runningSession.getCapacity() <= 0
+                || runningSession.getTargetDistanceKm() == null
+                || runningSession.getTargetDistanceKm().signum() <= 0
+                || runningSession.getTargetPaceSecondsPerKm() == null
+                || runningSession.getTargetPaceSecondsPerKm() <= 0
                 || (runningSession.getDescription() != null
                         && runningSession.getDescription().length()
                                 > MAX_DESCRIPTION_LENGTH)) {

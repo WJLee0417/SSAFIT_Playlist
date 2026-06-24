@@ -14,7 +14,7 @@ public interface RunningSessionMapper {
 
     int insert(RunningSession runningSession);
 
-    List<RunningSession> selectList();
+    List<RunningSession> selectList(@Param("memberId") Long memberId);
 
     Optional<RunningSession> selectDetail(@Param("sessionId") Long sessionId);
 

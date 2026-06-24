@@ -40,6 +40,25 @@
         WHERE id = #{id}
     </update>
 
+    <update id="shiftOrders">
+        UPDATE playlist_items
+        SET order_no = order_no + #{offset}
+        WHERE playlist_id = #{playlistId}
+    </update>
+
+    <update id="bulkUpdateOrders">
+        UPDATE playlist_items
+        SET order_no = CASE id
+            <foreach collection="items" item="item">
+                WHEN #{item.id} THEN #{item.orderNo}
+            </foreach>
+        END
+        WHERE id IN
+        <foreach collection="items" item="item" open="(" separator="," close=")">
+            #{item.id}
+        </foreach>
+    </update>
+
     <select id="existsByPlaylistAndMusic" resultType="boolean">
         SELECT EXISTS (
             SELECT 1

@@ -3,7 +3,7 @@
     <div class="page-heading playlist-page-heading">
       <div>
         <span class="eyebrow">PLAYLISTS</span>
-        <h1>달리는 순간을 위한 플레이리스트</h1>
+        <h1>심장이 따라 반응하도록</h1>
       </div>
       <RouterLink class="primary-button" to="/playlists/new">새 플레이리스트</RouterLink>
     </div>
@@ -11,7 +11,7 @@
     <section class="playlist-spotify-discovery" aria-labelledby="spotify-search-title">
       <div class="playlist-search-copy">
         <span class="eyebrow">SPOTIFY TRACK SEARCH</span>
-        <h2 id="spotify-search-title">음악을 찾고, 내 러닝 플로우에 바로 담아보세요.</h2>
+        <h2 id="spotify-search-title">음악을 찾고, 내 러닝 플로우에 담아보세요</h2>
       </div>
 
       <form class="playlist-spotify-search-form" @submit.prevent="searchSpotify">
@@ -122,14 +122,14 @@
       :status="status"
       :error="error"
       empty-title="플레이리스트가 없습니다"
-      empty-message="새 플레이리스트를 만들어 러닝 음악을 모아보세요."
+      empty-message="새 플레이리스트를 추가해 보세요."
       @retry="load"
     />
 
     <div v-if="status === 'ready'" class="playlist-library-toolbar">
       <div>
-        <span class="eyebrow">LIBRARY VIEW</span>
-        <h2>플레이리스트 둘러보기</h2>
+
+        <h2>플레이리스트 </h2>
       </div>
       <div class="playlist-scope-toggle" role="group" aria-label="플레이리스트 조회 범위">
         <button
@@ -165,9 +165,47 @@
             <span class="eyebrow">{{ group.eyebrow }}</span>
             <h2>{{ group.title }}</h2>
           </div>
+          <div v-if="group.key === 'UNCLASSIFIED' && currentMember" class="spotify-import-control">
+            <button
+              type="button"
+              class="secondary-button spotify-import-trigger"
+              :aria-expanded="spotifyImportOpen"
+              :disabled="spotifyImportingId != null"
+              @click="toggleSpotifyImportMenu"
+            >
+              {{ spotifyImportLoading ? "Spotify 확인 중..." : "Spotify에서 가져오기" }}
+            </button>
+
+            <div v-if="spotifyImportOpen" class="spotify-import-menu">
+              <div class="spotify-import-menu-heading">
+                <strong>가져올 Spotify 플레이리스트</strong>
+                <span>선택하면 사용자 플레이리스트로 생성됩니다.</span>
+              </div>
+              <button
+                v-for="playlist in spotifyPlaylists"
+                :key="playlist.spotifyPlaylistId"
+                type="button"
+                class="spotify-import-option"
+                :disabled="spotifyImportingId != null"
+                @click="importSpotifyPlaylist(playlist)"
+              >
+                <span>
+                  <strong>{{ playlist.name }}</strong>
+                  <small>{{ playlist.tracksTotal ?? 0 }}곡</small>
+                </span>
+                <em>{{ spotifyImportingId === playlist.spotifyPlaylistId ? "가져오는 중" : "가져오기" }}</em>
+              </button>
+              <p v-if="spotifyImportEmpty" class="empty-inline">
+                가져올 Spotify 플레이리스트가 없습니다.
+              </p>
+            </div>
+          </div>
         </div>
 
         <div class="playlist-horizontal-scroll">
+          <p v-if="!group.playlists.length" class="empty-inline playlist-section-empty">
+            아직 사용자 플레이리스트가 없습니다.
+          </p>
           <RouterLink
             v-for="playlist in group.playlists"
             :key="playlist.id"
@@ -201,8 +239,9 @@ import { spotifyApi } from "../api/spotifyApi";
 import AppLayout from "../components/AppLayout.vue";
 import PageStatePanel from "../components/PageStatePanel.vue";
 import SaveStatus from "../components/SaveStatus.vue";
+import { rememberSpotifyReturnPath } from "../utils/oauthReturn";
 import { usePageState } from "../utils/pageState";
-import { spotifyErrorMessage, spotifyErrorState } from "../utils/spotifyError";
+import { requiresSpotifyReconnect, spotifyErrorMessage, spotifyErrorState } from "../utils/spotifyError";
 
 const INTENSITY_GROUPS = [
   {
@@ -229,14 +268,14 @@ const INTENSITY_GROUPS = [
   {
     key: "INTERVAL",
     eyebrow: "INTERVAL",
-    title: "폭발적인 인터벌",
+    title: "폭발적 인터벌",
     min: 140,
     max: 200,
   },
   {
     key: "UNCLASSIFIED",
-    eyebrow: "READY TO BUILD",
-    title: "첫 곡을 기다리는 플레이리스트",
+    eyebrow: "USER",
+    title: "사용자 플레이리스트",
     min: null,
     max: null,
   },
@@ -263,6 +302,10 @@ const openTrackId = ref(null);
 const addingTrackId = ref(null);
 const actionMessage = ref("");
 const actionType = ref("success");
+const spotifyImportOpen = ref(false);
+const spotifyImportLoading = ref(false);
+const spotifyPlaylists = ref([]);
+const spotifyImportingId = ref(null);
 let searchSequence = 0;
 
 const searchDisplayError = computed(() => {
@@ -306,13 +349,19 @@ const visibleGroups = computed(() => INTENSITY_GROUPS
       (playlist) => playlist.intensityKey === group.key,
     ),
   }))
-  .filter((group) => group.playlists.length));
+  .filter((group) => (
+    group.playlists.length
+    || (group.key === "UNCLASSIFIED" && currentMember.value)
+  )));
 
 const manageablePlaylists = computed(() => data.value.filter((playlist) => (
   currentMember.value
   && playlist.playlistType !== "OFFICIAL"
   && String(playlist.ownerId) === String(currentMember.value.id)
 )));
+const spotifyImportEmpty = computed(() => (
+  !spotifyImportLoading.value && !spotifyPlaylists.value.length
+));
 
 function normalizeGenre(value) {
   return String(value || "")
@@ -503,6 +552,62 @@ async function addTrackToPlaylist(track, playlist) {
     actionMessage.value = spotifyErrorMessage(caught);
   } finally {
     addingTrackId.value = null;
+  }
+}
+
+async function toggleSpotifyImportMenu() {
+  if (spotifyImportOpen.value) {
+    spotifyImportOpen.value = false;
+    return;
+  }
+  spotifyImportOpen.value = true;
+  if (spotifyPlaylists.value.length) return;
+  await loadSpotifyImportPlaylists();
+}
+
+async function loadSpotifyImportPlaylists() {
+  if (spotifyImportLoading.value) return;
+  spotifyImportLoading.value = true;
+  actionMessage.value = "";
+  try {
+    const response = await spotifyApi.getMyPlaylists({ limit: 20 });
+    spotifyPlaylists.value = Array.isArray(response) ? response : [];
+  } catch (caught) {
+    if (requiresSpotifyReconnect(caught)) {
+      rememberSpotifyReturnPath(route.fullPath);
+      await spotifyApi.startAuthorization();
+      return;
+    }
+    actionType.value = "error";
+    actionMessage.value = spotifyErrorMessage(caught);
+  } finally {
+    spotifyImportLoading.value = false;
+  }
+}
+
+async function importSpotifyPlaylist(playlist) {
+  if (spotifyImportingId.value != null) return;
+  spotifyImportingId.value = playlist.spotifyPlaylistId;
+  actionMessage.value = "";
+  try {
+    const response = await spotifyApi.importPlaylist({
+      spotifyPlaylistId: playlist.spotifyPlaylistId,
+      title: playlist.name,
+    });
+    actionType.value = "success";
+    actionMessage.value = `"${playlist.name}"을(를) 사용자 플레이리스트로 가져왔습니다. (${response.importedCount}곡)`;
+    spotifyImportOpen.value = false;
+    await load();
+  } catch (caught) {
+    if (requiresSpotifyReconnect(caught)) {
+      rememberSpotifyReturnPath(route.fullPath);
+      await spotifyApi.startAuthorization();
+      return;
+    }
+    actionType.value = "error";
+    actionMessage.value = spotifyErrorMessage(caught);
+  } finally {
+    spotifyImportingId.value = null;
   }
 }
 

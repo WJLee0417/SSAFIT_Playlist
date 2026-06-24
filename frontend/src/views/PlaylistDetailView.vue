@@ -1,24 +1,21 @@
 <template>
   <AppLayout>
-    <RouterLink class="text-link back-link" :to="backLocation">← 목록으로 돌아가기</RouterLink>
+    <RouterLink class="text-link back-link" :to="backLocation">목록으로 돌아가기</RouterLink>
 
     <PageStatePanel
       :status="status"
       :error="error"
-      error-title="플레이리스트 상세를 불러오지 못했습니다"
+      error-title="플레이리스트 상세를 불러오지 못했습니다."
       @retry="load"
     />
 
     <article v-if="status === 'ready'" class="detail-card playlist-detail">
-      <div class="page-heading">
+      <div class="page-heading playlist-detail-heading">
         <div>
-          <div class="badge-row">
-            <span class="source-badge" :class="{ official: isOfficial }">
-              {{ isOfficial ? "공식 플레이리스트" : sourceLabel }}
-            </span>
-            <span class="visibility-badge">{{ playlist.visibility }}</span>
-            <span v-if="playlist.saved" class="saved-badge">저장됨</span>
-          </div>
+          <p class="playlist-detail-meta-line">
+            {{ playlistCategoryLabel }} | {{ playlist.visibility || "PRIVATE" }}
+            <span v-if="isSavedByViewer"> | 저장됨</span>
+          </p>
           <h1>{{ playlist.title }}</h1>
         </div>
         <div v-if="canManage" class="form-actions">
@@ -35,83 +32,93 @@
       </div>
 
       <p class="lead">{{ playlist.description || "설명이 없습니다." }}</p>
-      <dl class="summary-list playlist-summary">
-        <div><dt>유형</dt><dd>{{ playlist.playlistType }}</dd></div>
-        <div><dt>생성 경로</dt><dd>{{ playlist.sourceType }}</dd></div>
-        <div><dt>수록곡</dt><dd>{{ items.length }}곡</dd></div>
-        <div><dt>Spotify 상태</dt><dd>{{ playlist.spotifyExportStatus || "NOT_EXPORTED" }}</dd></div>
-      </dl>
 
       <SaveStatus :type="actionType" :message="actionMessage" />
 
-      <section class="save-reference-panel">
-        <div>
-          <span class="eyebrow">REFERENCE SAVE</span>
-          <h2>내 저장 목록</h2>
-          <p>
-            이 기능은 기존 플레이리스트를 참조 저장합니다.
-            자동 큐레이션 복사본 생성이나 Spotify 내보내기와는 별도입니다.
-          </p>
-          <p v-if="isOwner && playlist.visibility === 'PRIVATE'" class="contract-note">
-            현재 Service 계약은 소유자 본인의 비공개 플레이리스트 참조 저장도 허용합니다.
-          </p>
-        </div>
-        <div>
-          <a v-if="viewerStatus === 'anonymous'" class="primary-button" :href="loginUrl">로그인 후 저장</a>
-          <p v-else-if="viewerStatus === 'error'" class="muted">로그인 상태를 확인하지 못해 저장 상태를 표시하지 않습니다.</p>
-          <p v-else-if="!saveStateKnown" class="muted">내 저장 목록을 확인하지 못했습니다.</p>
-          <button
-            v-else-if="canAttemptSave"
-            type="button"
-            :class="playlist.saved ? 'secondary-button' : 'primary-button'"
-            :disabled="actionBusy"
-            @click="toggleSave"
-          >
-            {{ playlist.saved ? "저장 취소" : "내 목록에 저장" }}
+      <section v-if="showReferenceSavePanel" class="save-reference-panel save-reference-panel-compact">
+        <p>이 플레이리스트를 저장할까요?</p>
+        <button type="button" class="primary-button" :disabled="actionBusy" @click="toggleSave">
+          내 목록에 저장
+        </button>
+      </section>
+
+      <section
+        v-if="canManage"
+        ref="spotifySearchRoot"
+        class="playlist-spotify-inline-search"
+        @focusout="closeSpotifyResultsSoon"
+      >
+        <form class="playlist-spotify-search-form" @submit.prevent="searchSpotifyTracks">
+          <div class="playlist-search-control">
+            <label class="sr-only" for="playlist-spotify-query">Spotify 곡 검색</label>
+            <input
+              id="playlist-spotify-query"
+              v-model="spotifyQuery"
+              type="search"
+              autocomplete="off"
+              placeholder="Spotify에서 추가할 곡 검색"
+              @input="queueSpotifySearch"
+              @focus="openSpotifyResults"
+              @keydown.esc="spotifyResultsOpen = false"
+            />
+
+            <div v-if="shouldShowSpotifyDropdown" class="playlist-search-dropdown">
+              <p v-if="spotifySearchMessage" class="playlist-search-state">{{ spotifySearchMessage }}</p>
+              <button
+                v-for="track in spotifyTracks"
+                :key="track.spotifyTrackId"
+                type="button"
+                class="playlist-search-result playlist-search-result-button"
+                :disabled="addingSpotifyTrackId === track.spotifyTrackId || actionBusy"
+                @mousedown.prevent="addSpotifyTrack(track)"
+                @click="addSpotifyTrack(track)"
+              >
+                <img v-if="track.imageUrl" :src="track.imageUrl" :alt="`${track.title} album cover`" />
+                <span v-else class="playlist-result-placeholder">♪</span>
+                <span class="playlist-result-copy">
+                  <strong>{{ track.title }}</strong>
+                  <span>{{ track.artist || "아티스트 정보 없음" }}</span>
+                </span>
+                <span class="playlist-result-duration">{{ formatDuration(track.durationMs) }}</span>
+              </button>
+            </div>
+          </div>
+          <button type="submit" :disabled="spotifySearching || !spotifyQuery.trim()">
+            {{ spotifySearching ? "검색 중..." : "Spotify에서 추가" }}
           </button>
-          <p v-else class="muted">현재 계약상 이 플레이리스트는 참조 저장할 수 없습니다.</p>
-        </div>
+        </form>
       </section>
 
       <PlaylistItemList
         :items="items"
         :editable="canManage"
         :busy="actionBusy"
-        @add="addItem"
-        @change-order="changeItemOrder"
+        :current-member-id="currentMember?.id"
+        @reorder="reorderItems"
         @remove="removeItem"
       />
 
-      <section v-if="canManage" class="spotify-track-add-panel">
-        <div>
-          <span class="eyebrow">SPOTIFY TRACKS</span>
-          <h2>Spotify 곡 추가</h2>
-          <p>검색 결과를 내부 음악으로 저장한 뒤 반환된 music ID로 수록곡에 추가합니다.</p>
-        </div>
-        <RouterLink
-          class="primary-button"
-          :to="{
-            name: 'spotify-search',
-            query: {
-              playlistId,
-              nextOrder,
-              returnTo: route.fullPath,
-            },
-          }"
+      <div v-if="canManage" class="playlist-spotify-export-row">
+        <a
+          v-if="playlist.spotifyPlaylistUrl"
+          class="secondary-button spotify-export-capsule"
+          :href="playlist.spotifyPlaylistUrl"
+          target="_blank"
+          rel="noreferrer"
         >
-          Spotify 곡 검색
-        </RouterLink>
-      </section>
-
-      <SpotifyExportPanel
-        :key="`${playlist.id}-${playlist.spotifyExportStatus}-${playlist.spotifyPlaylistUrl || ''}`"
-        :playlist="playlist"
-        :playlist-id="playlistId"
-        :editable="canManage"
-        :return-to="route.fullPath"
-        :items="items"
-        @exported="handleSpotifyExported"
-      />
+          Spotify에서 열기
+        </a>
+        <button
+          v-else
+          type="button"
+          class="primary-button spotify-export-capsule"
+          :disabled="spotifyExportBusy || spotifyExportBlocked || !items.length"
+          @click="handleSpotifyExport"
+        >
+          {{ spotifyExportButtonLabel }}
+        </button>
+        <p v-if="spotifyExportHint" class="muted">{{ spotifyExportHint }}</p>
+      </div>
     </article>
   </AppLayout>
 </template>
@@ -123,13 +130,14 @@ import { authApi } from "../api/authApi";
 import { isApiError } from "../api/http";
 import { playlistApi } from "../api/playlistApi";
 import { playlistSaveApi } from "../api/playlistSaveApi";
+import { spotifyApi } from "../api/spotifyApi";
 import AppLayout from "../components/AppLayout.vue";
 import PageStatePanel from "../components/PageStatePanel.vue";
 import PlaylistItemList from "../components/PlaylistItemList.vue";
 import SaveStatus from "../components/SaveStatus.vue";
-import SpotifyExportPanel from "../components/SpotifyExportPanel.vue";
-import { buildJspLoginUrl } from "../utils/navigation";
+import { rememberSpotifyReturnPath } from "../utils/oauthReturn";
 import { playlistErrorMessage } from "../utils/playlistError";
+import { requiresSpotifyReconnect, spotifyErrorMessage, spotifyErrorState } from "../utils/spotifyError";
 
 const props = defineProps({ playlistId: { type: String, required: true } });
 const route = useRoute();
@@ -143,7 +151,21 @@ const saveStateKnown = ref(false);
 const actionBusy = ref(false);
 const actionMessage = ref("");
 const actionType = ref("success");
+const spotifyQuery = ref("");
+const spotifyTracks = ref([]);
+const spotifySearching = ref(false);
+const spotifySearchStatus = ref("idle");
+const spotifySearchError = ref(null);
+const spotifyResultsOpen = ref(false);
+const spotifySearchRoot = ref(null);
+const addingSpotifyTrackId = ref(null);
+const spotifyConnectionStatus = ref("checking");
+const spotifyConnection = ref(null);
+const spotifyConnectionChecking = ref(false);
+const spotifyExporting = ref(false);
 let requestSequence = 0;
+let spotifySearchSequence = 0;
+let spotifySearchTimer = null;
 
 const playlist = computed(() => detail.value?.playlist || {});
 const items = computed(() => Array.isArray(detail.value?.items) ? detail.value.items : []);
@@ -154,16 +176,22 @@ const isOwner = computed(() => (
   && String(currentMember.value.id) === String(playlist.value.ownerId)
 ));
 const canManage = computed(() => isOwner.value && !isOfficial.value);
+const isSavedByViewer = computed(() => Boolean(playlist.value.saved) || isOwner.value);
 const canAttemptSave = computed(() => (
   viewerStatus.value === "authenticated"
+  && !isOwner.value
   && (
     isOfficial.value
     || playlist.value.visibility === "PUBLIC"
-    || isOwner.value
   )
 ));
-const sourceLabel = computed(() => (
-  playlist.value.sourceType === "CURATION_COPY" ? "큐레이션 복사본" : "사용자 플레이리스트"
+const showReferenceSavePanel = computed(() => (
+  saveStateKnown.value
+  && canAttemptSave.value
+  && !playlist.value.saved
+));
+const playlistCategoryLabel = computed(() => (
+  isOfficial.value ? "공식 플레이리스트" : "사용자 플레이리스트"
 ));
 const nextOrder = computed(() => (
   items.value.reduce(
@@ -177,7 +205,41 @@ const backLocation = computed(() => {
     ? candidate
     : "/playlists";
 });
-const loginUrl = computed(() => buildJspLoginUrl(window.location.href));
+const spotifyExportBusy = computed(() => spotifyConnectionChecking.value || spotifyExporting.value);
+const spotifyExportBlocked = computed(() => (
+  playlist.value.spotifyExportStatus === "PENDING"
+  || playlist.value.spotifyPlaylistId != null
+  || (
+    playlist.value.spotifyPlaylistUrl != null
+    && playlist.value.spotifyExportStatus !== "SUCCESS"
+  )
+));
+const spotifyExportButtonLabel = computed(() => {
+  if (spotifyConnectionChecking.value) return "Spotify 확인 중...";
+  if (spotifyExporting.value) return "내보내는 중...";
+  if (spotifyConnectionStatus.value === "connected") return "Spotify로 내보내기";
+  return "Spotify 연결";
+});
+const spotifyExportHint = computed(() => {
+  if (!items.value.length) return "수록곡을 추가한 뒤 Spotify로 내보낼 수 있습니다.";
+  if (spotifyExportBlocked.value) return "이미 Spotify 내보내기 기록이 있는 플레이리스트입니다.";
+  if (spotifyConnectionStatus.value === "expired") return "Spotify 인증이 만료되었습니다. 다시 연결해 주세요.";
+  if (spotifyConnectionStatus.value === "disconnected") return "Spotify 계정 연결 후 내보낼 수 있습니다.";
+  return "";
+});
+const spotifySearchMessage = computed(() => {
+  if (spotifySearchStatus.value === "idle") return "";
+  if (spotifySearchStatus.value === "loading") return "Spotify에서 검색 중입니다.";
+  if (spotifySearchStatus.value === "empty") return "검색 결과가 없습니다.";
+  if (spotifySearchStatus.value === "loginRequired") return "로그인 후 Spotify 검색을 사용할 수 있습니다.";
+  if (spotifySearchStatus.value === "unauthorized") return "Spotify 검색 권한이 없습니다.";
+  if (spotifySearchStatus.value === "error") return spotifyErrorMessage(spotifySearchError.value);
+  return "";
+});
+const shouldShowSpotifyDropdown = computed(() => (
+  spotifyResultsOpen.value
+  && (spotifyTracks.value.length > 0 || Boolean(spotifySearchMessage.value))
+));
 
 async function resolveViewerAndSaveState(playlistIdValue) {
   saveStateKnown.value = false;
@@ -196,10 +258,15 @@ async function resolveViewerAndSaveState(playlistIdValue) {
     const savedPlaylists = await playlistSaveApi.getMine();
     const saved = Array.isArray(savedPlaylists)
       && savedPlaylists.some((value) => String(value.id) === String(playlistIdValue));
-    if (detail.value?.playlist) detail.value.playlist.saved = saved;
+    if (detail.value?.playlist) detail.value.playlist.saved = saved || isOwner.value;
     saveStateKnown.value = true;
   } catch {
-    saveStateKnown.value = false;
+    if (detail.value?.playlist && isOwner.value) {
+      detail.value.playlist.saved = true;
+      saveStateKnown.value = true;
+    } else {
+      saveStateKnown.value = false;
+    }
   }
   return true;
 }
@@ -223,6 +290,7 @@ async function load() {
     await resolveViewerAndSaveState(response.playlist.id);
     if (sequence !== requestSequence) return;
     status.value = "ready";
+    if (canManage.value) checkSpotifyConnection();
   } catch (caught) {
     if (sequence !== requestSequence) return;
     error.value = caught;
@@ -264,26 +332,16 @@ async function runAction(action, successMessage, callbacks) {
 }
 
 function toggleSave() {
-  const action = playlist.value.saved
-    ? () => playlistSaveApi.cancel(props.playlistId)
-    : () => playlistSaveApi.save(props.playlistId);
+  if (!canAttemptSave.value || playlist.value.saved) return;
   runAction(
-    action,
-    playlist.value.saved ? "저장을 취소했습니다." : "내 저장 목록에 추가했습니다.",
+    () => playlistSaveApi.save(props.playlistId),
+    "내 목록에 저장했습니다.",
   );
 }
 
-function addItem(payload, callbacks) {
+function reorderItems(payload, callbacks) {
   runAction(
-    () => playlistApi.addItem(props.playlistId, payload),
-    "수록곡을 추가했습니다.",
-    callbacks,
-  );
-}
-
-function changeItemOrder(item, orderNo, callbacks) {
-  runAction(
-    () => playlistApi.updateItemOrder(item.id, { orderNo }),
+    () => playlistApi.reorderItems(props.playlistId, payload),
     "수록곡 순서를 변경했습니다.",
     callbacks,
   );
@@ -312,14 +370,155 @@ async function deletePlaylist() {
   }
 }
 
-async function handleSpotifyExported(result) {
-  if (result?.refresh) {
-    await load();
+function queueSpotifySearch() {
+  spotifyResultsOpen.value = true;
+  window.clearTimeout(spotifySearchTimer);
+  spotifySearchTimer = window.setTimeout(() => {
+    searchSpotifyTracks();
+  }, 320);
+}
+
+function openSpotifyResults() {
+  if (spotifyTracks.value.length || spotifySearchMessage.value) {
+    spotifyResultsOpen.value = true;
   }
-  if (result?.message) {
-    actionType.value = result.type || "success";
-    actionMessage.value = result.message;
+}
+
+function closeSpotifyResultsSoon() {
+  window.setTimeout(() => {
+    if (!spotifySearchRoot.value?.contains(document.activeElement)) {
+      spotifyResultsOpen.value = false;
+    }
+  }, 120);
+}
+
+async function searchSpotifyTracks() {
+  const normalizedQuery = spotifyQuery.value.trim();
+  if (!normalizedQuery) {
+    spotifyTracks.value = [];
+    spotifySearchStatus.value = "idle";
+    spotifySearchError.value = null;
+    spotifyResultsOpen.value = false;
+    return;
   }
+  const sequence = ++spotifySearchSequence;
+  spotifySearching.value = true;
+  spotifyResultsOpen.value = true;
+  spotifySearchStatus.value = "loading";
+  spotifySearchError.value = null;
+  try {
+    const response = await spotifyApi.searchTracks({
+      query: normalizedQuery,
+      limit: 10,
+    });
+    if (sequence !== spotifySearchSequence) return;
+    spotifyTracks.value = Array.isArray(response) ? response : [];
+    spotifySearchStatus.value = spotifyTracks.value.length ? "ready" : "empty";
+  } catch (caught) {
+    if (sequence !== spotifySearchSequence) return;
+    spotifyTracks.value = [];
+    spotifySearchError.value = caught;
+    spotifySearchStatus.value = spotifyErrorState(caught);
+  } finally {
+    if (sequence === spotifySearchSequence) spotifySearching.value = false;
+  }
+}
+
+async function addSpotifyTrack(track) {
+  if (addingSpotifyTrackId.value != null || actionBusy.value) return;
+  addingSpotifyTrackId.value = track.spotifyTrackId;
+  actionBusy.value = true;
+  actionMessage.value = "";
+  try {
+    const music = await spotifyApi.importTrack(track);
+    if (!music?.id) {
+      throw new Error("내부 음악 ID를 확인하지 못했습니다.");
+    }
+    await playlistApi.addItem(props.playlistId, {
+      musicId: music.id,
+      orderNo: nextOrder.value,
+    });
+    spotifyQuery.value = "";
+    spotifyTracks.value = [];
+    spotifyResultsOpen.value = false;
+    await refreshAfterAction("Spotify 곡을 플레이리스트에 추가했습니다.");
+  } catch (caught) {
+    actionType.value = "error";
+    actionMessage.value = spotifyErrorMessage(caught);
+  } finally {
+    addingSpotifyTrackId.value = null;
+    actionBusy.value = false;
+  }
+}
+
+async function checkSpotifyConnection() {
+  if (spotifyConnectionChecking.value) return;
+  spotifyConnectionChecking.value = true;
+  spotifyConnectionStatus.value = "checking";
+  try {
+    const response = await spotifyApi.getConnection();
+    spotifyConnection.value = response;
+    spotifyConnectionStatus.value = response?.state === "RECONNECT_REQUIRED"
+      ? "expired"
+      : (response?.connected ? "connected" : "disconnected");
+  } catch (caught) {
+    spotifyConnection.value = null;
+    spotifyConnectionStatus.value = requiresSpotifyReconnect(caught) ? "expired" : "unknown";
+  } finally {
+    spotifyConnectionChecking.value = false;
+  }
+}
+
+async function handleSpotifyExport() {
+  if (spotifyExportBusy.value || spotifyExportBlocked.value || !items.value.length) return;
+  if (spotifyConnectionStatus.value !== "connected") {
+    rememberSpotifyReturnPath(route.fullPath);
+    try {
+      await spotifyApi.startAuthorization();
+    } catch (caught) {
+      actionType.value = "error";
+      actionMessage.value = spotifyErrorMessage(caught);
+    }
+    return;
+  }
+
+  spotifyExporting.value = true;
+  actionMessage.value = "";
+  try {
+    const response = await spotifyApi.exportPlaylist(props.playlistId);
+    if (detail.value?.playlist) {
+      Object.assign(detail.value.playlist, response);
+    }
+    actionType.value = response.spotifyExportStatus === "PARTIAL" ? "error" : "success";
+    actionMessage.value = response.spotifyExportStatus === "PARTIAL"
+      ? `일부 곡만 내보냈습니다. 성공 ${response.exportedCount}곡, 실패 chunk ${response.failedChunkIndexes.join(", ")}`
+      : `Spotify 플레이리스트로 ${response.exportedCount}곡을 내보냈습니다.`;
+  } catch (caught) {
+    actionType.value = "error";
+    actionMessage.value = spotifyErrorMessage(caught);
+    if (requiresSpotifyReconnect(caught)) {
+      spotifyConnectionStatus.value = "expired";
+    }
+    if ([
+      "SPOTIFY_PLAYLIST_CREATE_FAILED",
+      "SPOTIFY_PLAYLIST_ITEM_ADD_FAILED",
+      "SPOTIFY_EXPORT_FAILED",
+      "SPOTIFY_ALREADY_EXPORTED",
+    ].includes(caught?.errorCode)) {
+      await load();
+    }
+  } finally {
+    spotifyExporting.value = false;
+  }
+}
+
+function formatDuration(durationMs) {
+  const value = Number(durationMs);
+  if (!Number.isFinite(value) || value <= 0) return "";
+  const totalSeconds = Math.round(value / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}:${String(seconds).padStart(2, "0")}`;
 }
 
 watch(() => props.playlistId, load, { immediate: true });

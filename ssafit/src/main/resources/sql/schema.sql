@@ -490,6 +490,8 @@ CREATE TABLE running_sessions (
     meeting_place VARCHAR(255) NOT NULL,
     scheduled_at DATETIME(6) NOT NULL,
     capacity INT UNSIGNED NOT NULL,
+    target_distance_km DECIMAL(10, 2) NULL,
+    target_pace_seconds_per_km INT UNSIGNED NULL,
     status VARCHAR(20) NOT NULL DEFAULT 'OPEN',
     cancelled_at DATETIME(6) NULL,
     created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
@@ -504,6 +506,13 @@ CREATE TABLE running_sessions (
         CHECK (CHAR_LENGTH(TRIM(title)) > 0),
     CONSTRAINT ck_running_sessions_capacity
         CHECK (capacity > 0),
+    CONSTRAINT ck_running_sessions_target_distance
+        CHECK (target_distance_km IS NULL OR target_distance_km > 0),
+    CONSTRAINT ck_running_sessions_target_pace
+        CHECK (
+            target_pace_seconds_per_km IS NULL
+            OR target_pace_seconds_per_km > 0
+        ),
     CONSTRAINT ck_running_sessions_status
         CHECK (status IN ('OPEN', 'CLOSED', 'CANCELLED')),
     CONSTRAINT ck_running_sessions_cancelled_state

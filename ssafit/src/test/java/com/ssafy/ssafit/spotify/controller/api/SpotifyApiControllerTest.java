@@ -22,6 +22,7 @@ import com.ssafy.ssafit.common.exception.ErrorCode;
 import com.ssafy.ssafit.common.exception.GlobalExceptionHandler;
 import com.ssafy.ssafit.spotify.domain.SpotifyConnection;
 import com.ssafy.ssafit.spotify.service.SpotifyOAuthService;
+import com.ssafy.ssafit.spotify.service.SpotifyPlaylistImportService;
 import com.ssafy.ssafit.spotify.service.SpotifyService;
 
 @ExtendWith(MockitoExtension.class)
@@ -34,6 +35,9 @@ class SpotifyApiControllerTest {
     private SpotifyOAuthService spotifyOAuthService;
 
     @Mock
+    private SpotifyPlaylistImportService spotifyPlaylistImportService;
+
+    @Mock
     private SessionMemberResolver sessionMemberResolver;
 
     private MockMvc mockMvc;
@@ -43,6 +47,7 @@ class SpotifyApiControllerTest {
         SpotifyApiController controller = new SpotifyApiController(
                 spotifyService,
                 spotifyOAuthService,
+                spotifyPlaylistImportService,
                 sessionMemberResolver);
         mockMvc = MockMvcBuilders.standaloneSetup(controller)
                 .setControllerAdvice(new GlobalExceptionHandler())
@@ -67,7 +72,7 @@ class SpotifyApiControllerTest {
 
     @Test
     void oauthCallbackRedirectsToVueWithoutSensitiveParameters() throws Exception {
-        when(sessionMemberResolver.requireMemberId(any()))
+        when(sessionMemberResolver.optionalMemberId(any()))
                 .thenReturn(10L);
         when(spotifyOAuthService.handleCallback(
                 eq(10L),
@@ -87,7 +92,7 @@ class SpotifyApiControllerTest {
 
     @Test
     void oauthCallbackFailureRedirectsWithPublicErrorCodeOnly() throws Exception {
-        when(sessionMemberResolver.requireMemberId(any()))
+        when(sessionMemberResolver.optionalMemberId(any()))
                 .thenReturn(10L);
         when(spotifyOAuthService.handleCallback(
                 eq(10L),

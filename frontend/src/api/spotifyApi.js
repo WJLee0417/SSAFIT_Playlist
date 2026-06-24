@@ -40,6 +40,12 @@ export const spotifyApi = {
   getConnection() {
     return apiClient.get("/spotify/me/connection");
   },
+  getMyPlaylists(params = {}) {
+    return apiClient.get("/spotify/me/playlists", { params });
+  },
+  importPlaylist(payload) {
+    return apiClient.post("/spotify/playlists/import", payload);
+  },
   disconnect() {
     return apiClient.delete("/spotify/me/connection");
   },

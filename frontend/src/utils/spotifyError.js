@@ -20,7 +20,7 @@ const SPOTIFY_ERROR_MESSAGES = {
   SPOTIFY_AUTHORIZATION_CANCELLED: "Spotify 인증을 취소했습니다. 원할 때 다시 연결할 수 있습니다.",
   SPOTIFY_STATE_MISMATCH: "Spotify OAuth 요청을 확인하지 못했습니다. 연결을 처음부터 다시 시도해 주세요.",
   SPOTIFY_TOKEN_REFRESH_FAILED: "Spotify 연결을 갱신하지 못했습니다. 계정을 다시 연결해 주세요.",
-  SPOTIFY_FORBIDDEN: "Spotify 권한이 부족하거나 개발 모드 허용 계정이 아닙니다.",
+  SPOTIFY_FORBIDDEN: "Spotify 개발자 대시보드에 등록되지 않은 계정이거나 권한이 부족합니다. Development Mode라면 Users Management에 이 Spotify 계정을 추가해 주세요.",
   SPOTIFY_RATE_LIMITED: "Spotify 요청 한도를 초과했습니다. 잠시 후 다시 시도해 주세요.",
   SPOTIFY_API_FAILED: "Spotify API 호출에 실패했습니다. 잠시 후 다시 시도해 주세요.",
   DUPLICATE_PLAYLIST_ITEM: "이미 이 플레이리스트에 포함된 곡입니다.",

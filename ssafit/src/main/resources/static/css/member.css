@@ -1,5 +1,21 @@
 @import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css");
 
+@font-face {
+    font-family: "Freesentation Logo Thin";
+    src: url("../fonts/Freesentation-1Thin.ttf") format("truetype");
+    font-weight: 100;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: "Freesentation Logo SemiBold";
+    src: url("../fonts/Freesentation-6SemiBold.ttf") format("truetype");
+    font-weight: 600;
+    font-style: normal;
+    font-display: swap;
+}
+
 :root {
     color: #f7faf8;
     background: #101412;
@@ -116,9 +132,26 @@ input:focus-visible {
     gap: .7rem;
     color: var(--color-brand-bright);
     font-size: clamp(1.05rem, 2vw, 1.35rem);
-    font-weight: 900;
-    letter-spacing: -.045em;
+    font-weight: 600;
+    letter-spacing: normal;
     white-space: nowrap;
+}
+
+.brand-wordmark {
+    display: inline-flex;
+    align-items: baseline;
+    gap: .28em;
+    line-height: 1;
+}
+
+.brand-ssafit {
+    font-family: "Freesentation Logo Thin", Pretendard, system-ui, sans-serif;
+    font-weight: 100;
+}
+
+.brand-playlist {
+    font-family: "Freesentation Logo SemiBold", Pretendard, system-ui, sans-serif;
+    font-weight: 600;
 }
 
 .brand-mark {
@@ -129,10 +162,8 @@ input:focus-visible {
     place-items: center;
     overflow: hidden;
     border-radius: 999px;
-    color: transparent;
     background: linear-gradient(to bottom, var(--color-brand-bright), var(--color-brand-hover));
     box-shadow: 0 0 22px rgba(139, 200, 179, .62);
-    font-size: 0;
     transform: skew(-9deg);
 }
 
@@ -161,6 +192,7 @@ input:focus-visible {
     letter-spacing: normal;
     line-height: 1.2;
     white-space: nowrap;
+    box-shadow: none;
     transition:
         border-color 160ms ease,
         color 160ms ease,
@@ -172,6 +204,8 @@ input:focus-visible {
 .link-button:hover {
     color: var(--color-text);
     background: rgba(255, 255, 255, .065);
+    box-shadow: none;
+    transform: none;
 }
 
 .nav-cta {
@@ -406,7 +440,8 @@ legend {
 }
 
 .primary-button,
-.secondary-button {
+.secondary-button,
+.spotify-login-button {
     display: inline-flex;
     min-height: 2.75rem;
     align-items: center;
@@ -416,7 +451,7 @@ legend {
     padding: .7rem 1.15rem;
     cursor: pointer;
     font-weight: 800;
-    letter-spacing: -.01em;
+    letter-spacing: 0;
     line-height: 1.2;
     transition:
         transform 180ms ease,
@@ -453,6 +488,21 @@ legend {
     transform: translateY(-2px);
 }
 
+.spotify-login-button {
+    width: 100%;
+    margin-top: .75rem;
+    color: #06100b;
+    background: #1db954;
+    box-shadow: 0 10px 28px rgba(29, 185, 84, .18);
+}
+
+.spotify-login-button:hover {
+    color: #06100b;
+    background: #24d262;
+    box-shadow: 0 14px 34px rgba(29, 185, 84, .26);
+    transform: translateY(-2px);
+}
+
 .inline-button {
     width: auto;
     margin-top: 0;
@@ -485,6 +535,48 @@ legend {
 
 .mypage-body {
     --landing-progress: 0;
+}
+
+.onboarding-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 20;
+    display: grid;
+    place-items: center;
+    padding: 1rem;
+    background: rgba(5, 9, 7, .72);
+    backdrop-filter: blur(12px);
+}
+
+.onboarding-modal {
+    width: min(100%, 34rem);
+    border: 1px solid var(--color-border-strong);
+    border-radius: var(--radius-lg);
+    padding: clamp(1.5rem, 4vw, 2.25rem);
+    color: var(--color-text);
+    background: var(--color-surface);
+    box-shadow: var(--shadow-card);
+}
+
+.onboarding-modal h2 {
+    margin: .45rem 0 .7rem;
+    font-size: clamp(1.65rem, 4vw, 2.35rem);
+    line-height: 1.12;
+}
+
+.onboarding-modal p {
+    margin: 0 0 1.1rem;
+    color: var(--color-text-soft);
+    line-height: 1.65;
+}
+
+.onboarding-form {
+    margin-top: 1rem;
+}
+
+.onboarding-actions {
+    align-items: center;
+    justify-content: flex-end;
 }
 
 .mypage-main {

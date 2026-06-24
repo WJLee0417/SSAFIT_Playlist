@@ -20,6 +20,13 @@ public interface PlaylistItemMapper {
             @Param("id") Long id,
             @Param("orderNo") Integer orderNo);
 
+    int shiftOrders(
+            @Param("playlistId") Long playlistId,
+            @Param("offset") Integer offset);
+
+    int bulkUpdateOrders(
+            @Param("items") List<PlaylistItem> items);
+
     boolean existsByPlaylistAndMusic(
             @Param("playlistId") Long playlistId,
             @Param("musicId") Long musicId);

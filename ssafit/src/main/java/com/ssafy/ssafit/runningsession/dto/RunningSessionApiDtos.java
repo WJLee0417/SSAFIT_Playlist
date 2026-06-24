@@ -1,5 +1,6 @@
 package com.ssafy.ssafit.runningsession.dto;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -22,7 +23,9 @@ public final class RunningSessionApiDtos {
             @Size(max = 2000) String description,
             @NotBlank @Size(max = 255) String meetingPlace,
             @NotNull LocalDateTime scheduledAt,
-            @NotNull @Positive Integer capacity) {
+            @NotNull @Positive Integer capacity,
+            @NotNull @Positive BigDecimal targetDistanceKm,
+            @NotNull @Positive Integer targetPaceSecondsPerKm) {
 
         public RunningSession toDomain() {
             return RunningSessionApiDtos.toDomain(
@@ -31,7 +34,9 @@ public final class RunningSessionApiDtos {
                     description,
                     meetingPlace,
                     scheduledAt,
-                    capacity);
+                    capacity,
+                    targetDistanceKm,
+                    targetPaceSecondsPerKm);
         }
     }
 
@@ -40,7 +45,9 @@ public final class RunningSessionApiDtos {
             @Size(max = 2000) String description,
             @NotBlank @Size(max = 255) String meetingPlace,
             @NotNull LocalDateTime scheduledAt,
-            @NotNull @Positive Integer capacity) {
+            @NotNull @Positive Integer capacity,
+            @NotNull @Positive BigDecimal targetDistanceKm,
+            @NotNull @Positive Integer targetPaceSecondsPerKm) {
 
         public RunningSession toDomain(Long runningSessionId) {
             return RunningSessionApiDtos.toDomain(
@@ -49,7 +56,9 @@ public final class RunningSessionApiDtos {
                     description,
                     meetingPlace,
                     scheduledAt,
-                    capacity);
+                    capacity,
+                    targetDistanceKm,
+                    targetPaceSecondsPerKm);
         }
     }
 
@@ -60,29 +69,60 @@ public final class RunningSessionApiDtos {
     public record SessionResponse(
             Long id,
             Long hostMemberId,
+            String hostNickname,
             String title,
             String description,
             String meetingPlace,
             LocalDateTime scheduledAt,
             Integer capacity,
+            BigDecimal targetDistanceKm,
+            Integer targetPaceSecondsPerKm,
             RunningSessionStatus status,
             LocalDateTime cancelledAt,
             LocalDateTime createdAt,
-            LocalDateTime updatedAt) {
+            LocalDateTime updatedAt,
+            int participantCount,
+            boolean currentMemberParticipating,
+            boolean currentMemberHosting,
+            boolean isMine,
+            boolean expired,
+            boolean recruiting) {
 
         public static SessionResponse from(RunningSession runningSession) {
+            int participantCount = runningSession.getParticipantCount() == null
+                    ? 0
+                    : runningSession.getParticipantCount();
+            boolean currentMemberParticipating =
+                    Boolean.TRUE.equals(runningSession.getCurrentMemberParticipating());
+            boolean currentMemberHosting =
+                    Boolean.TRUE.equals(runningSession.getCurrentMemberHosting());
+            boolean expired = runningSession.getScheduledAt() != null
+                    && runningSession.getScheduledAt().isBefore(LocalDateTime.now());
+            boolean recruiting = runningSession.getStatus() == RunningSessionStatus.OPEN
+                    && !expired
+                    && runningSession.getCapacity() != null
+                    && participantCount < runningSession.getCapacity();
             return new SessionResponse(
                     runningSession.getId(),
                     runningSession.getHostMemberId(),
+                    runningSession.getHostNickname(),
                     runningSession.getTitle(),
                     runningSession.getDescription(),
                     runningSession.getMeetingPlace(),
                     runningSession.getScheduledAt(),
                     runningSession.getCapacity(),
+                    runningSession.getTargetDistanceKm(),
+                    runningSession.getTargetPaceSecondsPerKm(),
                     runningSession.getStatus(),
                     runningSession.getCancelledAt(),
                     runningSession.getCreatedAt(),
-                    runningSession.getUpdatedAt());
+                    runningSession.getUpdatedAt(),
+                    participantCount,
+                    currentMemberParticipating,
+                    currentMemberHosting,
+                    currentMemberHosting || currentMemberParticipating,
+                    expired,
+                    recruiting);
         }
     }
 
@@ -90,6 +130,7 @@ public final class RunningSessionApiDtos {
             Long id,
             Long sessionId,
             Long memberId,
+            String memberNickname,
             LocalDateTime joinedAt) {
 
         public static ParticipantResponse from(
@@ -98,6 +139,7 @@ public final class RunningSessionApiDtos {
                     participant.getId(),
                     participant.getSessionId(),
                     participant.getMemberId(),
+                    participant.getMemberNickname(),
                     participant.getJoinedAt());
         }
     }
@@ -120,7 +162,9 @@ public final class RunningSessionApiDtos {
             String description,
             String meetingPlace,
             LocalDateTime scheduledAt,
-            Integer capacity) {
+            Integer capacity,
+            BigDecimal targetDistanceKm,
+            Integer targetPaceSecondsPerKm) {
         RunningSession runningSession = new RunningSession();
         runningSession.setId(id);
         runningSession.setTitle(title);
@@ -128,6 +172,8 @@ public final class RunningSessionApiDtos {
         runningSession.setMeetingPlace(meetingPlace);
         runningSession.setScheduledAt(scheduledAt);
         runningSession.setCapacity(capacity);
+        runningSession.setTargetDistanceKm(targetDistanceKm);
+        runningSession.setTargetPaceSecondsPerKm(targetPaceSecondsPerKm);
         return runningSession;
     }
 }

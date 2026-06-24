@@ -1,5 +1,6 @@
 <%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" %>
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
+<%@ taglib prefix="form" uri="http://www.springframework.org/tags/form" %>
 <!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -10,6 +11,75 @@
 </head>
 <body class="mypage-body">
 <%@ include file="/WEB-INF/views/common/nav.jspf" %>
+
+<c:if test="${profileRegistrationRequired or spotifyOnboardingRequired or forceIdentityOnboarding}">
+    <div class="onboarding-modal-backdrop" role="presentation">
+        <section class="onboarding-modal"
+                 role="dialog"
+                 aria-modal="true"
+                 aria-labelledby="onboardingTitle"
+                 aria-describedby="onboardingDescription">
+            <c:choose>
+                <c:when test="${spotifyOnboardingRequired or forceIdentityOnboarding}">
+                    <span class="eyebrow">WELCOME</span>
+                    <h2 id="onboardingTitle">계정 정보를 입력해 주세요</h2>
+                    <p id="onboardingDescription">
+                        Spotify로 처음 로그인한 경우 ID와 닉네임을 설정하고 프로필을 등록해 주세요.
+                    </p>
+
+                    <c:url var="identityAction" value="/members/me/identity"/>
+                    <form:form method="post"
+                               action="${identityAction}"
+                               modelAttribute="identityForm"
+                               cssClass="stack-form onboarding-form">
+                        <form:errors path="*" element="div" cssClass="alert alert-error"/>
+
+                        <label for="onboardingLoginId">로그인 ID</label>
+                        <form:input path="loginId"
+                                    id="onboardingLoginId"
+                                    autocomplete="username"
+                                    maxlength="50"
+                                    placeholder="앞으로 사용할 로그인 ID"/>
+                        <form:errors path="loginId" cssClass="field-error"/>
+
+                        <label for="onboardingNickname">닉네임</label>
+                        <form:input path="nickname"
+                                    id="onboardingNickname"
+                                    autocomplete="nickname"
+                                    maxlength="100"
+                                    placeholder="화면에 표시할 이름"/>
+                        <form:errors path="nickname" cssClass="field-error"/>
+
+                        <div class="button-row onboarding-actions">
+                            <button class="secondary-button"
+                                    type="button"
+                                    data-onboarding-dismiss>나중에</button>
+                            <button class="primary-button inline-button" type="submit">
+                                저장하고 프로필 등록
+                            </button>
+                        </div>
+                    </form:form>
+                </c:when>
+                <c:otherwise>
+                    <span class="eyebrow">RUNNING PROFILE</span>
+                    <h2 id="onboardingTitle">러닝 프로필을 등록해 주세요</h2>
+                    <p id="onboardingDescription">
+                        추천 및 러닝 기록 기능을 사용하려면 프로필 등록이 필요합니다.
+                    </p>
+                    <div class="button-row onboarding-actions">
+                        <button class="secondary-button"
+                                type="button"
+                                data-onboarding-dismiss>나중에</button>
+                        <a class="primary-button inline-button"
+                           href="<c:url value='/members/me/running-profile'/>">
+                            프로필 등록하기
+                        </a>
+                    </div>
+                </c:otherwise>
+            </c:choose>
+        </section>
+    </div>
+</c:if>
 
 <main class="mypage-main">
     <section class="mypage-landing" id="mypageLanding" aria-labelledby="beatRateTitle">
@@ -28,7 +98,7 @@
             <article class="card mypage-tile mypage-profile-tile">
                 <div class="section-heading row-heading">
                     <div>
-                        <span class="eyebrow">RUNNING PROFILE</span>
+                        <span class="eyebrow">MY PROFILE</span>
                         <h2>러닝 프로필</h2>
                     </div>
                     <a class="text-link" href="<c:url value='/members/me/running-profile'/>">
@@ -69,7 +139,7 @@
 
             <a class="card mypage-tile mypage-link-tile"
                href="${frontendOrigin}/running-records">
-                <span class="eyebrow">RUNNING RECORDS</span>
+                <span class="eyebrow">RECORDS</span>
                 <div>
                     <strong>나의 러닝 기록</strong>
                     <p>거리와 페이스를 기록하고<br>지난 러닝의 흐름을 확인하세요.</p>
@@ -79,10 +149,10 @@
 
             <a class="card mypage-tile mypage-link-tile"
                href="${frontendOrigin}/running-sessions">
-                <span class="eyebrow">RUNNING SESSIONS</span>
+                <span class="eyebrow">SESSIONS</span>
                 <div>
-                    <strong>나의 러닝 모임</strong>
-                    <p>함께 달릴 모임을 찾고<br>참여 중인 일정을 관리하세요.</p>
+                    <strong>나의 러닝 세션</strong>
+                    <p>함께 달릴 세션을 찾고<br>참여 중인 일정을 관리하세요.</p>
                 </div>
                 <span class="mypage-tile-arrow" aria-hidden="true">↗</span>
             </a>
@@ -91,7 +161,6 @@
         <section class="card running-chart-card" aria-labelledby="runningChartTitle">
             <div class="running-chart-heading">
                 <div>
-                    <span class="eyebrow">LAST 7 DAYS</span>
                     <h2 id="runningChartTitle">최근 러닝 흐름</h2>
                     <p id="runningChartDescription">최근 7일 동안 기록한 러닝 거리를 보여줍니다.</p>
                 </div>
@@ -119,6 +188,18 @@
 </main>
 
 <script>
+    (() => {
+        const dismissButton = document.querySelector("[data-onboarding-dismiss]");
+        const backdrop = document.querySelector(".onboarding-modal-backdrop");
+        if (!dismissButton || !backdrop) return;
+
+        dismissButton.addEventListener("click", () => {
+            backdrop.remove();
+            const dashboard = document.getElementById("mypageDashboard");
+            if (dashboard) dashboard.scrollIntoView({ behavior: "smooth", block: "start" });
+        });
+    })();
+
     (() => {
         const landing = document.getElementById("mypageLanding");
         if (!landing || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {

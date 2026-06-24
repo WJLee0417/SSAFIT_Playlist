@@ -42,10 +42,12 @@ import com.ssafy.ssafit.runningprofile.mapper.RunningProfileMapper;
 import com.ssafy.ssafit.spotify.service.SpotifyService;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
+@Slf4j
 public class RecommendationService {
 
     private static final int MIN_BPM = 60;
@@ -174,16 +176,25 @@ public class RecommendationService {
         boolean spotifyPaged = false;
         int spotifySourceCount = 0;
         if (genre != null) {
-            CandidatePage discovered = importSpotifyCandidates(
-                    genre,
-                    requestedIntensity,
-                    offset,
-                    pageSize);
-            if (!discovered.music().isEmpty()) {
-                candidates = discovered.music();
-                spotifyGenreDiscovery = true;
-                spotifyPaged = true;
-                spotifySourceCount = discovered.sourceCount();
+            try {
+                CandidatePage discovered = importSpotifyCandidates(
+                        genre,
+                        requestedIntensity,
+                        offset,
+                        pageSize);
+                if (!discovered.music().isEmpty()) {
+                    candidates = discovered.music();
+                    spotifyGenreDiscovery = true;
+                    spotifyPaged = true;
+                    spotifySourceCount = discovered.sourceCount();
+                }
+            } catch (CustomException exception) {
+                if (candidates == null || candidates.isEmpty()) {
+                    throw exception;
+                }
+                log.warn(
+                        "Spotify candidate discovery failed; using local candidates. errorCode={}",
+                        exception.getErrorCode());
             }
         } else if (candidates == null || candidates.isEmpty()) {
             CandidatePage discovered = importSpotifyCandidates(

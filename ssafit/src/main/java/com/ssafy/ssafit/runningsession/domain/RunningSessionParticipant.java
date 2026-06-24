@@ -16,5 +16,6 @@ public class RunningSessionParticipant {
     private Long id;
     private Long sessionId;
     private Long memberId;
+    private String memberNickname;
     private LocalDateTime joinedAt;
 }

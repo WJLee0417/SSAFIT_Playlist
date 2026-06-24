@@ -318,6 +318,7 @@ http://127.0.0.1:8080/api/spotify/oauth/callback
 
 ```text
 user-read-private
+playlist-read-private
 playlist-modify-private
 playlist-modify-public
 ```

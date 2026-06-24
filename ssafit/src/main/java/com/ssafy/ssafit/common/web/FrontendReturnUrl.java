@@ -35,6 +35,25 @@ public final class FrontendReturnUrl {
         }
     }
 
+    public static String safeRedirectTarget(String candidate, String fallback) {
+        if (candidate == null || candidate.isBlank()) {
+            return fallback;
+        }
+        try {
+            URI uri = URI.create(candidate);
+            if (!"http".equalsIgnoreCase(uri.getScheme())
+                    || !frontendUri.getHost().equalsIgnoreCase(uri.getHost())
+                    || frontendUri.getPort() != uri.getPort()
+                    || uri.getUserInfo() != null
+                    || uri.getFragment() != null) {
+                return fallback;
+            }
+            return frontendOrigin + normalizedPath(uri);
+        } catch (IllegalArgumentException exception) {
+            return fallback;
+        }
+    }
+
     public static String spotifyCompletionRedirect(String errorCode) {
         String suffix = errorCode == null || errorCode.isBlank()
                 ? ""

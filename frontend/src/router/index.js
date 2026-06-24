@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from "vue-router";
 import { authApi } from "../api/authApi";
 import { isApiError } from "../api/http";
+import { buildJspUrl } from "../utils/navigation";
 
 const routes = [
   { path: "/", redirect: "/music" },
@@ -125,12 +126,24 @@ const routes = [
     path: "/oauth/spotify/complete",
     name: "spotify-oauth-complete",
     component: () => import("../views/SpotifyOAuthCompleteView.vue"),
-    meta: { requiresAuth: true },
   },
   {
     path: "/login-required",
     name: "login-required",
     component: () => import("../views/LoginRequiredView.vue"),
+  },
+  {
+    path: "/login/spotify",
+    name: "spotify-login-redirect",
+    beforeEnter: (to) => {
+      const url = new URL(buildJspUrl("/login/spotify"));
+      if (to.query.returnTo) {
+        url.searchParams.set("returnTo", to.query.returnTo);
+      }
+      window.location.assign(url.toString());
+      return false;
+    },
+    component: () => import("../views/NotFoundView.vue"),
   },
   {
     path: "/access-check-failed",

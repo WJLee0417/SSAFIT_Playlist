@@ -15,10 +15,77 @@
     />
 
     <form v-if="status === 'ready'" class="editor-form running-session-form" @submit.prevent="save">
-      <label>
-        모임 제목
-        <input v-model="form.title" maxlength="200" required />
-      </label>
+      <div class="running-session-input-row running-session-primary-row">
+        <label>
+          모임 제목
+          <input v-model="form.title" maxlength="200" required />
+        </label>
+        <label>
+          정원
+          <input
+            v-model="form.capacity"
+            type="number"
+            min="1"
+            step="1"
+            inputmode="numeric"
+            required
+          />
+        </label>
+      </div>
+
+      <div class="running-session-input-row running-session-secondary-row">
+        <label>
+          집결 장소
+          <input v-model="form.meetingPlace" maxlength="255" required />
+        </label>
+        <label>
+          모임 일시
+          <input v-model="form.scheduledAt" type="datetime-local" required />
+        </label>
+      </div>
+
+      <div class="running-session-input-row running-session-goal-row">
+        <label>
+          목표 거리 (km)
+          <input
+            v-model="form.targetDistanceKm"
+            type="number"
+            min="0.01"
+            max="99999999.99"
+            step="0.01"
+            inputmode="decimal"
+            placeholder="예: 10.00"
+            required
+          />
+        </label>
+        <fieldset class="running-session-pace-field">
+          <legend>목표 페이스 (/km)</legend>
+          <div class="running-session-pace-inputs" aria-label="목표 페이스">
+            <input
+              v-model="form.targetPaceMinutes"
+              aria-label="분"
+              type="number"
+              min="0"
+              step="1"
+              inputmode="numeric"
+              placeholder="5"
+            />
+            <span>분</span>
+            <input
+              v-model="form.targetPaceSeconds"
+              aria-label="초"
+              type="number"
+              min="0"
+              max="59"
+              step="1"
+              inputmode="numeric"
+              placeholder="30"
+            />
+            <span>초</span>
+          </div>
+        </fieldset>
+      </div>
+
       <label>
         설명
         <textarea
@@ -28,30 +95,6 @@
         ></textarea>
         <small class="muted">{{ form.description.length }} / 2000</small>
       </label>
-      <label>
-        집결 장소
-        <input v-model="form.meetingPlace" maxlength="255" required />
-      </label>
-      <label>
-        모임 일시
-        <input v-model="form.scheduledAt" type="datetime-local" required />
-      </label>
-      <label>
-        정원
-        <input
-          v-model="form.capacity"
-          type="number"
-          min="1"
-          step="1"
-          inputmode="numeric"
-          required
-        />
-      </label>
-
-      <aside class="contract-note">
-        일정의 과거·미래 제한과 현재 참여 인원보다 작은 정원으로의 수정 제한은
-        현재 Backend 정책에 없습니다.
-      </aside>
 
       <p v-if="validationMessage" class="field-error" role="alert">
         {{ validationMessage }}
@@ -80,6 +123,7 @@ import SaveStatus from "../components/SaveStatus.vue";
 import {
   runningSessionErrorMessage,
   runningSessionPayload,
+  splitPaceSeconds,
   toDateTimeLocalValue,
   validateRunningSessionForm,
 } from "../utils/runningSession";
@@ -97,6 +141,9 @@ const form = reactive({
   meetingPlace: "",
   scheduledAt: "",
   capacity: "",
+  targetDistanceKm: "",
+  targetPaceMinutes: "",
+  targetPaceSeconds: "",
 });
 const status = ref("loading");
 const error = ref(null);
@@ -116,12 +163,16 @@ const backLocation = computed(() => {
 });
 
 function applySession(session) {
+  const pace = splitPaceSeconds(session.targetPaceSecondsPerKm);
   Object.assign(form, {
     title: session.title || "",
     description: session.description || "",
     meetingPlace: session.meetingPlace || "",
     scheduledAt: toDateTimeLocalValue(session.scheduledAt),
     capacity: session.capacity ?? "",
+    targetDistanceKm: session.targetDistanceKm ?? "",
+    targetPaceMinutes: pace.minutes,
+    targetPaceSeconds: pace.seconds,
   });
 }
 

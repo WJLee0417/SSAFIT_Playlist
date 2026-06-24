@@ -33,6 +33,9 @@ export const playlistApi = {
   updateItemOrder(itemId, payload) {
     return apiClient.patch(`/playlist-items/${itemId}/order`, payload);
   },
+  reorderItems(playlistId, payload) {
+    return apiClient.patch(`/playlists/${playlistId}/items/order`, payload);
+  },
   removeItem(itemId) {
     return apiClient.delete(`/playlist-items/${itemId}`);
   },

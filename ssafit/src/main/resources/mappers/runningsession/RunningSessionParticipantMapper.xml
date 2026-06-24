@@ -9,6 +9,7 @@
         <id property="id" column="id"/>
         <result property="sessionId" column="session_id"/>
         <result property="memberId" column="member_id"/>
+        <result property="memberNickname" column="member_nickname"/>
         <result property="joinedAt" column="joined_at"/>
     </resultMap>
 
@@ -16,6 +17,7 @@
         id,
         session_id,
         member_id,
+        NULL AS member_nickname,
         joined_at
     </sql>
 
@@ -57,10 +59,15 @@
     <select id="selectParticipants"
             resultMap="runningSessionParticipantResultMap">
         SELECT
-            <include refid="runningSessionParticipantColumns"/>
-        FROM running_session_participants
-        WHERE session_id = #{sessionId}
-        ORDER BY joined_at ASC, id ASC
+            rsp.id,
+            rsp.session_id,
+            rsp.member_id,
+            member.nickname AS member_nickname,
+            rsp.joined_at
+        FROM running_session_participants rsp
+        INNER JOIN members member ON member.id = rsp.member_id
+        WHERE rsp.session_id = #{sessionId}
+        ORDER BY rsp.joined_at ASC, rsp.id ASC
     </select>
 
     <select id="selectBySessionIdAndMemberId"

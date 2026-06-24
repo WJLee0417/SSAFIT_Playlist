@@ -55,6 +55,8 @@
 
             <button class="primary-button" type="submit">계정 만들기</button>
         </form:form>
+        <c:url var="spotifyLoginUrl" value="/login/spotify"/>
+        <a class="spotify-login-button" href="${spotifyLoginUrl}">Spotify로 로그인</a>
         <p class="form-footer">이미 계정이 있나요? <a href="<c:url value='/login'/>">로그인</a></p>
     </section>
 </main>

@@ -40,8 +40,16 @@ public class AuthService {
 
     public Member login(HttpSession session, String loginId, String rawPassword) {
         Member member = authenticate(loginId, rawPassword);
-        session.setAttribute(SessionConst.LOGIN_MEMBER_ID, member.getId());
+        login(session, member);
         return member;
+    }
+
+    public void login(HttpSession session, Member member) {
+        if (session == null || member == null || member.getId() == null) {
+            throw new CustomException(ErrorCode.AUTH_REQUIRED);
+        }
+        validateActiveMember(member);
+        session.setAttribute(SessionConst.LOGIN_MEMBER_ID, member.getId());
     }
 
     public void logout(HttpSession session) {

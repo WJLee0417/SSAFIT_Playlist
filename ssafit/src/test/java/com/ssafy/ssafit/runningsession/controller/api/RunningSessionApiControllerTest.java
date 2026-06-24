@@ -13,6 +13,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -74,6 +75,8 @@ class RunningSessionApiControllerTest {
                                   "meetingPlace": "여의나루역",
                                   "scheduledAt": "2026-07-01T09:00:00",
                                   "capacity": 10,
+                                  "targetDistanceKm": 10.0,
+                                  "targetPaceSecondsPerKm": 330,
                                   "hostMemberId": 999,
                                   "status": "CANCELLED"
                                 }
@@ -157,6 +160,8 @@ class RunningSessionApiControllerTest {
                                   "meetingPlace": "반포한강공원",
                                   "scheduledAt": "2026-07-02T19:00:00",
                                   "capacity": 8,
+                                  "targetDistanceKm": 8.5,
+                                  "targetPaceSecondsPerKm": 360,
                                   "hostMemberId": 999
                                 }
                                 """))
@@ -265,7 +270,9 @@ class RunningSessionApiControllerTest {
                   "description": "함께 달립니다.",
                   "meetingPlace": "여의나루역",
                   "scheduledAt": "2026-07-01T09:00:00",
-                  "capacity": 10
+                  "capacity": 10,
+                  "targetDistanceKm": 10.0,
+                  "targetPaceSecondsPerKm": 330
                 }
                 """;
     }
@@ -282,6 +289,8 @@ class RunningSessionApiControllerTest {
         runningSession.setMeetingPlace("여의나루역");
         runningSession.setScheduledAt(LocalDateTime.of(2026, 7, 1, 9, 0));
         runningSession.setCapacity(10);
+        runningSession.setTargetDistanceKm(BigDecimal.valueOf(10.0));
+        runningSession.setTargetPaceSecondsPerKm(330);
         runningSession.setStatus(status);
         runningSession.setCreatedAt(LocalDateTime.of(2026, 6, 22, 10, 0));
         runningSession.setUpdatedAt(LocalDateTime.of(2026, 6, 22, 10, 0));
