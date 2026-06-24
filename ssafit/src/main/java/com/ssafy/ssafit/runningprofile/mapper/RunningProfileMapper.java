@@ -15,4 +15,11 @@ public interface RunningProfileMapper {
     int insert(RunningProfile runningProfile);
 
     int update(RunningProfile runningProfile);
+
+    int updateAutoTargets(
+            @Param("memberId") Long memberId,
+            @Param("targetBpmMin") Integer targetBpmMin,
+            @Param("targetBpmMax") Integer targetBpmMax,
+            @Param("targetCadenceMin") Integer targetCadenceMin,
+            @Param("targetCadenceMax") Integer targetCadenceMax);
 }

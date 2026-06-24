@@ -13,6 +13,7 @@ import com.ssafy.ssafit.member.domain.Member;
 import com.ssafy.ssafit.member.service.AuthService;
 import com.ssafy.ssafit.runningrecord.domain.RunningRecord;
 import com.ssafy.ssafit.runningrecord.mapper.RunningRecordMapper;
+import com.ssafy.ssafit.runningprofile.service.RunningProfileService;
 
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
@@ -30,6 +31,7 @@ public class RunningRecordService {
 
     private final RunningRecordMapper runningRecordMapper;
     private final AuthService authService;
+    private final RunningProfileService runningProfileService;
 
     @Transactional
     public RunningRecord createRecord(HttpSession session, RunningRecord runningRecord) {
@@ -45,6 +47,7 @@ public class RunningRecordService {
         if (runningRecordMapper.insert(runningRecord) != 1) {
             throw new CustomException(ErrorCode.INTERNAL_SERVER_ERROR);
         }
+        runningProfileService.refreshAutoTargets(loginMemberId);
         return runningRecord;
     }
 
@@ -80,6 +83,7 @@ public class RunningRecordService {
         if (runningRecordMapper.update(runningRecord) != 1) {
             throw new CustomException(ErrorCode.RUNNING_RECORD_NOT_FOUND);
         }
+        runningProfileService.refreshAutoTargets(loginMemberId);
         return runningRecord;
     }
 
@@ -91,6 +95,7 @@ public class RunningRecordService {
         if (runningRecordMapper.delete(runningRecordId) != 1) {
             throw new CustomException(ErrorCode.RUNNING_RECORD_NOT_FOUND);
         }
+        runningProfileService.refreshAutoTargets(loginMemberId);
     }
 
     private Long getLoginMemberId(HttpSession session) {

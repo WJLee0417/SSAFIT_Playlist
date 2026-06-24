@@ -18,7 +18,6 @@ INSERT IGNORE INTO members (
 
 INSERT IGNORE INTO running_profiles (
     member_id,
-    running_intensity,
     target_bpm_min,
     target_bpm_max,
     target_cadence_min,
@@ -27,7 +26,6 @@ INSERT IGNORE INTO running_profiles (
 ) VALUES
     (
         (SELECT id FROM members WHERE login_id = 'runner_low'),
-        'LOW',
         120,
         140,
         165,
@@ -36,7 +34,6 @@ INSERT IGNORE INTO running_profiles (
     ),
     (
         (SELECT id FROM members WHERE login_id = 'runner_high'),
-        'HIGH',
         170,
         200,
         NULL,
@@ -45,7 +42,6 @@ INSERT IGNORE INTO running_profiles (
     ),
     (
         (SELECT id FROM members WHERE login_id = 'admin_candidate'),
-        'MODERATE',
         140,
         170,
         NULL,
@@ -54,7 +50,6 @@ INSERT IGNORE INTO running_profiles (
     ),
     (
         (SELECT id FROM members WHERE login_id = 'runner_interval'),
-        'INTERVAL',
         140,
         200,
         NULL,

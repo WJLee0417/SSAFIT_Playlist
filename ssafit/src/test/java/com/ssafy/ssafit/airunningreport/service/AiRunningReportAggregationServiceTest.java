@@ -78,7 +78,7 @@ class AiRunningReportAggregationServiceTest {
                         log(2L, RunningIntensity.HIGH, 130, 170, "ROCK", 201L),
                         log(3L, RunningIntensity.MODERATE, 125, 165, "POP", null)));
         when(runningProfileMapper.selectByMemberId(memberId))
-                .thenReturn(Optional.of(profile(RunningIntensity.MODERATE)));
+                .thenReturn(Optional.of(profile()));
         when(playlistMapper.selectByIds(List.of(200L, 201L)))
                 .thenReturn(List.of(
                         playlist(200L, "Morning Run", SpotifyExportStatus.SUCCESS),
@@ -98,8 +98,7 @@ class AiRunningReportAggregationServiceTest {
         assertThat(result.cadence().min()).isEqualTo(170);
         assertThat(result.cadence().max()).isEqualTo(177);
         assertThat(result.heartRate().average()).isEqualTo(153.5);
-        assertThat(result.intensity().currentProfileIntensity())
-                .isEqualTo(RunningIntensity.MODERATE);
+        assertThat(result.intensity().currentProfileIntensity()).isNull();
         assertThat(result.intensity().recentRecommendationDistribution())
                 .containsEntry(RunningIntensity.MODERATE, 2)
                 .containsEntry(RunningIntensity.HIGH, 1);
@@ -189,7 +188,7 @@ class AiRunningReportAggregationServiceTest {
         when(recommendationLogMapper.selectRecentByMemberId(memberId, 10))
                 .thenReturn(List.of());
         when(runningProfileMapper.selectByMemberId(memberId))
-                .thenReturn(Optional.of(profile(RunningIntensity.HIGH)));
+                .thenReturn(Optional.of(profile()));
 
         Aggregation result = aggregationService.aggregate(memberId);
 
@@ -204,8 +203,7 @@ class AiRunningReportAggregationServiceTest {
         assertThat(result.recommendations().basis())
                 .isEqualTo(RecommendationBasis.RUNNING_PROFILE);
         assertThat(result.recommendations().savedPlaylists()).isEmpty();
-        assertThat(result.intensity().currentProfileIntensity())
-                .isEqualTo(RunningIntensity.HIGH);
+        assertThat(result.intensity().currentProfileIntensity()).isNull();
         assertThat(result.dataQuality().missingItems())
                 .contains("RECOMMENDATION_HISTORY")
                 .doesNotContain("RECOMMENDATION_LOGS");
@@ -275,9 +273,8 @@ class AiRunningReportAggregationServiceTest {
         return log;
     }
 
-    private RunningProfile profile(RunningIntensity intensity) {
+    private RunningProfile profile() {
         RunningProfile profile = new RunningProfile();
-        profile.setRunningIntensity(intensity);
         profile.setTargetBpmMin(150);
         profile.setTargetBpmMax(190);
         profile.setPreferredGenre("ROCK");

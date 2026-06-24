@@ -8,7 +8,9 @@
                type="com.ssafy.ssafit.runningprofile.domain.RunningProfile">
         <id property="id" column="id"/>
         <result property="memberId" column="member_id"/>
-        <result property="runningIntensity" column="running_intensity"/>
+        <result property="gender" column="gender"/>
+        <result property="age" column="age"/>
+        <result property="estimatedMaxHeartRateBpm" column="estimated_max_heart_rate_bpm"/>
         <result property="targetBpmMin" column="target_bpm_min"/>
         <result property="targetBpmMax" column="target_bpm_max"/>
         <result property="targetCadenceMin" column="target_cadence_min"/>
@@ -21,7 +23,9 @@
     <sql id="runningProfileColumns">
         id,
         member_id,
-        running_intensity,
+        gender,
+        age,
+        estimated_max_heart_rate_bpm,
         target_bpm_min,
         target_bpm_max,
         target_cadence_min,
@@ -45,7 +49,9 @@
             keyColumn="id">
         INSERT INTO running_profiles (
             member_id,
-            running_intensity,
+            gender,
+            age,
+            estimated_max_heart_rate_bpm,
             target_bpm_min,
             target_bpm_max,
             target_cadence_min,
@@ -53,7 +59,9 @@
             preferred_genre
         ) VALUES (
             #{memberId},
-            #{runningIntensity},
+            #{gender},
+            #{age},
+            #{estimatedMaxHeartRateBpm},
             #{targetBpmMin},
             #{targetBpmMax},
             #{targetCadenceMin},
@@ -66,12 +74,24 @@
             parameterType="com.ssafy.ssafit.runningprofile.domain.RunningProfile">
         UPDATE running_profiles
         SET
-            running_intensity = #{runningIntensity},
+            gender = #{gender},
+            age = #{age},
+            estimated_max_heart_rate_bpm = #{estimatedMaxHeartRateBpm},
             target_bpm_min = #{targetBpmMin},
             target_bpm_max = #{targetBpmMax},
             target_cadence_min = #{targetCadenceMin},
             target_cadence_max = #{targetCadenceMax},
             preferred_genre = #{preferredGenre}
+        WHERE member_id = #{memberId}
+    </update>
+
+    <update id="updateAutoTargets">
+        UPDATE running_profiles
+        SET
+            target_bpm_min = #{targetBpmMin},
+            target_bpm_max = #{targetBpmMax},
+            target_cadence_min = #{targetCadenceMin},
+            target_cadence_max = #{targetCadenceMax}
         WHERE member_id = #{memberId}
     </update>
 

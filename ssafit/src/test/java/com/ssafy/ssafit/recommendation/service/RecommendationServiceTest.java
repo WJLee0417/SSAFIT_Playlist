@@ -631,7 +631,6 @@ class RecommendationServiceTest {
     private RunningProfile profile(Integer minBpm, Integer maxBpm, String genre) {
         RunningProfile profile = new RunningProfile();
         profile.setMemberId(10L);
-        profile.setRunningIntensity(RunningIntensity.MODERATE);
         profile.setTargetBpmMin(minBpm);
         profile.setTargetBpmMax(maxBpm);
         profile.setPreferredGenre(genre);

@@ -6,7 +6,10 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -19,9 +22,10 @@ import com.ssafy.ssafit.common.exception.CustomException;
 import com.ssafy.ssafit.common.exception.ErrorCode;
 import com.ssafy.ssafit.member.domain.Member;
 import com.ssafy.ssafit.member.mapper.MemberMapper;
-import com.ssafy.ssafit.runningprofile.domain.RunningIntensity;
 import com.ssafy.ssafit.runningprofile.domain.RunningProfile;
 import com.ssafy.ssafit.runningprofile.mapper.RunningProfileMapper;
+import com.ssafy.ssafit.runningrecord.domain.RunningRecord;
+import com.ssafy.ssafit.runningrecord.mapper.RunningRecordMapper;
 
 @ExtendWith(MockitoExtension.class)
 class RunningProfileServiceTest {
@@ -32,11 +36,17 @@ class RunningProfileServiceTest {
     @Mock
     private MemberMapper memberMapper;
 
+    @Mock
+    private RunningRecordMapper runningRecordMapper;
+
     private RunningProfileService runningProfileService;
 
     @BeforeEach
     void setUp() {
-        runningProfileService = new RunningProfileService(runningProfileMapper, memberMapper);
+        runningProfileService = new RunningProfileService(
+                runningProfileMapper,
+                memberMapper,
+                runningRecordMapper);
     }
 
     @Test
@@ -59,6 +69,7 @@ class RunningProfileServiceTest {
     @Test
     void saveOrUpdateInsertsWhenProfileDoesNotExist() {
         RunningProfile profile = validProfile(null);
+        profile.setAge(32);
         when(memberMapper.selectById(1L)).thenReturn(Optional.of(new Member()));
         when(runningProfileMapper.selectByMemberId(1L)).thenReturn(Optional.empty());
         when(runningProfileMapper.insert(profile)).thenAnswer(invocation -> {
@@ -70,18 +81,34 @@ class RunningProfileServiceTest {
 
         assertThat(saved.getMemberId()).isEqualTo(1L);
         assertThat(saved.getId()).isEqualTo(10L);
+        assertThat(saved.getEstimatedMaxHeartRateBpm()).isEqualTo(188);
         verify(runningProfileMapper).insert(profile);
         verify(runningProfileMapper, never()).update(profile);
     }
 
     @Test
-    void saveOrUpdateUpdatesWhenProfileAlreadyExists() {
+    void saveOrUpdateRejectsInvalidAge() {
+        RunningProfile profile = validProfile(1L);
+        profile.setAge(101);
+        when(memberMapper.selectById(1L)).thenReturn(Optional.of(new Member()));
+
+        assertError(
+                ErrorCode.INVALID_PROFILE_VALUE,
+                () -> runningProfileService.saveOrUpdate(1L, profile));
+    }
+
+    @Test
+    void saveOrUpdateUpdatesWhenProfileAlreadyExistsAndPreservesAutoTargets() {
         LocalDateTime createdAt = LocalDateTime.of(2026, 6, 19, 12, 0);
         RunningProfile existing = validProfile(1L);
         existing.setId(10L);
         existing.setCreatedAt(createdAt);
+        existing.setTargetBpmMin(120);
+        existing.setTargetBpmMax(160);
+        existing.setTargetCadenceMin(168);
+        existing.setTargetCadenceMax(180);
         RunningProfile changed = validProfile(1L);
-        changed.setRunningIntensity(RunningIntensity.HIGH);
+        changed.setPreferredGenre("ROCK");
 
         when(memberMapper.selectById(1L)).thenReturn(Optional.of(new Member()));
         when(runningProfileMapper.selectByMemberId(1L)).thenReturn(Optional.of(existing));
@@ -91,108 +118,64 @@ class RunningProfileServiceTest {
 
         assertThat(saved.getId()).isEqualTo(10L);
         assertThat(saved.getCreatedAt()).isEqualTo(createdAt);
-        assertThat(saved.getRunningIntensity()).isEqualTo(RunningIntensity.HIGH);
+        assertThat(saved.getPreferredGenre()).isEqualTo("ROCK");
+        assertThat(saved.getTargetBpmMin()).isEqualTo(120);
+        assertThat(saved.getTargetBpmMax()).isEqualTo(160);
+        assertThat(saved.getTargetCadenceMin()).isEqualTo(168);
+        assertThat(saved.getTargetCadenceMax()).isEqualTo(180);
         verify(runningProfileMapper).update(changed);
         verify(runningProfileMapper, never()).insert(changed);
     }
 
     @Test
-    void saveOrUpdateRejectsInvalidBpmRange() {
-        RunningProfile profile = validProfile(1L);
-        profile.setTargetBpmMin(180);
-        profile.setTargetBpmMax(120);
-        when(memberMapper.selectById(1L)).thenReturn(Optional.of(new Member()));
+    void refreshAutoTargetsUsesRecentTenRecords() {
+        when(runningRecordMapper.selectRecentByMemberId(1L, 10))
+                .thenReturn(List.of(
+                        record(151, 170),
+                        record(162, 178),
+                        record(null, 172),
+                        record(145, null)));
 
-        assertError(
-                ErrorCode.INVALID_PROFILE_VALUE,
-                () -> runningProfileService.saveOrUpdate(1L, profile));
+        runningProfileService.refreshAutoTargets(1L);
+
+        verify(runningProfileMapper).updateAutoTargets(
+                1L,
+                145,
+                162,
+                170,
+                178);
     }
 
     @Test
-    void saveOrUpdateAcceptsCadenceBoundaryValuesAndPersistsThem() {
-        RunningProfile profile = validProfile(1L);
-        profile.setTargetCadenceMin(60);
-        profile.setTargetCadenceMax(240);
-        when(memberMapper.selectById(1L)).thenReturn(Optional.of(new Member()));
-        when(runningProfileMapper.selectByMemberId(1L)).thenReturn(Optional.empty());
-        when(runningProfileMapper.insert(profile)).thenReturn(1);
+    void refreshAutoTargetsClearsRangesWhenNoVitalsExist() {
+        when(runningRecordMapper.selectRecentByMemberId(1L, 10))
+                .thenReturn(List.of(record(null, null)));
 
-        RunningProfile saved = runningProfileService.saveOrUpdate(1L, profile);
+        runningProfileService.refreshAutoTargets(1L);
 
-        assertThat(saved.getTargetCadenceMin()).isEqualTo(60);
-        assertThat(saved.getTargetCadenceMax()).isEqualTo(240);
-        verify(runningProfileMapper).insert(profile);
-    }
-
-    @Test
-    void saveOrUpdateAllowsLegacyRequestWithoutCadence() {
-        RunningProfile profile = validProfile(1L);
-        when(memberMapper.selectById(1L)).thenReturn(Optional.of(new Member()));
-        when(runningProfileMapper.selectByMemberId(1L)).thenReturn(Optional.empty());
-        when(runningProfileMapper.insert(profile)).thenReturn(1);
-
-        RunningProfile saved = runningProfileService.saveOrUpdate(1L, profile);
-
-        assertThat(saved.getTargetCadenceMin()).isNull();
-        assertThat(saved.getTargetCadenceMax()).isNull();
-    }
-
-    @Test
-    void saveOrUpdateRejectsOnlyMinimumCadence() {
-        RunningProfile profile = validProfile(1L);
-        profile.setTargetCadenceMin(165);
-        when(memberMapper.selectById(1L)).thenReturn(Optional.of(new Member()));
-
-        assertError(
-                ErrorCode.INVALID_CADENCE_RANGE,
-                () -> runningProfileService.saveOrUpdate(1L, profile));
-    }
-
-    @Test
-    void saveOrUpdateRejectsOnlyMaximumCadence() {
-        RunningProfile profile = validProfile(1L);
-        profile.setTargetCadenceMax(180);
-        when(memberMapper.selectById(1L)).thenReturn(Optional.of(new Member()));
-
-        assertError(
-                ErrorCode.INVALID_CADENCE_RANGE,
-                () -> runningProfileService.saveOrUpdate(1L, profile));
-    }
-
-    @Test
-    void saveOrUpdateRejectsReversedCadenceRange() {
-        RunningProfile profile = validProfile(1L);
-        profile.setTargetCadenceMin(181);
-        profile.setTargetCadenceMax(180);
-        when(memberMapper.selectById(1L)).thenReturn(Optional.of(new Member()));
-
-        assertError(
-                ErrorCode.INVALID_CADENCE_RANGE,
-                () -> runningProfileService.saveOrUpdate(1L, profile));
-    }
-
-    @Test
-    void saveOrUpdateRejectsCadenceOutsideBoundaries() {
-        when(memberMapper.selectById(1L)).thenReturn(Optional.of(new Member()));
-
-        for (int invalid : new int[] {59, 241}) {
-            RunningProfile profile = validProfile(1L);
-            profile.setTargetCadenceMin(invalid);
-            profile.setTargetCadenceMax(180);
-            assertError(
-                    ErrorCode.INVALID_CADENCE_VALUE,
-                    () -> runningProfileService.saveOrUpdate(1L, profile));
-        }
+        verify(runningProfileMapper).updateAutoTargets(
+                1L,
+                null,
+                null,
+                null,
+                null);
     }
 
     private RunningProfile validProfile(Long memberId) {
         RunningProfile profile = new RunningProfile();
         profile.setMemberId(memberId);
-        profile.setRunningIntensity(RunningIntensity.MODERATE);
-        profile.setTargetBpmMin(120);
-        profile.setTargetBpmMax(160);
         profile.setPreferredGenre("POP");
         return profile;
+    }
+
+    private RunningRecord record(Integer heartRate, Integer cadence) {
+        RunningRecord record = new RunningRecord();
+        record.setRecordDate(LocalDate.of(2026, 6, 20));
+        record.setDistanceKm(new BigDecimal("5.00"));
+        record.setDurationSeconds(1800);
+        record.setAverageHeartRateBpm(heartRate);
+        record.setAverageCadence(cadence);
+        return record;
     }
 
     private void assertError(ErrorCode expected, Runnable executable) {

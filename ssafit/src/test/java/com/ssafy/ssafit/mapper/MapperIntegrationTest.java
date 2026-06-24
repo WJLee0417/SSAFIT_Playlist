@@ -183,7 +183,6 @@ class MapperIntegrationTest {
         Member member = insertMember("mapper_member");
         RunningProfile profile = new RunningProfile();
         profile.setMemberId(member.getId());
-        profile.setRunningIntensity(RunningIntensity.MODERATE);
         profile.setTargetBpmMin(130);
         profile.setTargetBpmMax(160);
         profile.setTargetCadenceMin(165);
@@ -199,7 +198,6 @@ class MapperIntegrationTest {
         assertThat(memberMapper.selectById(member.getId()).orElseThrow().getStatus())
                 .isEqualTo(MemberStatus.ACTIVE);
         assertThat(selected.getId()).isNotNull();
-        assertThat(selected.getRunningIntensity()).isEqualTo(RunningIntensity.MODERATE);
         assertThat(selected.getTargetBpmMin()).isEqualTo(130);
         assertThat(selected.getTargetCadenceMin()).isEqualTo(165);
         assertThat(selected.getTargetCadenceMax()).isEqualTo(180);
@@ -682,7 +680,7 @@ class MapperIntegrationTest {
     @Test
     void recommendationQueryCreatesOnlyLogAndSaveCopiesItems() {
         Member member = insertMember("recommend_member");
-        insertProfile(member.getId(), RunningIntensity.MODERATE, 135, 165, "POP");
+        insertProfile(member.getId(), 135, 165, "POP");
         insertMusic("Recommended First", "POP", 150, MusicSourceType.SEED, null);
         insertMusic("Recommended Second", "POP", 145, MusicSourceType.ADMIN, null);
 
@@ -785,13 +783,11 @@ class MapperIntegrationTest {
 
     private void insertProfile(
             Long memberId,
-            RunningIntensity intensity,
             int minBpm,
             int maxBpm,
             String genre) {
         RunningProfile profile = new RunningProfile();
         profile.setMemberId(memberId);
-        profile.setRunningIntensity(intensity);
         profile.setTargetBpmMin(minBpm);
         profile.setTargetBpmMax(maxBpm);
         profile.setPreferredGenre(genre);

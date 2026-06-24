@@ -113,21 +113,30 @@
                     <c:when test="${empty runningProfile}">
                         <div class="empty-state">
                             <strong>아직 러닝 프로필이 없습니다.</strong>
-                            <p>러닝 강도와 목표 BPM을 설정하면 자동 큐레이션에 활용합니다.</p>
+                            <p>기본 프로필을 저장하고 러닝 기록을 등록하면 맞춤 기준값이 자동 계산됩니다.</p>
                         </div>
                     </c:when>
                     <c:otherwise>
                         <dl class="info-list mypage-profile-list">
-                            <div><dt>러닝 강도</dt><dd><c:out value="${runningProfile.runningIntensity}"/></dd></div>
-                            <div><dt>목표 BPM</dt><dd><c:out value="${runningProfile.targetBpmMin}"/> - <c:out value="${runningProfile.targetBpmMax}"/></dd></div>
                             <div>
-                                <dt>목표 케이던스</dt>
+                                <dt>최근 심박 범위</dt>
+                                <dd>
+                                    <c:choose>
+                                        <c:when test="${not empty runningProfile.targetBpmMin and not empty runningProfile.targetBpmMax}">
+                                            <c:out value="${runningProfile.targetBpmMin}"/> - <c:out value="${runningProfile.targetBpmMax}"/> BPM
+                                        </c:when>
+                                        <c:otherwise>기록 등록 후 자동 산출</c:otherwise>
+                                    </c:choose>
+                                </dd>
+                            </div>
+                            <div>
+                                <dt>최근 케이던스 범위</dt>
                                 <dd>
                                     <c:choose>
                                         <c:when test="${not empty runningProfile.targetCadenceMin and not empty runningProfile.targetCadenceMax}">
                                             <c:out value="${runningProfile.targetCadenceMin}"/> - <c:out value="${runningProfile.targetCadenceMax}"/> SPM
                                         </c:when>
-                                        <c:otherwise>미설정</c:otherwise>
+                                        <c:otherwise>기록 등록 후 자동 산출</c:otherwise>
                                     </c:choose>
                                 </dd>
                             </div>

@@ -25,6 +25,7 @@ import com.ssafy.ssafit.member.domain.Member;
 import com.ssafy.ssafit.member.service.AuthService;
 import com.ssafy.ssafit.runningrecord.domain.RunningRecord;
 import com.ssafy.ssafit.runningrecord.mapper.RunningRecordMapper;
+import com.ssafy.ssafit.runningprofile.service.RunningProfileService;
 
 import jakarta.servlet.http.HttpSession;
 
@@ -38,13 +39,19 @@ class RunningRecordServiceTest {
     private AuthService authService;
 
     @Mock
+    private RunningProfileService runningProfileService;
+
+    @Mock
     private HttpSession session;
 
     private RunningRecordService runningRecordService;
 
     @BeforeEach
     void setUp() {
-        runningRecordService = new RunningRecordService(runningRecordMapper, authService);
+        runningRecordService = new RunningRecordService(
+                runningRecordMapper,
+                authService,
+                runningProfileService);
     }
 
     @Test
@@ -63,6 +70,7 @@ class RunningRecordServiceTest {
         assertThat(created.getMemberId()).isEqualTo(10L);
         assertThat(created.getPaceSecondsPerKm()).isEqualTo(360);
         verify(runningRecordMapper).insert(input);
+        verify(runningProfileService).refreshAutoTargets(10L);
     }
 
     @Test
@@ -157,6 +165,7 @@ class RunningRecordServiceTest {
         assertThat(updated.getPaceSecondsPerKm()).isEqualTo(330);
         assertThat(updated.getCreatedAt()).isEqualTo(createdAt);
         verify(runningRecordMapper).update(changes);
+        verify(runningProfileService).refreshAutoTargets(10L);
     }
 
     @Test
@@ -214,6 +223,7 @@ class RunningRecordServiceTest {
         runningRecordService.deleteMyRecord(session, 100L);
 
         verify(runningRecordMapper).delete(100L);
+        verify(runningProfileService).refreshAutoTargets(10L);
     }
 
     @Test

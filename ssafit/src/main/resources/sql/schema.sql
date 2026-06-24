@@ -38,9 +38,11 @@ CREATE TABLE members (
 CREATE TABLE running_profiles (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
     member_id BIGINT UNSIGNED NOT NULL,
-    running_intensity VARCHAR(20) NOT NULL,
-    target_bpm_min SMALLINT UNSIGNED NOT NULL,
-    target_bpm_max SMALLINT UNSIGNED NOT NULL,
+    gender VARCHAR(20) NULL,
+    age TINYINT UNSIGNED NULL,
+    estimated_max_heart_rate_bpm SMALLINT UNSIGNED NULL,
+    target_bpm_min SMALLINT UNSIGNED NULL,
+    target_bpm_max SMALLINT UNSIGNED NULL,
     target_cadence_min SMALLINT UNSIGNED NULL,
     target_cadence_max SMALLINT UNSIGNED NULL,
     preferred_genre VARCHAR(100) NULL,
@@ -53,14 +55,31 @@ CREATE TABLE running_profiles (
         FOREIGN KEY (member_id) REFERENCES members (id)
         ON UPDATE RESTRICT
         ON DELETE RESTRICT,
-    CONSTRAINT ck_running_profiles_intensity
-        CHECK (running_intensity IN ('LOW', 'MODERATE', 'HIGH', 'INTERVAL')),
+    CONSTRAINT ck_running_profiles_gender
+        CHECK (
+            gender IS NULL
+            OR gender IN ('FEMALE', 'MALE', 'OTHER', 'UNSPECIFIED')
+        ),
+    CONSTRAINT ck_running_profiles_age
+        CHECK (age IS NULL OR age BETWEEN 10 AND 100),
+    CONSTRAINT ck_running_profiles_estimated_max_hr
+        CHECK (
+            estimated_max_heart_rate_bpm IS NULL
+            OR estimated_max_heart_rate_bpm BETWEEN 120 AND 210
+        ),
     CONSTRAINT ck_running_profiles_bpm_min
-        CHECK (target_bpm_min BETWEEN 60 AND 220),
+        CHECK (target_bpm_min IS NULL OR target_bpm_min BETWEEN 60 AND 220),
     CONSTRAINT ck_running_profiles_bpm_max
-        CHECK (target_bpm_max BETWEEN 60 AND 220),
+        CHECK (target_bpm_max IS NULL OR target_bpm_max BETWEEN 60 AND 220),
     CONSTRAINT ck_running_profiles_bpm_range
-        CHECK (target_bpm_min <= target_bpm_max),
+        CHECK (
+            (target_bpm_min IS NULL AND target_bpm_max IS NULL)
+            OR (
+                target_bpm_min IS NOT NULL
+                AND target_bpm_max IS NOT NULL
+                AND target_bpm_min <= target_bpm_max
+            )
+        ),
     CONSTRAINT ck_running_profiles_cadence_min
         CHECK (
             target_cadence_min IS NULL

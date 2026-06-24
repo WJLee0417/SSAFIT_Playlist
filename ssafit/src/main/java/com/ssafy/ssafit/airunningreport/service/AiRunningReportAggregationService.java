@@ -229,7 +229,7 @@ public class AiRunningReportAggregationService {
             }
         }
         return new IntensitySummary(
-                profile == null ? null : profile.getRunningIntensity(),
+                null,
                 distribution,
                 distribution.isEmpty()
                         ? DataStatus.NOT_AVAILABLE
@@ -293,9 +293,8 @@ public class AiRunningReportAggregationService {
             String preferredGenre = normalizedPreferredGenre(profile);
             BpmRangeSummary profileBpm = profileBpmSummary(profile);
             boolean hasProfileDirection = profile != null
-                    && profile.getRunningIntensity() != null
-                    && profileBpm.status() == DataStatus.LIMITED
-                    && preferredGenre != null;
+                    && (profileBpm.status() == DataStatus.LIMITED
+                            || preferredGenre != null);
             return new RecommendationSummary(
                     0,
                     profileBpm,

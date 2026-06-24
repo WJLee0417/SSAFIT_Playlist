@@ -29,7 +29,6 @@ import com.ssafy.ssafit.member.domain.Member;
 import com.ssafy.ssafit.member.domain.MemberStatus;
 import com.ssafy.ssafit.member.service.AuthService;
 import com.ssafy.ssafit.member.service.MemberService;
-import com.ssafy.ssafit.runningprofile.domain.RunningIntensity;
 import com.ssafy.ssafit.runningprofile.domain.RunningProfile;
 import com.ssafy.ssafit.runningprofile.service.RunningProfileService;
 
@@ -249,7 +248,6 @@ class MemberViewControllerTest {
         RunningProfile profile = new RunningProfile();
         profile.setId(20L);
         profile.setMemberId(10L);
-        profile.setRunningIntensity(RunningIntensity.MODERATE);
         profile.setTargetBpmMin(120);
         profile.setTargetBpmMax(160);
         return profile;
