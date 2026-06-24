@@ -618,7 +618,7 @@ public class RecommendationService {
                 + musicIds
                 + "],\"workoutPlan\":"
                 + planSummary
-                + "]}";
+                + "}";
     }
 
     private Map<Long, Double> preferenceScores(Long memberId) {

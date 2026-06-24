@@ -51,6 +51,8 @@ import com.ssafy.ssafit.runningprofile.service.RunningFitnessMetricService;
 import com.ssafy.ssafit.runningrecord.mapper.RunningRecordMapper;
 import com.ssafy.ssafit.spotify.service.SpotifyService;
 
+import tools.jackson.databind.ObjectMapper;
+
 @ExtendWith(MockitoExtension.class)
 class RecommendationServiceTest {
 
@@ -643,6 +645,34 @@ class RecommendationServiceTest {
         assertThat(result.getMusicList())
                 .extracting(value -> value.music().getId())
                 .containsExactly(1L, 2L);
+    }
+
+    @Test
+    void workoutRecommendationResultSummaryIsValidJson() throws Exception {
+        when(runningProfileMapper.selectByMemberId(10L)).thenReturn(Optional.empty());
+        when(musicMapper.selectRecommendationCandidates(null, 500))
+                .thenReturn(List.of(music(1L)));
+        when(musicMapper.selectPreferenceScores(10L)).thenReturn(List.of());
+        when(recommendationLogMapper.insert(any())).thenReturn(1);
+        ArgumentCaptor<RecommendationLog> logCaptor =
+                ArgumentCaptor.forClass(RecommendationLog.class);
+
+        recommendationService.recommend(
+                10L,
+                RunningIntensity.MODERATE,
+                5.0,
+                null,
+                null,
+                null,
+                null,
+                null,
+                1);
+
+        verify(recommendationLogMapper).insert(logCaptor.capture());
+        var summary = new ObjectMapper().readTree(
+                logCaptor.getValue().getResultSummary());
+        assertThat(summary.get("count").asInt()).isEqualTo(1);
+        assertThat(summary.get("workoutPlan").isObject()).isTrue();
     }
 
     private RunningProfile profile(Integer minBpm, Integer maxBpm, String genre) {
