@@ -1,4 +1,5 @@
 import { apiClient } from "./http";
+import { isSafeSpotifyReturnPath } from "../utils/oauthReturn";
 
 function cleanSearchParams(params) {
   return {
@@ -23,9 +24,13 @@ function importRequest(track) {
   };
 }
 
-function oauthStartUrl() {
+function oauthStartUrl(returnTo) {
   const baseUrl = String(apiClient.defaults.baseURL || "").replace(/\/$/, "");
-  return `${baseUrl}/spotify/oauth/authorize`;
+  const url = new URL(`${baseUrl}/spotify/oauth/authorize`, window.location.origin);
+  if (isSafeSpotifyReturnPath(returnTo)) {
+    url.searchParams.set("returnTo", returnTo);
+  }
+  return url.toString();
 }
 
 export const spotifyApi = {
@@ -52,8 +57,8 @@ export const spotifyApi = {
   exportPlaylist(playlistId) {
     return apiClient.post(`/playlists/${playlistId}/export/spotify`);
   },
-  startAuthorization() {
+  startAuthorization(returnTo = `${window.location.pathname}${window.location.search}`) {
     // Vue Router가 아닌 백엔드 OAuth 시작 Endpoint로 브라우저 전체 이동한다.
-    window.location.assign(oauthStartUrl());
+    window.location.assign(oauthStartUrl(returnTo));
   },
 };

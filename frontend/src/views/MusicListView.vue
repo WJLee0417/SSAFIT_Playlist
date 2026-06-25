@@ -1,13 +1,17 @@
 <template>
   <AppLayout>
-    <div class="page-heading">
+    <div class="page-heading music-page-heading">
       <div>
         <span class="eyebrow">MUSIC</span>
         <h1>음악 둘러보기</h1>
       </div>
     </div>
 
-    <section class="playlist-spotify-discovery music-spotify-discovery" aria-labelledby="music-spotify-search-title">
+    <section
+      ref="spotifySearchRoot"
+      class="playlist-spotify-discovery music-spotify-discovery"
+      aria-labelledby="music-spotify-search-title"
+    >
       <div class="playlist-search-copy">
         <span class="eyebrow">SPOTIFY TRACK SEARCH</span>
         <h2 id="music-spotify-search-title">Spotify에서 음악 찾기</h2>
@@ -22,6 +26,8 @@
             maxlength="200"
             placeholder="곡명 또는 아티스트를 검색하세요"
             autocomplete="off"
+            @focus="openSpotifyDropdown"
+            @keydown.esc="closeSpotifyDropdown"
           />
 
           <div v-if="shouldShowSpotifyDropdown" class="playlist-search-dropdown">
@@ -67,7 +73,25 @@
       <SaveStatus :type="spotifyActionType" :message="spotifyActionMessage" />
     </section>
 
-    <section class="music-filter-section">
+    <PageStatePanel
+      v-if="status !== 'idle'"
+      :status="status"
+      :error="error"
+      empty-message="현재 조건에 맞는 음악이 없습니다."
+      @retry="loadFromRoute"
+    />
+
+    <div v-if="status === 'ready'" class="playlist-library-toolbar">
+      <div class="playlist-library-title">
+        <h2>
+          <RouterLink class="playlist-library-link" to="/playlists">플레이리스트</RouterLink>
+          <span class="playlist-library-separator" aria-hidden="true">|</span>
+          <span class="playlist-library-active">음악 둘러보기</span>
+        </h2>
+      </div>
+    </div>
+
+    <section v-if="status === 'ready'" class="music-filter-section">
       <button
         type="button"
         class="music-filter-toggle"
@@ -87,17 +111,9 @@
       />
     </section>
 
-    <PageStatePanel
-      v-if="status !== 'idle'"
-      :status="status"
-      :error="error"
-      empty-message="현재 조건에 맞는 음악이 없습니다."
-      @retry="loadFromRoute"
-    />
-
     <template v-if="status === 'ready'">
       <p class="result-summary">총 {{ pageData.totalCount }}곡 · {{ pageData.page }}페이지</p>
-      <section class="card-grid">
+      <section class="card-grid music-card-grid">
         <MusicCard
           v-for="music in pageData.items"
           :key="music.id"
@@ -130,8 +146,8 @@
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref, watch } from "vue";
-import { useRoute, useRouter } from "vue-router";
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from "vue";
+import { RouterLink, useRoute, useRouter } from "vue-router";
 import { authApi } from "../api/authApi";
 import { musicApi } from "../api/musicApi";
 import { spotifyApi } from "../api/spotifyApi";
@@ -165,6 +181,8 @@ const spotifySearchStatus = ref("idle");
 const spotifySearchError = ref(null);
 const spotifyValidationMessage = ref("");
 const spotifySearching = ref(false);
+const spotifyDropdownOpen = ref(false);
+const spotifySearchRoot = ref(null);
 const spotifySavingTrackId = ref(null);
 const savedSpotifyTrackIds = ref(new Set());
 const spotifyActionMessage = ref("");
@@ -254,7 +272,8 @@ const spotifySearchFeedbackMessage = computed(() => {
   return "";
 });
 const shouldShowSpotifyDropdown = computed(() => (
-  spotifySearchStatus.value !== "idle"
+  spotifyDropdownOpen.value
+  && spotifySearchStatus.value !== "idle"
   && (spotifyTracks.value.length > 0 || Boolean(spotifySearchFeedbackMessage.value))
 ));
 
@@ -270,6 +289,7 @@ async function searchSpotify() {
 
   const sequence = ++spotifySearchSequence;
   spotifySearching.value = true;
+  spotifyDropdownOpen.value = true;
   spotifySearchStatus.value = "loading";
   spotifySearchError.value = null;
   spotifyTracks.value = [];
@@ -285,6 +305,21 @@ async function searchSpotify() {
   } finally {
     if (sequence === spotifySearchSequence) spotifySearching.value = false;
   }
+}
+
+function openSpotifyDropdown() {
+  if (spotifyTracks.value.length || spotifySearchFeedbackMessage.value) {
+    spotifyDropdownOpen.value = true;
+  }
+}
+
+function closeSpotifyDropdown() {
+  spotifyDropdownOpen.value = false;
+}
+
+function handleDocumentPointerDown(event) {
+  if (spotifySearchRoot.value?.contains(event.target)) return;
+  closeSpotifyDropdown();
 }
 
 async function saveSpotifyTrack(track) {
@@ -310,5 +345,12 @@ function isSpotifyTrackSaved(track) {
 }
 
 watch(() => route.query, loadFromRoute, { immediate: true, deep: true });
-onMounted(resolveViewer);
+onMounted(() => {
+  resolveViewer();
+  document.addEventListener("pointerdown", handleDocumentPointerDown);
+});
+
+onBeforeUnmount(() => {
+  document.removeEventListener("pointerdown", handleDocumentPointerDown);
+});
 </script>

@@ -31,15 +31,21 @@
         <h3>아직 생성된 AI 러닝 리포트가 없습니다</h3>
         <p>최근 러닝 기록을 바탕으로 요약 리포트를 만들 수 있습니다.</p>
         <button type="button" class="primary-button" :disabled="busy" @click="generate(false)">
-          {{ busy ? "생성 중" : "리포트 생성" }}
+          {{ busy ? "생성 중..." : "리포트 생성" }}
         </button>
       </div>
 
       <template v-else>
-        <div class="ai-running-report-meta">
-          <span>{{ analysisPeriod }}</span>
-          <span>{{ createdAtText }}</span>
-          <span>{{ statusLabel }}</span>
+        <div class="ai-running-report-topline">
+          <strong>{{ analysisPeriod }}</strong>
+          <button
+            type="button"
+            class="secondary-button inline-button"
+            :disabled="busy"
+            @click="generate(true)"
+          >
+            {{ busy ? "새로 생성 중..." : "새로고침" }}
+          </button>
         </div>
 
         <p v-if="report.dataInsufficient" class="ai-running-report-note warning">
@@ -75,25 +81,17 @@ const loadError = ref(null);
 const loginRequired = ref(false);
 
 const content = computed(() => report.value?.reportContent || {});
-const statusLabel = computed(() => {
-  if (!report.value?.status) return "-";
-  return {
-    COMPLETED: "완료",
-    FAILED: "실패",
-    PENDING: "생성 중",
-  }[report.value.status] || report.value.status;
-});
 const analysisPeriod = computed(() => {
   const start = report.value?.analysisStartDate;
   const end = report.value?.analysisEndDate;
-  if (!start && !end) return "데이터 부족";
-  if (start && end) return `${start} ~ ${end}`;
-  return start || end;
+  if (!start && !end) return "집계 기간 : 데이터 부족";
+  if (start && end) return `집계 기간 : ${start} ~ ${end}`;
+  return `집계 기간 : ${start || end}`;
 });
-const createdAtText = computed(() => formatDateTime(report.value?.createdAt));
 const missingItemsText = computed(() => {
-  const items = report.value?.missingItems || [];
-  if (!items.length) return "부족 항목이 명시되지 않았습니다.";
+  const items = (report.value?.missingItems || [])
+    .filter((item) => !["RECOMMENDATION_LOGS", "RECOMMENDATION_HISTORY"].includes(item));
+  if (!items.length) return "부족 항목은 명시되지 않았습니다.";
   return `부족 항목: ${items.map(formatMissingItem).join(", ")}`;
 });
 const errorMessage = computed(() => (
@@ -108,18 +106,18 @@ const sections = computed(() => [
   },
   {
     key: "paceAndIntensityInsight",
-    title: "페이스·강도",
+    title: "페이스와 강도",
     text: content.value.paceAndIntensityInsight || "페이스와 강도 해석을 준비할 수 없습니다.",
   },
   {
     key: "cadenceAndHeartRateInsight",
-    title: "케이던스·심박 참고",
+    title: "케이던스와 심박",
     text: content.value.cadenceAndHeartRateInsight || "케이던스 또는 심박 데이터가 부족합니다.",
   },
   {
     key: "nextRunningGoal",
     title: "다음 러닝 제안",
-    text: content.value.nextRunningGoal || "먼저 가벼운 러닝 기록을 남겨 주세요.",
+    text: content.value.nextRunningGoal || "먼저 가벼운 러닝 기록을 쌓아 주세요.",
   },
 ]);
 
@@ -161,16 +159,6 @@ async function generate(forceRefresh) {
   }
 }
 
-function formatDateTime(value) {
-  if (!value) return "-";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return new Intl.DateTimeFormat("ko-KR", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(date);
-}
-
 function formatMissingItem(value) {
   return {
     RUNNING_RECORDS: "러닝 기록",
@@ -179,8 +167,6 @@ function formatMissingItem(value) {
     CADENCE_LIMITED: "케이던스 일부",
     HEART_RATE: "심박",
     HEART_RATE_LIMITED: "심박 일부",
-    RECOMMENDATION_LOGS: "음악 추천 로그",
-    RECOMMENDATION_HISTORY: "최근 음악 추천 이력",
   }[value] || value;
 }
 

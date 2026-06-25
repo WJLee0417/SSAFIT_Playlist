@@ -19,7 +19,6 @@ import com.ssafy.ssafit.airunningreport.domain.AiRunningReportStatus;
 import com.ssafy.ssafit.airunningreport.domain.AiRunningReportType;
 import com.ssafy.ssafit.airunningreport.dto.AiRunningReportAggregationDtos.Aggregation;
 import com.ssafy.ssafit.airunningreport.dto.AiRunningReportAggregationDtos.DataStatus;
-import com.ssafy.ssafit.airunningreport.dto.AiRunningReportAggregationDtos.RecommendationBasis;
 import com.ssafy.ssafit.airunningreport.dto.AiRunningReportContentDtos.ReportContent;
 import com.ssafy.ssafit.airunningreport.provider.AiRunningReportLlmProvider;
 import com.ssafy.ssafit.airunningreport.provider.AiRunningReportProviderException;
@@ -46,8 +45,7 @@ public class AiRunningReportGenerationService {
             운동 목표는 무리한 수치 목표가 아니라 현실적인 다음 러닝 방향으로 작성하세요.
             응답은 한국어 JSON 객체만 반환하고 JSON 외 텍스트는 반환하지 마세요.
             JSON 필드는 runningPatternSummary, paceAndIntensityInsight,
-            cadenceAndHeartRateInsight, musicRecommendationDirection,
-            nextRunningGoal, dataLimitations만 사용하세요.
+            cadenceAndHeartRateInsight, nextRunningGoal, dataLimitations만 사용하세요.
             각 필드는 화면에 바로 표시할 수 있도록 1~2문장으로 짧게 작성하세요.
             """;
 
@@ -170,9 +168,6 @@ public class AiRunningReportGenerationService {
                         content.cadenceAndHeartRateInsight(),
                         fallback.cadenceAndHeartRateInsight()),
                 normalizeField(
-                        content.musicRecommendationDirection(),
-                        fallback.musicRecommendationDirection()),
-                normalizeField(
                         content.nextRunningGoal(),
                         fallback.nextRunningGoal()),
                 normalizeField(
@@ -184,7 +179,7 @@ public class AiRunningReportGenerationService {
         String selected = StringUtils.hasText(value) ? value.trim() : fallback;
         int perFieldLimit = Math.max(
                 80,
-                Math.min(400, properties.getMaxOutputCharacters() / 6));
+                Math.min(400, properties.getMaxOutputCharacters() / 5));
         if (selected.length() <= perFieldLimit) {
             return selected;
         }
@@ -242,7 +237,6 @@ public class AiRunningReportGenerationService {
                 ? "서버가 계산한 평균 페이스와 강도 분포를 기준으로 무리 없는 흐름을 유지하는 방향이 좋습니다."
                 : "페이스와 강도 변화는 러닝 기록이 쌓인 뒤 다시 확인할 수 있습니다.";
         String vitalInsight = vitalFallback(aggregation);
-        String musicDirection = musicFallback(aggregation);
         String nextGoal = hasRunningRecords
                 ? "다음 러닝은 최근 평균 흐름을 크게 벗어나지 않는 편안한 지속주로 이어가세요."
                 : "먼저 짧고 편안한 러닝 기록을 1~2회 남겨 리포트 기준 데이터를 만드는 것이 좋습니다.";
@@ -254,7 +248,6 @@ public class AiRunningReportGenerationService {
                 runningPattern,
                 paceInsight,
                 vitalInsight,
-                musicDirection,
                 nextGoal,
                 limitations);
     }
@@ -274,21 +267,6 @@ public class AiRunningReportGenerationService {
             return "심박 데이터는 건강 판단이 아닌 운동 흐름 참고용으로만 보며 케이던스 데이터는 부족합니다.";
         }
         return "케이던스와 심박 데이터가 부족해 해당 항목은 해석하지 않았습니다.";
-    }
-
-    private String musicFallback(Aggregation aggregation) {
-        if (aggregation.recommendations().status() == DataStatus.NOT_AVAILABLE) {
-            return "최근 음악 추천 로그가 없어 BPM, 장르, 플레이리스트 방향은 제안하지 않았습니다.";
-        }
-        if (aggregation.recommendations().basis()
-                == RecommendationBasis.RUNNING_PROFILE) {
-            return "최근 추천 이력은 없지만 러닝 프로필의 목표 BPM 범위와 선호 장르, 운동 강도를 기준으로 다음 음악 방향을 참고할 수 있습니다.";
-        }
-        if (aggregation.recommendations().musicBpm().status() == DataStatus.NOT_AVAILABLE
-                && aggregation.recommendations().genreDistribution().isEmpty()) {
-            return "음악 추천 기록은 있으나 BPM 범위와 장르 정보가 부족해 구체적인 방향은 보류했습니다.";
-        }
-        return "최근 추천 로그의 BPM 범위와 장르 분포가 있는 항목만 참고해 음악 방향을 잡을 수 있습니다.";
     }
 
     private String writeSnapshotJson(Aggregation aggregation) {

@@ -23,6 +23,7 @@ import com.ssafy.ssafit.spotify.dto.SpotifyApiDtos.PlaylistImportResponse;
 import com.ssafy.ssafit.spotify.dto.SpotifyApiDtos.PlaylistSummaryResponse;
 import com.ssafy.ssafit.spotify.dto.SpotifyApiDtos.TrackResponse;
 import com.ssafy.ssafit.spotify.service.SpotifyOAuthService;
+import com.ssafy.ssafit.spotify.service.SpotifyOAuthService.SpotifyConnectResult;
 import com.ssafy.ssafit.spotify.service.SpotifyOAuthService.SpotifyLoginResult;
 import com.ssafy.ssafit.spotify.service.SpotifyPlaylistImportService;
 import com.ssafy.ssafit.spotify.service.SpotifyService;
@@ -53,10 +54,12 @@ public class SpotifyApiController {
     }
 
     @GetMapping("/oauth/authorize")
-    public RedirectView authorize(HttpSession session) {
+    public RedirectView authorize(
+            @RequestParam(required = false) String returnTo,
+            HttpSession session) {
         sessionMemberResolver.requireMemberId(session);
         return new RedirectView(
-                spotifyOAuthService.buildAuthorizationUrl(session));
+                spotifyOAuthService.buildAuthorizationUrl(session, returnTo));
     }
 
     @GetMapping("/oauth/callback")
@@ -78,14 +81,16 @@ public class SpotifyApiController {
                                 result.returnTo(),
                                 "/members/me"));
             }
-            spotifyOAuthService.handleCallback(
+            SpotifyConnectResult result = spotifyOAuthService.handleConnectCallback(
                     memberId,
                     code,
                     error,
                     state,
                     session);
             return new RedirectView(
-                    FrontendReturnUrl.spotifyCompletionRedirect(null));
+                    FrontendReturnUrl.spotifyCompletionRedirect(
+                            null,
+                            result.returnTo()));
         } catch (CustomException exception) {
             return new RedirectView(
                     FrontendReturnUrl.spotifyCompletionRedirect(

@@ -27,13 +27,10 @@ import com.ssafy.ssafit.airunningreport.domain.AiRunningReportSource;
 import com.ssafy.ssafit.airunningreport.domain.AiRunningReportStatus;
 import com.ssafy.ssafit.airunningreport.domain.AiRunningReportType;
 import com.ssafy.ssafit.airunningreport.dto.AiRunningReportAggregationDtos.Aggregation;
-import com.ssafy.ssafit.airunningreport.dto.AiRunningReportAggregationDtos.BpmRangeSummary;
 import com.ssafy.ssafit.airunningreport.dto.AiRunningReportAggregationDtos.DataQuality;
 import com.ssafy.ssafit.airunningreport.dto.AiRunningReportAggregationDtos.DataStatus;
 import com.ssafy.ssafit.airunningreport.dto.AiRunningReportAggregationDtos.IntensitySummary;
 import com.ssafy.ssafit.airunningreport.dto.AiRunningReportAggregationDtos.RecentRunningRecord;
-import com.ssafy.ssafit.airunningreport.dto.AiRunningReportAggregationDtos.RecommendationBasis;
-import com.ssafy.ssafit.airunningreport.dto.AiRunningReportAggregationDtos.RecommendationSummary;
 import com.ssafy.ssafit.airunningreport.dto.AiRunningReportAggregationDtos.RunningMetricSummary;
 import com.ssafy.ssafit.airunningreport.dto.AiRunningReportAggregationDtos.TrendBasis;
 import com.ssafy.ssafit.airunningreport.dto.AiRunningReportAggregationDtos.TrendDirection;
@@ -75,7 +72,6 @@ class AiRunningReportGenerationServiceTest {
                   "runningPatternSummary": "최근 러닝이 안정적으로 이어졌습니다.",
                   "paceAndIntensityInsight": "평균 페이스를 기준으로 강도는 무리 없는 편입니다.",
                   "cadenceAndHeartRateInsight": "케이던스와 심박은 참고용으로만 해석했습니다.",
-                  "musicRecommendationDirection": "POP 장르와 140~160 BPM 중심이 어울립니다.",
                   "nextRunningGoal": "다음 러닝도 비슷한 강도로 이어가세요.",
                   "dataLimitations": "제공된 집계 데이터만 사용했습니다."
                 }
@@ -312,16 +308,7 @@ class AiRunningReportGenerationServiceTest {
                         new BigDecimal("5.00"),
                         TrendBasis.RECENT_RECORDS,
                         DataStatus.OK),
-                new RecommendationSummary(
-                        3,
-                        new BpmRangeSummary(140, 160, 3, DataStatus.OK),
-                        Map.of("POP", 2, "ROCK", 1),
-                        "POP",
-                        List.of(),
-                        RecommendationBasis.RECENT_LOGS,
-                        DataStatus.OK),
                 new DataQuality(
-                        DataStatus.OK,
                         DataStatus.OK,
                         DataStatus.OK,
                         DataStatus.OK,
@@ -376,21 +363,8 @@ class AiRunningReportGenerationServiceTest {
                         null,
                         TrendBasis.NOT_ENOUGH_DATA,
                         DataStatus.INSUFFICIENT),
-                new RecommendationSummary(
-                        0,
-                        new BpmRangeSummary(
-                                null,
-                                null,
-                                0,
-                                DataStatus.NOT_AVAILABLE),
-                        Map.of(),
-                        null,
-                        List.of(),
-                        RecommendationBasis.NOT_AVAILABLE,
-                        DataStatus.NOT_AVAILABLE),
                 new DataQuality(
                         DataStatus.INSUFFICIENT,
-                        DataStatus.NOT_AVAILABLE,
                         DataStatus.NOT_AVAILABLE,
                         DataStatus.NOT_AVAILABLE,
                         DataStatus.NOT_AVAILABLE,

@@ -12,7 +12,6 @@ public final class AiRunningReportContentDtos {
             String runningPatternSummary,
             String paceAndIntensityInsight,
             String cadenceAndHeartRateInsight,
-            String musicRecommendationDirection,
             String nextRunningGoal,
             String dataLimitations) {
     }

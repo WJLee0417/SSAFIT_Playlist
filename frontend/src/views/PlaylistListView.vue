@@ -8,7 +8,11 @@
       <RouterLink class="primary-button" to="/playlists/new">새 플레이리스트</RouterLink>
     </div>
 
-    <section class="playlist-spotify-discovery" aria-labelledby="spotify-search-title">
+    <section
+      ref="spotifySearchRoot"
+      class="playlist-spotify-discovery"
+      aria-labelledby="spotify-search-title"
+    >
       <div class="playlist-search-copy">
         <span class="eyebrow">SPOTIFY TRACK SEARCH</span>
         <h2 id="spotify-search-title">음악을 찾고, 내 러닝 플로우에 담아보세요</h2>
@@ -23,6 +27,8 @@
             maxlength="200"
             placeholder="곡명 또는 아티스트를 검색하세요"
             autocomplete="off"
+            @focus="openSearchDropdown"
+            @keydown.esc="closeSearchDropdown"
           />
 
           <div v-if="shouldShowSearchDropdown" class="playlist-search-dropdown">
@@ -120,11 +126,14 @@
     <div v-if="status === 'ready'" class="playlist-library-toolbar">
       <div class="playlist-library-title">
         <h2>
-          <span>플레이리스트</span>
+          <span class="playlist-library-active">플레이리스트</span>
           <span class="playlist-library-separator" aria-hidden="true">|</span>
           <RouterLink class="playlist-library-link" to="/music">음악 둘러보기</RouterLink>
         </h2>
       </div>
+    </div>
+
+    <div v-if="status === 'ready'" class="playlist-library-controls">
       <div class="playlist-scope-toggle" role="group" aria-label="플레이리스트 조회 범위">
         <button
           v-for="option in FILTER_OPTIONS"
@@ -189,7 +198,7 @@
 </template>
 
 <script setup>
-import { computed, ref } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import { RouterLink, useRoute } from "vue-router";
 import { authApi } from "../api/authApi";
 import { playlistApi } from "../api/playlistApi";
@@ -255,6 +264,8 @@ const searchError = ref(null);
 const searchValidationMessage = ref("");
 const searching = ref(false);
 const openTrackId = ref(null);
+const searchDropdownOpen = ref(false);
+const spotifySearchRoot = ref(null);
 const addingTrackId = ref(null);
 const addedTrackIds = ref(new Set());
 const actionMessage = ref("");
@@ -282,13 +293,14 @@ const searchFeedbackMessage = computed(() => {
   return "";
 });
 const shouldShowSearchDropdown = computed(() => (
-  searchStatus.value !== "idle"
+  searchDropdownOpen.value
+  && searchStatus.value !== "idle"
   && (spotifyTracks.value.length > 0 || Boolean(searchFeedbackMessage.value))
 ));
 
 const filteredPlaylists = computed(() => {
   if (activeFilter.value === "MY") {
-    return data.value.filter((playlist) => isOwnedPlaylist(playlist));
+    return data.value.filter((playlist) => isMyPlaylist(playlist));
   }
   if (activeFilter.value === "PUBLIC") {
     return data.value.filter((playlist) => playlist.visibility === "PUBLIC");
@@ -339,6 +351,10 @@ function isOwnedPlaylist(playlist) {
       && playlist?.ownerId != null
       && String(playlist.ownerId) === String(currentMember.value.id),
   );
+}
+
+function isMyPlaylist(playlist) {
+  return isOwnedPlaylist(playlist) || Boolean(playlist?.saved);
 }
 
 function sortGroupPlaylists(group, playlists) {
@@ -444,6 +460,7 @@ async function searchSpotify() {
 
   const sequence = ++searchSequence;
   searching.value = true;
+  searchDropdownOpen.value = true;
   searchStatus.value = "loading";
   searchError.value = null;
   spotifyTracks.value = [];
@@ -462,6 +479,22 @@ async function searchSpotify() {
   } finally {
     if (sequence === searchSequence) searching.value = false;
   }
+}
+
+function openSearchDropdown() {
+  if (spotifyTracks.value.length || searchFeedbackMessage.value) {
+    searchDropdownOpen.value = true;
+  }
+}
+
+function closeSearchDropdown() {
+  searchDropdownOpen.value = false;
+  openTrackId.value = null;
+}
+
+function handleDocumentPointerDown(event) {
+  if (spotifySearchRoot.value?.contains(event.target)) return;
+  closeSearchDropdown();
 }
 
 function togglePlaylistMenu(trackId) {
@@ -538,6 +571,14 @@ async function addTrackToPlaylist(track, playlist) {
 function isTrackAdded(track) {
   return Boolean(track?.spotifyTrackId && addedTrackIds.value.has(track.spotifyTrackId));
 }
+
+onMounted(() => {
+  document.addEventListener("pointerdown", handleDocumentPointerDown);
+});
+
+onBeforeUnmount(() => {
+  document.removeEventListener("pointerdown", handleDocumentPointerDown);
+});
 
 load();
 </script>

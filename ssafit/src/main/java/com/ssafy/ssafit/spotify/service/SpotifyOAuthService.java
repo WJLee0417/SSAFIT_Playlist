@@ -55,6 +55,10 @@ public class SpotifyOAuthService {
         return buildAuthorizationUrl(session, CONNECT_FLOW, null);
     }
 
+    public String buildAuthorizationUrl(HttpSession session, String returnTo) {
+        return buildAuthorizationUrl(session, CONNECT_FLOW, returnTo);
+    }
+
     public String buildLoginAuthorizationUrl(HttpSession session, String returnTo) {
         return buildAuthorizationUrl(session, LOGIN_FLOW, returnTo);
     }
@@ -90,8 +94,25 @@ public class SpotifyOAuthService {
             String error,
             String returnedState,
             HttpSession session) {
+        return handleConnectCallback(
+                loginMemberId,
+                authorizationCode,
+                error,
+                returnedState,
+                session).connection();
+    }
+
+    @Transactional
+    public SpotifyConnectResult handleConnectCallback(
+            Long loginMemberId,
+            String authorizationCode,
+            String error,
+            String returnedState,
+            HttpSession session) {
         validateAuthenticated(loginMemberId);
-        stateManager.validateAndConsume(session, returnedState);
+        OAuthState oauthState = stateManager.validateAndConsume(
+                session,
+                returnedState);
         validateCallbackParameters(authorizationCode, error);
 
         CallbackIdentity callbackIdentity = exchangeAndResolveIdentity(
@@ -107,7 +128,8 @@ public class SpotifyOAuthService {
                             ErrorCode.SPOTIFY_AUTHORIZATION_FAILED);
                 });
 
-        return saveConnection(loginMemberId, spotifyUserId, token);
+        SpotifyConnection connection = saveConnection(loginMemberId, spotifyUserId, token);
+        return new SpotifyConnectResult(connection, oauthState.returnTo());
     }
 
     @Transactional
@@ -462,6 +484,11 @@ public class SpotifyOAuthService {
 
     public record SpotifyLoginResult(
             Member member,
+            String returnTo) {
+    }
+
+    public record SpotifyConnectResult(
+            SpotifyConnection connection,
             String returnTo) {
     }
 }

@@ -57,7 +57,7 @@
     </section>
 
     <RecommendationResult
-      v-if="queryStatus === 'ready' && result"
+      v-if="queryStatus === 'ready' && result && !selectedLog"
       :result="result"
       :saving="saving"
       :saved-playlist="savedPlaylist"
@@ -70,8 +70,7 @@
     <section class="recommendation-log-section">
       <div class="page-heading">
         <div>
-          <span class="eyebrow">RECENT LOGS</span>
-          <h2>최근 AI 추천 로그</h2>
+          <h2>히스토리</h2>
         </div>
         <button type="button" class="secondary-button" :disabled="logsLoading" @click="loadLogs">
           {{ logsLoading ? "불러오는 중..." : "로그 새로고침" }}
@@ -79,39 +78,51 @@
       </div>
       <p v-if="logsError" class="save-status save-error">{{ recommendationErrorMessage(logsError) }}</p>
       <p v-else-if="!logsLoading && logs.length === 0" class="empty-inline">추천 로그가 없습니다.</p>
-      <div v-else class="stack-list">
+      <div v-else class="recommendation-log-list">
         <article
           v-for="log in logs"
           :key="log.id"
           class="recommendation-log-row"
           :class="{ selected: selectedLog?.id === log.id }"
         >
-          <div>
-            <strong>로그 #{{ displayLogNumber(log) }} · {{ intensityLabel(log.requestedIntensity) }}</strong>
-            <small>
-              {{ log.requestedBpmMin }}~{{ log.requestedBpmMax }} BPM ·
-              {{ log.requestedGenre || "장르 제한 없음" }}
-            </small>
-            <small>{{ formatDateTime(log.createdAt) }}</small>
+          <div class="recommendation-log-summary">
+            <div>
+              <strong>로그 #{{ displayLogNumber(log) }} · {{ intensityLabel(log.requestedIntensity) }}</strong>
+              <small>
+                {{ log.requestedBpmMin }}~{{ log.requestedBpmMax }} BPM ·
+                {{ log.requestedGenre || "장르 제한 없음" }}
+              </small>
+              <small>{{ formatDateTime(log.createdAt) }}</small>
+            </div>
+            <div class="recommendation-log-actions">
+              <button
+                type="button"
+                class="secondary-button inline-button"
+                :disabled="selectedLogLoadingId === log.id"
+                @click="selectLog(log)"
+              >
+                {{ selectedLogLoadingId === log.id ? "불러오는 중..." : selectedLog?.id === log.id ? "결과 닫기" : "결과 보기" }}
+              </button>
+              <RouterLink
+                v-if="log.savedPlaylistId"
+                class="text-link"
+                :to="{ name: 'playlist-detail', params: { playlistId: log.savedPlaylistId }, query: { returnTo: '/recommendations' } }"
+              >
+                {{ savedPlaylistLabel(log) }}
+              </RouterLink>
+              <span v-else class="muted">아직 저장하지 않음</span>
+            </div>
           </div>
-          <div class="recommendation-log-actions">
-            <button
-              type="button"
-              class="secondary-button inline-button"
-              :disabled="selectedLogLoadingId === log.id"
-              @click="selectLog(log)"
-            >
-              {{ selectedLogLoadingId === log.id ? "불러오는 중..." : selectedLog?.id === log.id ? "결과 닫기" : "결과 보기" }}
-            </button>
-            <RouterLink
-              v-if="log.savedPlaylistId"
-              class="text-link"
-              :to="{ name: 'playlist-detail', params: { playlistId: log.savedPlaylistId }, query: { returnTo: '/recommendations' } }"
-            >
-              {{ savedPlaylistLabel(log) }}
-            </RouterLink>
-            <span v-else class="muted">아직 저장하지 않음</span>
-          </div>
+          <RecommendationResult
+            v-if="queryStatus === 'ready' && result && selectedLog?.id === log.id"
+            :result="result"
+            :saving="saving"
+            :saved-playlist="savedPlaylist"
+            :save-message="saveMessage"
+            :save-message-type="saveMessageType"
+            @save="createCurationCopy"
+            @close="closeRecommendationResult"
+          />
         </article>
       </div>
     </section>

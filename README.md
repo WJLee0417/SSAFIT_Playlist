@@ -122,6 +122,9 @@ runner_low / e2e-password
 runner_high / e2e-password
 runner_interval / e2e-password
 admin_candidate / e2e-password
+demo_spotify / e2e-password
+tester / e2e-password
+demo_runner / e2e-password
 ```
 
 신규 PC 또는 빈 Docker MySQL 볼륨에서 실행하는 경우 별도 SQL 명령은 필요 없습니다.

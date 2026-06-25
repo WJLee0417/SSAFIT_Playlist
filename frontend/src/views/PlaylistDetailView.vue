@@ -130,7 +130,7 @@
 </template>
 
 <script setup>
-import { computed, ref, watch } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { RouterLink, useRoute, useRouter } from "vue-router";
 import { authApi } from "../api/authApi";
 import { isApiError } from "../api/http";
@@ -410,6 +410,11 @@ function closeSpotifyResultsSoon() {
   }, 120);
 }
 
+function handleDocumentPointerDown(event) {
+  if (spotifySearchRoot.value?.contains(event.target)) return;
+  spotifyResultsOpen.value = false;
+}
+
 async function searchSpotifyTracks() {
   const normalizedQuery = spotifyQuery.value.trim();
   if (!normalizedQuery) {
@@ -487,16 +492,20 @@ async function checkSpotifyConnection() {
   }
 }
 
+async function redirectToSpotifyAuthorization() {
+  rememberSpotifyReturnPath(route.fullPath);
+  try {
+    await spotifyApi.startAuthorization(route.fullPath);
+  } catch (caught) {
+    actionType.value = "error";
+    actionMessage.value = spotifyErrorMessage(caught);
+  }
+}
+
 async function handleSpotifyExport() {
   if (spotifyExportBusy.value || spotifyExportBlocked.value || !items.value.length) return;
   if (spotifyConnectionStatus.value !== "connected") {
-    rememberSpotifyReturnPath(route.fullPath);
-    try {
-      await spotifyApi.startAuthorization();
-    } catch (caught) {
-      actionType.value = "error";
-      actionMessage.value = spotifyErrorMessage(caught);
-    }
+    await redirectToSpotifyAuthorization();
     return;
   }
 
@@ -516,6 +525,8 @@ async function handleSpotifyExport() {
     actionMessage.value = spotifyErrorMessage(caught);
     if (requiresSpotifyReconnect(caught)) {
       spotifyConnectionStatus.value = "expired";
+      await redirectToSpotifyAuthorization();
+      return;
     }
     if ([
       "SPOTIFY_PLAYLIST_CREATE_FAILED",
@@ -540,4 +551,13 @@ function formatDuration(durationMs) {
 }
 
 watch(() => props.playlistId, load, { immediate: true });
+
+onMounted(() => {
+  document.addEventListener("pointerdown", handleDocumentPointerDown);
+});
+
+onBeforeUnmount(() => {
+  document.removeEventListener("pointerdown", handleDocumentPointerDown);
+  window.clearTimeout(spotifySearchTimer);
+});
 </script>

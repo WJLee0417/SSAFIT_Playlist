@@ -4,29 +4,21 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.EnumMap;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Function;
-import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.ssafy.ssafit.airunningreport.dto.AiRunningReportAggregationDtos.Aggregation;
-import com.ssafy.ssafit.airunningreport.dto.AiRunningReportAggregationDtos.BpmRangeSummary;
 import com.ssafy.ssafit.airunningreport.dto.AiRunningReportAggregationDtos.DataQuality;
 import com.ssafy.ssafit.airunningreport.dto.AiRunningReportAggregationDtos.DataStatus;
 import com.ssafy.ssafit.airunningreport.dto.AiRunningReportAggregationDtos.IntensitySummary;
 import com.ssafy.ssafit.airunningreport.dto.AiRunningReportAggregationDtos.RecentRunningRecord;
-import com.ssafy.ssafit.airunningreport.dto.AiRunningReportAggregationDtos.RecommendationBasis;
-import com.ssafy.ssafit.airunningreport.dto.AiRunningReportAggregationDtos.RecommendationSummary;
 import com.ssafy.ssafit.airunningreport.dto.AiRunningReportAggregationDtos.RunningMetricSummary;
-import com.ssafy.ssafit.airunningreport.dto.AiRunningReportAggregationDtos.SavedPlaylistSummary;
 import com.ssafy.ssafit.airunningreport.dto.AiRunningReportAggregationDtos.TrendBasis;
 import com.ssafy.ssafit.airunningreport.dto.AiRunningReportAggregationDtos.TrendDirection;
 import com.ssafy.ssafit.airunningreport.dto.AiRunningReportAggregationDtos.TrendMetric;
@@ -34,10 +26,6 @@ import com.ssafy.ssafit.airunningreport.dto.AiRunningReportAggregationDtos.Trend
 import com.ssafy.ssafit.airunningreport.dto.AiRunningReportAggregationDtos.VitalMetricSummary;
 import com.ssafy.ssafit.common.exception.CustomException;
 import com.ssafy.ssafit.common.exception.ErrorCode;
-import com.ssafy.ssafit.playlist.domain.Playlist;
-import com.ssafy.ssafit.playlist.mapper.PlaylistMapper;
-import com.ssafy.ssafit.recommendation.domain.RecommendationLog;
-import com.ssafy.ssafit.recommendation.mapper.RecommendationLogMapper;
 import com.ssafy.ssafit.runningprofile.domain.RunningIntensity;
 import com.ssafy.ssafit.runningprofile.domain.RunningProfile;
 import com.ssafy.ssafit.runningprofile.mapper.RunningProfileMapper;
@@ -53,7 +41,6 @@ public class AiRunningReportAggregationService {
 
     public static final int DEFAULT_RECORD_LIMIT = 8;
     public static final int MAX_RECORD_LIMIT = 10;
-    private static final int RECOMMENDATION_LOG_LIMIT = 10;
     private static final int MIN_RECORDS_FOR_LIMITED_ANALYSIS = 3;
     private static final int MIN_SAMPLES_FOR_VITAL_ANALYSIS = 2;
     private static final int MIN_RECORDS_FOR_TREND = 4;
@@ -61,9 +48,7 @@ public class AiRunningReportAggregationService {
     private static final BigDecimal TREND_THRESHOLD_PERCENT = BigDecimal.valueOf(3);
 
     private final RunningRecordMapper runningRecordMapper;
-    private final RecommendationLogMapper recommendationLogMapper;
     private final RunningProfileMapper runningProfileMapper;
-    private final PlaylistMapper playlistMapper;
 
     public Aggregation aggregate(Long loginMemberId) {
         return aggregate(loginMemberId, DEFAULT_RECORD_LIMIT);
@@ -76,10 +61,6 @@ public class AiRunningReportAggregationService {
                 safeList(runningRecordMapper.selectRecentByMemberId(
                         loginMemberId,
                         limit));
-        List<RecommendationLog> logs =
-                safeList(recommendationLogMapper.selectRecentByMemberId(
-                        loginMemberId,
-                        RECOMMENDATION_LOG_LIMIT));
         RunningProfile profile = runningProfileMapper
                 .selectByMemberId(loginMemberId)
                 .orElse(null);
@@ -91,15 +72,12 @@ public class AiRunningReportAggregationService {
         VitalMetricSummary heartRateSummary = vitalSummary(
                 records,
                 RunningRecord::getAverageHeartRateBpm);
-        IntensitySummary intensitySummary = intensitySummary(profile, logs);
+        IntensitySummary intensitySummary = intensitySummary(profile);
         TrendSummary trendSummary = trendSummary(records);
-        RecommendationSummary recommendationSummary =
-                recommendationSummary(logs, profile);
         DataQuality dataQuality = dataQuality(
                 records,
                 cadenceSummary,
-                heartRateSummary,
-                recommendationSummary);
+                heartRateSummary);
 
         return new Aggregation(
                 analysisStartDate(records),
@@ -111,7 +89,6 @@ public class AiRunningReportAggregationService {
                 heartRateSummary,
                 intensitySummary,
                 trendSummary,
-                recommendationSummary,
                 dataQuality,
                 records.stream()
                         .map(this::recentRunningRecord)
@@ -218,22 +195,13 @@ public class AiRunningReportAggregationService {
                 status);
     }
 
-    private IntensitySummary intensitySummary(
-            RunningProfile profile,
-            List<RecommendationLog> logs) {
+    private IntensitySummary intensitySummary(RunningProfile profile) {
         Map<RunningIntensity, Integer> distribution =
                 new EnumMap<>(RunningIntensity.class);
-        for (RecommendationLog log : logs) {
-            if (log.getRequestedIntensity() != null) {
-                distribution.merge(log.getRequestedIntensity(), 1, Integer::sum);
-            }
-        }
         return new IntensitySummary(
                 null,
                 distribution,
-                distribution.isEmpty()
-                        ? DataStatus.NOT_AVAILABLE
-                        : DataStatus.OK);
+                profile == null ? DataStatus.NOT_AVAILABLE : DataStatus.LIMITED);
     }
 
     private TrendSummary trendSummary(List<RunningRecord> records) {
@@ -286,145 +254,10 @@ public class AiRunningReportAggregationService {
                 DataStatus.OK);
     }
 
-    private RecommendationSummary recommendationSummary(
-            List<RecommendationLog> logs,
-            RunningProfile profile) {
-        if (logs.isEmpty()) {
-            String preferredGenre = normalizedPreferredGenre(profile);
-            BpmRangeSummary profileBpm = profileBpmSummary(profile);
-            boolean hasProfileDirection = profile != null
-                    && (profileBpm.status() == DataStatus.LIMITED
-                            || preferredGenre != null);
-            return new RecommendationSummary(
-                    0,
-                    profileBpm,
-                    Map.of(),
-                    preferredGenre,
-                    List.of(),
-                    hasProfileDirection
-                            ? RecommendationBasis.RUNNING_PROFILE
-                            : RecommendationBasis.NOT_AVAILABLE,
-                    hasProfileDirection
-                            ? DataStatus.LIMITED
-                            : DataStatus.NOT_AVAILABLE);
-        }
-
-        List<RecommendationLog> logsWithBpm = logs.stream()
-                .filter(log -> log.getRequestedBpmMin() != null
-                        && log.getRequestedBpmMax() != null)
-                .toList();
-        BpmRangeSummary bpmSummary;
-        if (logsWithBpm.isEmpty()) {
-            bpmSummary = new BpmRangeSummary(
-                    null,
-                    null,
-                    0,
-                    DataStatus.NOT_AVAILABLE);
-        } else {
-            bpmSummary = new BpmRangeSummary(
-                    logsWithBpm.stream()
-                            .mapToInt(RecommendationLog::getRequestedBpmMin)
-                            .min()
-                            .orElseThrow(),
-                    logsWithBpm.stream()
-                            .mapToInt(RecommendationLog::getRequestedBpmMax)
-                            .max()
-                            .orElseThrow(),
-                    logsWithBpm.size(),
-                    logsWithBpm.size() == logs.size()
-                            ? DataStatus.OK
-                            : DataStatus.LIMITED);
-        }
-
-        Map<String, Integer> genreDistribution = logs.stream()
-                .map(RecommendationLog::getRequestedGenre)
-                .filter(genre -> genre != null && !genre.isBlank())
-                .map(String::trim)
-                .collect(Collectors.toMap(
-                        Function.identity(),
-                        ignored -> 1,
-                        Integer::sum,
-                        LinkedHashMap::new));
-
-        List<SavedPlaylistSummary> savedPlaylists =
-                savedPlaylists(logs);
-
-        return new RecommendationSummary(
-                logs.size(),
-                bpmSummary,
-                genreDistribution,
-                normalizedPreferredGenre(profile),
-                savedPlaylists,
-                RecommendationBasis.RECENT_LOGS,
-                DataStatus.OK);
-    }
-
-    private BpmRangeSummary profileBpmSummary(RunningProfile profile) {
-        if (profile == null
-                || profile.getTargetBpmMin() == null
-                || profile.getTargetBpmMax() == null
-                || profile.getTargetBpmMin() > profile.getTargetBpmMax()) {
-            return new BpmRangeSummary(
-                    null,
-                    null,
-                    0,
-                    DataStatus.NOT_AVAILABLE);
-        }
-        return new BpmRangeSummary(
-                profile.getTargetBpmMin(),
-                profile.getTargetBpmMax(),
-                0,
-                DataStatus.LIMITED);
-    }
-
-    private String normalizedPreferredGenre(RunningProfile profile) {
-        if (profile == null
-                || profile.getPreferredGenre() == null
-                || profile.getPreferredGenre().isBlank()) {
-            return null;
-        }
-        return profile.getPreferredGenre().trim();
-    }
-
-    private List<SavedPlaylistSummary> savedPlaylists(List<RecommendationLog> logs) {
-        List<Long> savedPlaylistIds = logs.stream()
-                .map(RecommendationLog::getSavedPlaylistId)
-                .filter(Objects::nonNull)
-                .distinct()
-                .toList();
-        if (savedPlaylistIds.isEmpty()) {
-            return List.of();
-        }
-
-        Map<Long, Playlist> playlistsById = safeList(
-                playlistMapper.selectByIds(savedPlaylistIds))
-                .stream()
-                .collect(Collectors.toMap(
-                        Playlist::getId,
-                        Function.identity(),
-                        (left, right) -> left,
-                        HashMap::new));
-
-        return savedPlaylistIds.stream()
-                .map(playlistsById::get)
-                .filter(Objects::nonNull)
-                .sorted(Comparator.comparing(
-                        Playlist::getCreatedAt,
-                        Comparator.nullsLast(Comparator.reverseOrder())))
-                .map(playlist -> new SavedPlaylistSummary(
-                        playlist.getId(),
-                        playlist.getTitle(),
-                        playlist.getSpotifyExportStatus(),
-                        playlist.getSpotifyPlaylistUrl(),
-                        playlist.getCreatedAt()))
-                .toList();
-    }
-
     private DataQuality dataQuality(
             List<RunningRecord> records,
             VitalMetricSummary cadence,
-            VitalMetricSummary heartRate,
-            RecommendationSummary recommendationSummary) {
+            VitalMetricSummary heartRate) {
         List<String> missingItems = new ArrayList<>();
         DataStatus runningStatus;
         if (records.isEmpty()) {
@@ -439,12 +272,6 @@ public class AiRunningReportAggregationService {
 
         appendMissing(missingItems, "CADENCE", cadence.status());
         appendMissing(missingItems, "HEART_RATE", heartRate.status());
-        if (recommendationSummary.status() == DataStatus.NOT_AVAILABLE) {
-            missingItems.add("RECOMMENDATION_LOGS");
-        } else if (recommendationSummary.basis()
-                == RecommendationBasis.RUNNING_PROFILE) {
-            missingItems.add("RECOMMENDATION_HISTORY");
-        }
 
         DataStatus overall;
         if (runningStatus == DataStatus.NOT_AVAILABLE) {
@@ -460,7 +287,6 @@ public class AiRunningReportAggregationService {
                 runningStatus,
                 cadence.status(),
                 heartRate.status(),
-                recommendationSummary.status(),
                 missingItems);
     }
 

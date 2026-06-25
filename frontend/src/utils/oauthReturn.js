@@ -8,7 +8,9 @@ export function isSafeSpotifyReturnPath(path) {
     const url = new URL(path, window.location.origin);
     return url.origin === window.location.origin
       && (
-        url.pathname.startsWith("/playlists/")
+        url.pathname === "/recommendations"
+        || url.pathname === "/playlists"
+        || url.pathname.startsWith("/playlists/")
         || url.pathname === "/oauth/spotify/complete"
       );
   } catch {

@@ -56,7 +56,6 @@ public final class AiRunningReportAggregationDtos {
             VitalMetricSummary heartRate,
             IntensitySummary intensity,
             TrendSummary trend,
-            RecommendationSummary recommendations,
             DataQuality dataQuality,
             List<RecentRunningRecord> recentRecords) {
 
@@ -151,7 +150,6 @@ public final class AiRunningReportAggregationDtos {
             DataStatus runningRecordsStatus,
             DataStatus cadenceStatus,
             DataStatus heartRateStatus,
-            DataStatus recommendationStatus,
             List<String> missingItems) {
 
         public DataQuality {

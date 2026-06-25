@@ -19,6 +19,7 @@
       {{ isLiked ? "♥" : "♡" }}
     </button>
     <img v-if="music.imageUrl" :src="music.imageUrl" :alt="`${music.title} 앨범 이미지`" />
+    <div v-else class="music-card-art-placeholder" aria-hidden="true">♫</div>
     <div class="music-card-body">
       <div class="badge-row">
         <span class="eyebrow">{{ music.genre || "장르 미정" }}</span>

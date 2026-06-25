@@ -6,17 +6,21 @@
         <h2>{{ distanceLabel }} · {{ result.log.requestedIntensity }}</h2>
       </div>
       <div class="recommendation-result-header-actions">
-        <button type="button" class="secondary-button inline-button" @click="$emit('close')">
+        <button
+          type="button"
+          class="secondary-button inline-button recommendation-header-action"
+          @click="$emit('close')"
+        >
           결과 닫기
         </button>
-        <span class="source-badge">로그 #{{ logNumber }}</span>
+        <span class="source-badge recommendation-header-action">로그 #{{ logNumber }}</span>
       </div>
     </div>
 
-    <aside class="policy-callout">
-      <strong>{{ plan.fallback ? "서버 계산 기반 계획" : "AI 응답 기반 계획" }}</strong>
-      <span>{{ plan.coachingSummary }}</span>
-    </aside>
+    <section class="recommendation-ai-summary">
+      <h3>AI 요약</h3>
+      <p>{{ plan.coachingSummary }}</p>
+    </section>
 
     <dl class="summary-list recommendation-summary workout-plan-summary">
       <div>
@@ -53,21 +57,22 @@
       </article>
     </section>
 
-    <aside class="policy-callout recommendation-coverage">
-      <strong>플레이리스트 구성 방식</strong>
-      <span>{{ plan.musicStrategy }}</span>
-    </aside>
-
-    <div v-if="music.length" class="stack-list recommendation-music-list">
-      <article v-for="(track, index) in music" :key="track.id" class="list-row">
-        <div>
+    <div v-if="music.length" class="recommendation-music-list">
+      <article v-for="(track, index) in music" :key="track.id" class="recommendation-track-row">
+        <div class="recommendation-track-cover">
+          <img v-if="track.imageUrl" :src="track.imageUrl" :alt="`${track.title} 앨범 커버`" />
+          <span v-else>{{ index + 1 }}</span>
+        </div>
+        <div class="recommendation-track-main">
           <strong>{{ index + 1 }}. {{ track.title }}</strong>
           <small>{{ track.artist || "아티스트 미정" }}</small>
-          <small>{{ track.recommendationReason }}</small>
+          <div class="recommendation-track-tags">
+            <span v-for="keyword in trackKeywords(track)" :key="keyword">{{ keyword }}</span>
+          </div>
         </div>
-        <div>
-          <span>{{ track.musicBpm ? `${track.musicBpm} BPM` : "BPM 미정" }}</span>
-          <small>{{ formatDuration(track.durationMs) }} · 적합도 {{ formatScore(track.finalScore) }}</small>
+        <div class="recommendation-track-stats">
+          <span>{{ formatDuration(track.durationMs) }}</span>
+          <small>{{ track.musicBpm ? `${track.musicBpm} BPM` : "BPM 미정" }}</small>
         </div>
       </article>
     </div>
@@ -75,8 +80,7 @@
 
     <section class="curation-save-panel">
       <div>
-        <span class="eyebrow">ACCEPT PLAYLIST</span>
-        <h3>이 운동 계획을 내 플레이리스트에 추가</h3>
+        <h3>이 운동 계획을 플레이리스트로 추가</h3>
         <p>
           수락하면 목표 강도에 맞는 사용자 큐레이션 플레이리스트가 생성되고,
           현재 트랙 순서 그대로 저장됩니다.
@@ -111,38 +115,28 @@
 
     <SaveStatus :type="saveMessageType" :message="saveMessage" />
 
-    <section v-if="savedPlaylist" class="curation-created-panel">
-      <span class="eyebrow">PLAYLIST CREATED</span>
-      <h3>{{ savedPlaylist.title }}</h3>
-      <dl class="playlist-meta">
-        <div><dt>플레이리스트 ID</dt><dd>{{ savedPlaylist.id }}</dd></div>
-        <div><dt>유형</dt><dd>{{ savedPlaylist.playlistType }}</dd></div>
-        <div><dt>생성 경로</dt><dd>{{ savedPlaylist.sourceType }}</dd></div>
-        <div><dt>공개 범위</dt><dd>{{ savedPlaylist.visibility }}</dd></div>
-      </dl>
-      <div class="card-actions">
-        <RouterLink
-          class="primary-button"
-          :to="{ name: 'playlist-detail', params: { playlistId: savedPlaylist.id }, query: { returnTo: '/recommendations' } }"
-        >
-          생성된 플레이리스트 보기
-        </RouterLink>
-        <RouterLink
-          class="secondary-button"
-          :to="{ name: 'playlist-list', query: { ownerId: savedPlaylist.ownerId } }"
-        >
-          플레이리스트 목록
-        </RouterLink>
-      </div>
+    <section v-if="savedPlaylist" class="curation-created-actions">
+      <RouterLink
+        class="primary-button"
+        :to="{ name: 'playlist-detail', params: { playlistId: savedPlaylist.id }, query: { returnTo: '/recommendations' } }"
+      >
+        생성된 플레이리스트 보기
+      </RouterLink>
+      <RouterLink
+        class="secondary-button"
+        :to="{ name: 'playlist-list', query: { ownerId: savedPlaylist.ownerId } }"
+      >
+        플레이리스트 목록
+      </RouterLink>
+      <SpotifyExportPanel
+        :playlist="savedPlaylist"
+        :playlist-id="savedPlaylist.id"
+        :editable="true"
+        return-to="/recommendations"
+        :items="exportItems"
+        compact
+      />
     </section>
-    <SpotifyExportPanel
-      v-if="savedPlaylist"
-      :playlist="savedPlaylist"
-      :playlist-id="savedPlaylist.id"
-      :editable="true"
-      return-to="/recommendations"
-      :items="exportItems"
-    />
   </section>
 </template>
 
@@ -205,19 +199,26 @@ function submitSave() {
   });
 }
 
-function formatScore(value) {
-  return value == null ? "계산 불가" : Number(value).toFixed(1);
-}
-
 function formatDuration(durationMs) {
   const seconds = Math.max(0, Math.round((Number(durationMs) || 0) / 1000));
   const minutes = Math.floor(seconds / 60);
   const restSeconds = seconds % 60;
-  if (minutes >= 60) {
-    const hours = Math.floor(minutes / 60);
-    const restMinutes = minutes % 60;
-    return `${hours}시간 ${restMinutes}분`;
-  }
-  return `${minutes}분 ${String(restSeconds).padStart(2, "0")}초`;
+  return `${minutes}:${String(restSeconds).padStart(2, "0")}`;
+}
+
+function trackKeywords(track) {
+  const reasonKeywords = String(track?.recommendationReason || "")
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean);
+  const values = [
+    track?.genre || null,
+    track?.musicBpm ? `${track.musicBpm} BPM` : null,
+    plan.value.cadenceMinSpm && plan.value.cadenceMaxSpm
+      ? `${plan.value.cadenceMinSpm}~${plan.value.cadenceMaxSpm} SPM`
+      : null,
+    ...reasonKeywords,
+  ];
+  return [...new Set(values.filter(Boolean))].slice(0, 4);
 }
 </script>
