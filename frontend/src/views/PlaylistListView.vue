@@ -388,10 +388,18 @@ function summarizePlaylist(playlist, detail) {
       : bpmMin === bpmMax
         ? `${bpmMin} BPM`
         : `${bpmMin}–${bpmMax} BPM`,
-    intensityKey: isFavoritePlaylist(playlist)
+    intensityKey: isUserSectionPlaylist(playlist)
       ? "UNCLASSIFIED"
       : resolveIntensityKey(bpmMin, bpmMax, bpmAverage),
   };
+}
+
+function isUserSectionPlaylist(playlist) {
+  return isFavoritePlaylist(playlist)
+    || (
+      playlist?.playlistType === "USER"
+      && playlist?.sourceType === "CURATION_COPY"
+    );
 }
 
 function resolveIntensityKey(bpmMin, bpmMax, bpmAverage) {

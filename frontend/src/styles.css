@@ -1539,6 +1539,13 @@ dd {
   margin-top: 2rem;
 }
 
+.recommendation-result-header-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.75rem;
+}
+
 .recommendation-summary {
   margin: 1.25rem 0;
 }

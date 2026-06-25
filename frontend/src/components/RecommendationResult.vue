@@ -5,7 +5,12 @@
         <span class="eyebrow">AI WORKOUT PLAN</span>
         <h2>{{ distanceLabel }} · {{ result.log.requestedIntensity }}</h2>
       </div>
-      <span class="source-badge">로그 #{{ logNumber }}</span>
+      <div class="recommendation-result-header-actions">
+        <button type="button" class="secondary-button inline-button" @click="$emit('close')">
+          결과 닫기
+        </button>
+        <span class="source-badge">로그 #{{ logNumber }}</span>
+      </div>
     </div>
 
     <aside class="policy-callout">
@@ -85,21 +90,21 @@
             v-model="saveForm.title"
             maxlength="200"
             :placeholder="defaultTitle"
-            :disabled="saving || alreadySaved"
+            :disabled="saving || creationCompleted"
           />
         </label>
         <label>
           공개 범위
-          <select v-model="saveForm.visibility" :disabled="saving || alreadySaved">
+          <select v-model="saveForm.visibility" :disabled="saving || creationCompleted">
             <option value="PRIVATE">PRIVATE</option>
             <option value="PUBLIC">PUBLIC</option>
           </select>
         </label>
         <button
           type="submit"
-          :disabled="!canSave || saving || alreadySaved"
+          :disabled="!canSave || saving || creationCompleted"
         >
-          {{ alreadySaved ? "이미 저장된 로그" : saving ? "저장 중..." : "플레이리스트 제안 수락" }}
+          {{ creationCompleted ? "플레이리스트 생성 완료" : saving ? "플레이리스트 생성 중..." : "플레이리스트 생성" }}
         </button>
       </form>
     </section>
@@ -155,7 +160,7 @@ const props = defineProps({
   saveMessageType: { type: String, default: "success" },
 });
 
-const emit = defineEmits(["save"]);
+const emit = defineEmits(["save", "close"]);
 const saveForm = reactive({ title: "", visibility: "PRIVATE" });
 const plan = computed(() => props.result.workoutPlan || {});
 const segments = computed(() => (
@@ -173,10 +178,7 @@ const canSave = computed(() => (
   && Number(props.result.log.id) >= 1
   && music.value.length > 0
 ));
-const alreadySaved = computed(() => (
-  props.savedPlaylist != null
-  || Number.isSafeInteger(Number(props.result?.log?.savedPlaylistId))
-));
+const creationCompleted = computed(() => props.savedPlaylist != null);
 const distanceLabel = computed(() => (
   props.result.targetDistanceKm
     ? `${props.result.targetDistanceKm}km`
@@ -196,7 +198,7 @@ const playlistDurationLabel = computed(() => {
 });
 
 function submitSave() {
-  if (!canSave.value || props.saving || alreadySaved.value) return;
+  if (!canSave.value || props.saving || creationCompleted.value) return;
   emit("save", {
     title: saveForm.title.trim() || defaultTitle.value,
     visibility: saveForm.visibility,

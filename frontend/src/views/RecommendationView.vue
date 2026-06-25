@@ -64,6 +64,7 @@
       :save-message="saveMessage"
       :save-message-type="saveMessageType"
       @save="createCurationCopy"
+      @close="closeRecommendationResult"
     />
 
     <section class="recommendation-log-section">
@@ -107,7 +108,7 @@
               class="text-link"
               :to="{ name: 'playlist-detail', params: { playlistId: log.savedPlaylistId }, query: { returnTo: '/recommendations' } }"
             >
-              저장된 플레이리스트 #{{ log.savedPlaylistId }}
+              {{ savedPlaylistLabel(log) }}
             </RouterLink>
             <span v-else class="muted">아직 저장하지 않음</span>
           </div>
@@ -121,6 +122,7 @@
 import { computed, onMounted, reactive, ref } from "vue";
 import { RouterLink, useRoute } from "vue-router";
 import { isApiError } from "../api/http";
+import { playlistApi } from "../api/playlistApi";
 import { recommendationApi } from "../api/recommendationApi";
 import AppLayout from "../components/AppLayout.vue";
 import PageStatePanel from "../components/PageStatePanel.vue";
@@ -152,6 +154,7 @@ const saveMessageType = ref("success");
 const logs = ref([]);
 const logsLoading = ref(false);
 const logsError = ref(null);
+const savedPlaylistTitles = ref({});
 const selectedLog = ref(null);
 const selectedLogLoadingId = ref(null);
 let querySequence = 0;
@@ -263,6 +266,10 @@ async function createCurationCopy(payload) {
       throw new Error("저장 응답에 플레이리스트 ID가 없습니다.");
     }
     savedPlaylist.value = playlist;
+    savedPlaylistTitles.value = {
+      ...savedPlaylistTitles.value,
+      [playlist.id]: playlist.title,
+    };
     saveMessageType.value = "success";
     saveMessage.value = "AI 운동 계획 플레이리스트를 내 목록에 추가했습니다.";
     await loadLogs();
@@ -284,6 +291,7 @@ async function loadLogs() {
   try {
     const response = await recommendationApi.getMyLogs();
     logs.value = Array.isArray(response) ? response : [];
+    await loadSavedPlaylistTitles(logs.value);
     if (selectedLog.value) {
       selectedLog.value = logs.value.find((log) => log.id === selectedLog.value.id) || null;
     }
@@ -294,15 +302,30 @@ async function loadLogs() {
   }
 }
 
+async function loadSavedPlaylistTitles(logRows) {
+  const ids = [...new Set(
+    logRows
+      .map((log) => Number(log.savedPlaylistId))
+      .filter((id) => Number.isSafeInteger(id) && id > 0),
+  )].filter((id) => !savedPlaylistTitles.value[id]);
+  if (!ids.length) return;
+
+  const results = await Promise.allSettled(
+    ids.map((id) => playlistApi.getDetail(id)),
+  );
+  const nextTitles = { ...savedPlaylistTitles.value };
+  results.forEach((result, index) => {
+    if (result.status === "fulfilled" && result.value?.playlist?.title) {
+      nextTitles[ids[index]] = result.value.playlist.title;
+    }
+  });
+  savedPlaylistTitles.value = nextTitles;
+}
+
 async function selectLog(log) {
   if (selectedLogLoadingId.value) return;
   if (selectedLog.value?.id === log.id) {
-    selectedLog.value = null;
-    result.value = null;
-    queryStatus.value = "idle";
-    queryError.value = null;
-    savedPlaylist.value = null;
-    saveMessage.value = "";
+    closeRecommendationResult();
     return;
   }
 
@@ -318,6 +341,7 @@ async function selectLog(log) {
     }
     result.value = response;
     selectedLog.value = logs.value.find((item) => item.id === log.id) || log;
+    savedPlaylist.value = await loadSavedPlaylist(response.log?.savedPlaylistId);
     queryStatus.value = "ready";
   } catch (caught) {
     queryError.value = caught;
@@ -329,8 +353,31 @@ async function selectLog(log) {
   }
 }
 
+async function loadSavedPlaylist(savedPlaylistId) {
+  const playlistId = Number(savedPlaylistId);
+  if (!Number.isSafeInteger(playlistId) || playlistId < 1) {
+    return null;
+  }
+  const detail = await playlistApi.getDetail(playlistId);
+  return detail?.playlist || null;
+}
+
+function closeRecommendationResult() {
+  selectedLog.value = null;
+  result.value = null;
+  queryStatus.value = "idle";
+  queryError.value = null;
+  savedPlaylist.value = null;
+  saveMessage.value = "";
+}
+
 function displayLogNumber(log) {
   return log?.displayNumber || log?.id || "-";
+}
+
+function savedPlaylistLabel(log) {
+  return savedPlaylistTitles.value[log.savedPlaylistId]
+    || `저장된 플레이리스트 #${log.savedPlaylistId}`;
 }
 
 function intensityLabel(value) {
