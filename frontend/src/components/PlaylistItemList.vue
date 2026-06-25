@@ -39,6 +39,15 @@
         </button>
         <span v-else class="playlist-item-position">{{ item.orderNo }}</span>
 
+        <div class="playlist-item-cover">
+          <img
+            v-if="item.music?.imageUrl"
+            :src="item.music.imageUrl"
+            :alt="`${item.music?.title || '음악'} 앨범커버`"
+          />
+          <span v-else>{{ item.orderNo }}</span>
+        </div>
+
         <div class="playlist-item-copy">
           <strong>{{ item.music?.title || `음악 #${item.musicId}` }}</strong>
           <small>

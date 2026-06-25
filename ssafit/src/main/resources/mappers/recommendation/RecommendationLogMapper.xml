@@ -93,4 +93,10 @@
           AND saved_playlist_id IS NULL
     </update>
 
+    <delete id="deleteByIdAndMemberId">
+        DELETE FROM recommendation_logs
+        WHERE id = #{id}
+          AND member_id = #{memberId}
+    </delete>
+
 </mapper>

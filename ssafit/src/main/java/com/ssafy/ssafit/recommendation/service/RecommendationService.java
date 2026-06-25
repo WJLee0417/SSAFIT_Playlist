@@ -433,6 +433,17 @@ public class RecommendationService {
         return logs;
     }
 
+    @Transactional
+    public void deleteMyRecommendationLog(Long loginMemberId, Long recommendationLogId) {
+        validateAuthenticated(loginMemberId);
+        RecommendationLog log = getOwnedLog(loginMemberId, recommendationLogId);
+        if (recommendationLogMapper.deleteByIdAndMemberId(
+                log.getId(),
+                loginMemberId) != 1) {
+            throw new CustomException(ErrorCode.RECOMMENDATION_LOG_NOT_FOUND);
+        }
+    }
+
     public RecommendationResult getMyRecommendationResult(
             Long loginMemberId,
             Long recommendationLogId) {

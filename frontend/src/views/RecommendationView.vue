@@ -98,10 +98,18 @@
               <button
                 type="button"
                 class="secondary-button inline-button"
-                :disabled="selectedLogLoadingId === log.id"
+                :disabled="selectedLogLoadingId === log.id || deletingLogId === log.id"
                 @click="selectLog(log)"
               >
                 {{ selectedLogLoadingId === log.id ? "불러오는 중..." : selectedLog?.id === log.id ? "결과 닫기" : "결과 보기" }}
+              </button>
+              <button
+                type="button"
+                class="secondary-button inline-button danger-button"
+                :disabled="deletingLogId === log.id || selectedLogLoadingId === log.id"
+                @click="deleteLog(log)"
+              >
+                {{ deletingLogId === log.id ? "삭제 중..." : "삭제" }}
               </button>
               <RouterLink
                 v-if="log.savedPlaylistId"
@@ -168,6 +176,7 @@ const logsError = ref(null);
 const savedPlaylistTitles = ref({});
 const selectedLog = ref(null);
 const selectedLogLoadingId = ref(null);
+const deletingLogId = ref(null);
 let querySequence = 0;
 
 const intensityLabels = {
@@ -230,6 +239,7 @@ async function requestRecommendation() {
   queryStatus.value = "loading";
   queryError.value = null;
   result.value = null;
+  selectedLog.value = null;
   savedPlaylist.value = null;
   saveMessage.value = "";
 
@@ -251,7 +261,6 @@ async function requestRecommendation() {
           displayNumber: createdLog.displayNumber,
         },
       };
-      selectedLog.value = createdLog;
     }
   } catch (caught) {
     if (sequence !== querySequence) return;
@@ -362,6 +371,36 @@ async function selectLog(log) {
   } finally {
     selectedLogLoadingId.value = null;
   }
+}
+
+async function deleteLog(log) {
+  if (!log?.id || deletingLogId.value) return;
+  if (!window.confirm("이 추천 히스토리를 삭제할까요? 저장된 플레이리스트는 삭제되지 않습니다.")) {
+    return;
+  }
+
+  deletingLogId.value = log.id;
+  logsError.value = null;
+  try {
+    await recommendationApi.deleteLog(log.id);
+    logs.value = logs.value.filter((item) => item.id !== log.id);
+    assignLocalDisplayNumbers();
+    if (selectedLog.value?.id === log.id) {
+      closeRecommendationResult();
+    }
+  } catch (caught) {
+    logsError.value = caught;
+  } finally {
+    deletingLogId.value = null;
+  }
+}
+
+function assignLocalDisplayNumbers() {
+  const total = logs.value.length;
+  logs.value = logs.value.map((log, index) => ({
+    ...log,
+    displayNumber: total - index,
+  }));
 }
 
 async function loadSavedPlaylist(savedPlaylistId) {

@@ -26,4 +26,8 @@ public interface RecommendationLogMapper {
     int updateSavedPlaylistId(
             @Param("id") Long id,
             @Param("savedPlaylistId") Long savedPlaylistId);
+
+    int deleteByIdAndMemberId(
+            @Param("id") Long id,
+            @Param("memberId") Long memberId);
 }

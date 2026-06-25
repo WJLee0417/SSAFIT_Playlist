@@ -38,6 +38,9 @@ export const recommendationApi = {
   getResult(logId) {
     return apiClient.get(`/recommendations/${logId}`);
   },
+  deleteLog(logId) {
+    return apiClient.delete(`/recommendations/${logId}`);
+  },
   save(logId, payload) {
     return apiClient.post(
       `/recommendations/${logId}/save`,
