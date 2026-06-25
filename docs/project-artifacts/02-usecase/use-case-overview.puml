@@ -1,0 +1,71 @@
+@startuml
+title SSAFIT Playlist 전체 Use Case 개요
+left to right direction
+skinparam packageStyle rectangle
+
+actor "비회원" as Guest
+actor "일반 회원" as Member
+actor "Spotify 연동 회원" as SpotifyMember
+actor "개발자/운영자" as Operator
+actor "Spotify API" as SpotifyAPI
+actor "OpenAI 호환 API" as OpenAIAPI
+
+Member --|> Guest
+SpotifyMember --|> Member
+
+rectangle "SSAFIT Playlist" {
+  usecase "UC-001\n회원가입\n(FR-001)" as UC001
+  usecase "UC-002\n로그인\n(FR-002)" as UC002
+  usecase "UC-005\n러닝 프로필 관리\n(FR-005)" as UC005 <<partial>>
+  usecase "UC-006\n러닝 기록 관리\n(FR-006)" as UC006
+  usecase "UC-007\n러닝 세션 관리\n(FR-007)" as UC007
+  usecase "UC-008\n음악 조회/검색\n(FR-008)" as UC008
+  usecase "UC-010\n음악 리뷰 관리\n(FR-010)" as UC010
+  usecase "UC-011\n플레이리스트 관리\n(FR-011)" as UC011
+  usecase "UC-014\n자동 큐레이션\n(FR-014)" as UC014
+  usecase "UC-015\n운동 데이터 기반 추천\n(FR-015)" as UC015
+  usecase "UC-017\nSpotify 곡 검색\n(FR-017)" as UC017
+  usecase "UC-018\nSpotify OAuth 연결\n(FR-018)" as UC018 <<partial>>
+  usecase "UC-020\nSpotify 내보내기\n(FR-019)" as UC020 <<partial>>
+  usecase "UC-022\nDocker 기반 실행\n(FR-022)" as UC022
+  usecase "UC-024\nAI 러닝 리포트\n(FR-021)" as UC024 <<partial>>
+}
+
+Guest --> UC001
+Guest --> UC002
+Guest --> UC008
+
+Member --> UC005
+Member --> UC006
+Member --> UC007
+Member --> UC010
+Member --> UC011
+Member --> UC014
+Member --> UC015
+Member --> UC017
+
+SpotifyMember --> UC018
+SpotifyMember --> UC020
+
+Operator --> UC022
+Member --> UC024
+
+SpotifyAPI --> UC017
+SpotifyAPI --> UC018
+SpotifyAPI --> UC020
+OpenAIAPI --> UC024
+
+UC014 ..> UC015 : <<include>>
+UC020 ..> UC018 : <<include>>
+
+note right of UC005
+  API와 JSP는 구현됨.
+  발표 기준 실제 화면은 JSP.
+  Vue 전용 프로필 화면은 후속 SPA 통합 과제.
+end note
+
+note right of UC020
+  코드와 UI는 있으나
+  실제 Spotify 계정/권한/API 정책 검증 필요.
+end note
+@enduml
