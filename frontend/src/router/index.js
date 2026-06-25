@@ -1,0 +1,212 @@
+import { createRouter, createWebHistory } from "vue-router";
+import { authApi } from "../api/authApi";
+import { isApiError } from "../api/http";
+import { buildJspLoginUrl, buildJspUrl } from "../utils/navigation";
+
+const routes = [
+  {
+    path: "/",
+    name: "entry",
+    beforeEnter: async () => {
+      try {
+        await authApi.getSession();
+        return { name: "music-list" };
+      } catch (error) {
+        if (isApiError(error) && error.loginRequired) {
+          authApi.clearSessionCache();
+          window.location.assign(buildJspLoginUrl());
+          return false;
+        }
+        return {
+          name: "access-check-failed",
+          query: {
+            returnTo: "/",
+            status: error?.status,
+            errorCode: error?.errorCode,
+          },
+        };
+      }
+    },
+    component: () => import("../views/NotFoundView.vue"),
+  },
+  {
+    path: "/music",
+    name: "music-list",
+    component: () => import("../views/MusicListView.vue"),
+  },
+  {
+    path: "/music/:musicId",
+    name: "music-detail",
+    component: () => import("../views/MusicDetailView.vue"),
+    props: true,
+  },
+  {
+    path: "/music-manage/new",
+    name: "music-create",
+    component: () => import("../views/MusicFormView.vue"),
+    meta: { requiresAuth: true, mode: "create" },
+  },
+  {
+    path: "/music-manage/:musicId/edit",
+    name: "music-edit",
+    component: () => import("../views/MusicFormView.vue"),
+    meta: { requiresAuth: true, mode: "edit" },
+    props: true,
+  },
+  {
+    path: "/playlists",
+    name: "playlist-list",
+    component: () => import("../views/PlaylistListView.vue"),
+  },
+  {
+    path: "/playlists/saved",
+    name: "saved-playlists",
+    component: () => import("../views/SavedPlaylistView.vue"),
+    meta: { requiresAuth: true },
+  },
+  {
+    path: "/playlists/new",
+    name: "playlist-create",
+    component: () => import("../views/PlaylistFormView.vue"),
+    meta: { requiresAuth: true, mode: "create" },
+  },
+  {
+    path: "/playlists/:playlistId/edit",
+    name: "playlist-edit",
+    component: () => import("../views/PlaylistFormView.vue"),
+    meta: { requiresAuth: true, mode: "edit" },
+    props: true,
+  },
+  {
+    path: "/playlists/:playlistId",
+    name: "playlist-detail",
+    component: () => import("../views/PlaylistDetailView.vue"),
+    props: true,
+  },
+  {
+    path: "/running-records",
+    name: "running-record-list",
+    component: () => import("../views/RunningRecordListView.vue"),
+    meta: { requiresAuth: true },
+  },
+  {
+    path: "/running-records/new",
+    name: "running-record-create",
+    component: () => import("../views/RunningRecordFormView.vue"),
+    meta: { requiresAuth: true, mode: "create" },
+  },
+  {
+    path: "/running-records/:runningRecordId/edit",
+    name: "running-record-edit",
+    component: () => import("../views/RunningRecordFormView.vue"),
+    meta: { requiresAuth: true, mode: "edit" },
+    props: true,
+  },
+  {
+    path: "/running-records/:runningRecordId",
+    name: "running-record-detail",
+    component: () => import("../views/RunningRecordDetailView.vue"),
+    meta: { requiresAuth: true },
+    props: true,
+  },
+  {
+    path: "/running-sessions",
+    name: "running-session-list",
+    component: () => import("../views/RunningSessionListView.vue"),
+    meta: { requiresAuth: true },
+  },
+  {
+    path: "/running-sessions/new",
+    name: "running-session-create",
+    component: () => import("../views/RunningSessionFormView.vue"),
+    meta: { requiresAuth: true, mode: "create" },
+  },
+  {
+    path: "/running-sessions/:runningSessionId/edit",
+    name: "running-session-edit",
+    component: () => import("../views/RunningSessionFormView.vue"),
+    meta: { requiresAuth: true, mode: "edit" },
+    props: true,
+  },
+  {
+    path: "/running-sessions/:runningSessionId",
+    name: "running-session-detail",
+    component: () => import("../views/RunningSessionDetailView.vue"),
+    meta: { requiresAuth: true },
+    props: true,
+  },
+  {
+    path: "/recommendations",
+    name: "recommendations",
+    component: () => import("../views/RecommendationView.vue"),
+    meta: { requiresAuth: true },
+  },
+  {
+    path: "/oauth/spotify/complete",
+    name: "spotify-oauth-complete",
+    component: () => import("../views/SpotifyOAuthCompleteView.vue"),
+  },
+  {
+    path: "/login-required",
+    name: "login-required",
+    component: () => import("../views/LoginRequiredView.vue"),
+  },
+  {
+    path: "/login/spotify",
+    name: "spotify-login-redirect",
+    beforeEnter: (to) => {
+      const url = new URL(buildJspUrl("/login/spotify"));
+      if (to.query.returnTo) {
+        url.searchParams.set("returnTo", to.query.returnTo);
+      }
+      window.location.assign(url.toString());
+      return false;
+    },
+    component: () => import("../views/NotFoundView.vue"),
+  },
+  {
+    path: "/access-check-failed",
+    name: "access-check-failed",
+    component: () => import("../views/AccessCheckFailedView.vue"),
+  },
+  {
+    path: "/:pathMatch(.*)*",
+    name: "not-found",
+    component: () => import("../views/NotFoundView.vue"),
+  },
+];
+
+const router = createRouter({
+  history: createWebHistory(),
+  routes,
+  scrollBehavior: (to, from, savedPosition) => savedPosition || { top: 0 },
+});
+
+router.beforeEach(async (to) => {
+  if (!to.meta.requiresAuth) {
+    return true;
+  }
+
+  try {
+    await authApi.getSession();
+    return true;
+  } catch (error) {
+    if (isApiError(error) && error.loginRequired) {
+      authApi.clearSessionCache();
+      return {
+        name: "login-required",
+        query: { returnTo: to.fullPath },
+      };
+    }
+    return {
+      name: "access-check-failed",
+      query: {
+        returnTo: to.fullPath,
+        status: error.status,
+        errorCode: error.errorCode,
+      },
+    };
+  }
+});
+
+export default router;

@@ -1,0 +1,303 @@
+﻿// SSAFIT Playlist ERD
+// 기준 근거: ssafit/src/main/resources/sql/schema.sql
+// 물리 FK는 Ref로 표현하고, FK가 없는 코드/외부 식별자 기반 연결은 주석으로 구분한다.
+
+// 테이블 선언 순서는 dbdiagram.io 자동 배치가 가로 흐름을 잡기 쉽도록 도메인 흐름 기준으로 정렬했다.
+// Member/Running -> Music/Review -> Playlist/Recommendation -> Spotify/AI
+
+TableGroup member_running {
+  members
+  running_profiles
+  running_records
+  running_sessions
+  running_session_participants
+}
+
+TableGroup music_review {
+  music
+  music_reviews
+}
+
+TableGroup playlist_recommendation {
+  playlists
+  playlist_items
+  playlist_saves
+  recommendation_logs
+}
+
+TableGroup external_spotify_ai {
+  spotify_connections
+  ai_running_reports
+}
+
+Table members {
+  id bigint [pk, increment, not null, note: 'BIGINT UNSIGNED']
+  login_id varchar(50) [not null, unique]
+  password_hash varchar(255) [not null]
+  email varchar(255) [not null, unique]
+  nickname varchar(100) [not null]
+  status varchar(20) [not null, default: 'ACTIVE', note: 'ACTIVE, INACTIVE, SUSPENDED, WITHDRAWN']
+  created_at datetime [not null, default: `CURRENT_TIMESTAMP(6)`]
+  updated_at datetime [not null, default: `CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6)`]
+  deleted_at datetime
+
+  indexes {
+    login_id [unique, name: 'uk_members_login_id']
+    email [unique, name: 'uk_members_email']
+  }
+}
+
+Table running_profiles {
+  id bigint [pk, increment, not null, note: 'BIGINT UNSIGNED']
+  member_id bigint [not null, unique, note: 'BIGINT UNSIGNED']
+  gender varchar(20) [note: 'FEMALE, MALE, OTHER, UNSPECIFIED']
+  age tinyint [note: 'TINYINT UNSIGNED, 10~100']
+  estimated_max_heart_rate_bpm smallint [note: 'SMALLINT UNSIGNED, 120~210']
+  target_bpm_min smallint [note: 'SMALLINT UNSIGNED, 60~220']
+  target_bpm_max smallint [note: 'SMALLINT UNSIGNED, 60~220']
+  target_cadence_min smallint [note: 'SMALLINT UNSIGNED, 60~240']
+  target_cadence_max smallint [note: 'SMALLINT UNSIGNED, 60~240']
+  preferred_genre varchar(100)
+  created_at datetime [not null, default: `CURRENT_TIMESTAMP(6)`]
+  updated_at datetime [not null, default: `CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6)`]
+
+  indexes {
+    member_id [unique, name: 'uk_running_profiles_member_id']
+  }
+}
+
+Table running_records {
+  id bigint [pk, increment, not null, note: 'BIGINT UNSIGNED']
+  member_id bigint [not null, note: 'BIGINT UNSIGNED']
+  record_date date [not null]
+  distance_km decimal(10,2) [not null, note: '> 0']
+  duration_seconds int [not null, note: 'INT UNSIGNED, > 0']
+  pace_seconds_per_km int [not null, note: 'INT UNSIGNED, > 0']
+  average_cadence smallint [note: 'SMALLINT UNSIGNED, 60~240']
+  average_heart_rate_bpm smallint [note: 'SMALLINT UNSIGNED, 30~240']
+  memo text
+  created_at datetime [not null, default: `CURRENT_TIMESTAMP(6)`]
+  updated_at datetime [not null, default: `CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6)`]
+  deleted_at datetime
+
+  indexes {
+    (member_id, record_date) [name: 'idx_running_records_member_date']
+    record_date [name: 'idx_running_records_record_date']
+    deleted_at [name: 'idx_running_records_deleted_at']
+  }
+}
+
+Table running_sessions {
+  id bigint [pk, increment, not null, note: 'BIGINT UNSIGNED']
+  host_member_id bigint [not null, note: 'BIGINT UNSIGNED']
+  title varchar(200) [not null]
+  description text
+  meeting_place varchar(255) [not null]
+  scheduled_at datetime [not null]
+  capacity int [not null, note: 'INT UNSIGNED, > 0']
+  target_distance_km decimal(10,2) [note: '> 0']
+  target_pace_seconds_per_km int [note: 'INT UNSIGNED, > 0']
+  status varchar(20) [not null, default: 'OPEN', note: 'OPEN, CLOSED, CANCELLED']
+  cancelled_at datetime
+  created_at datetime [not null, default: `CURRENT_TIMESTAMP(6)`]
+  updated_at datetime [not null, default: `CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6)`]
+
+  indexes {
+    host_member_id [name: 'idx_running_sessions_host_member']
+    (status, scheduled_at) [name: 'idx_running_sessions_status_scheduled']
+  }
+}
+
+Table running_session_participants {
+  id bigint [pk, increment, not null, note: 'BIGINT UNSIGNED']
+  session_id bigint [not null, note: 'BIGINT UNSIGNED']
+  member_id bigint [not null, note: 'BIGINT UNSIGNED']
+  joined_at datetime [not null, default: `CURRENT_TIMESTAMP(6)`]
+
+  indexes {
+    (session_id, member_id) [unique, name: 'uk_running_session_participants_session_member']
+    session_id [name: 'idx_running_session_participants_session']
+    member_id [name: 'idx_running_session_participants_member']
+  }
+}
+
+Table music {
+  id bigint [pk, increment, not null, note: 'BIGINT UNSIGNED']
+  title varchar(255) [not null]
+  artist varchar(255) [not null]
+  album_name varchar(255)
+  image_url varchar(500)
+  genre varchar(100)
+  bpm smallint [note: 'SMALLINT UNSIGNED, music tempo 60~220']
+  duration_ms int [note: 'INT UNSIGNED, > 0']
+  music_energy_level varchar(20) [note: 'CALM, STEADY, ENERGETIC, PEAK']
+  source_type varchar(20) [not null, note: 'ADMIN, SEED, EXTERNAL, SPOTIFY']
+  spotify_track_id varchar(100) [unique]
+  spotify_uri varchar(255) [unique]
+  spotify_external_url varchar(500)
+  created_at datetime [not null, default: `CURRENT_TIMESTAMP(6)`]
+  updated_at datetime [not null, default: `CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6)`]
+
+  indexes {
+    spotify_track_id [unique, name: 'uk_music_spotify_track_id']
+    spotify_uri [unique, name: 'uk_music_spotify_uri']
+    genre [name: 'idx_music_genre']
+    bpm [name: 'idx_music_bpm']
+    (source_type, bpm) [name: 'idx_music_source_bpm']
+    (title, artist) [name: 'ft_music_keyword', note: '실제 MySQL DDL은 FULLTEXT 인덱스']
+  }
+}
+
+Table music_reviews {
+  id bigint [pk, increment, not null, note: 'BIGINT UNSIGNED']
+  member_id bigint [not null, note: 'BIGINT UNSIGNED']
+  music_id bigint [not null, note: 'BIGINT UNSIGNED']
+  preference_score tinyint [not null, note: 'TINYINT UNSIGNED, 1~5']
+  running_fit_score tinyint [not null, note: 'TINYINT UNSIGNED, 1~5']
+  review_content text
+  created_at datetime [not null, default: `CURRENT_TIMESTAMP(6)`]
+  updated_at datetime [not null, default: `CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6)`]
+
+  indexes {
+    (member_id, music_id) [unique, name: 'uk_music_reviews_member_music']
+    (music_id, running_fit_score) [name: 'idx_music_reviews_music_score']
+    member_id [name: 'idx_music_reviews_member']
+  }
+}
+
+Table playlists {
+  id bigint [pk, increment, not null, note: 'BIGINT UNSIGNED']
+  owner_id bigint [note: 'BIGINT UNSIGNED, OFFICIAL playlist는 NULL']
+  playlist_type varchar(20) [not null, note: 'USER, OFFICIAL']
+  source_type varchar(20) [not null, note: 'MANUAL, OFFICIAL, CURATION_COPY']
+  visibility varchar(20) [not null, default: 'PRIVATE', note: 'PUBLIC, PRIVATE']
+  title varchar(200) [not null]
+  description text
+  spotify_playlist_id varchar(100) [unique]
+  spotify_playlist_url varchar(500)
+  spotify_export_status varchar(20) [not null, default: 'NOT_EXPORTED', note: 'NOT_EXPORTED, PENDING, SUCCESS, PARTIAL, FAILED']
+  spotify_export_error_code varchar(50)
+  spotify_exported_at datetime
+  created_at datetime [not null, default: `CURRENT_TIMESTAMP(6)`]
+  updated_at datetime [not null, default: `CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6)`]
+  deleted_at datetime
+
+  indexes {
+    spotify_playlist_id [unique, name: 'uk_playlists_spotify_playlist_id']
+    owner_id [name: 'idx_playlists_owner']
+    (playlist_type, visibility) [name: 'idx_playlists_type_visibility']
+    deleted_at [name: 'idx_playlists_deleted_at']
+  }
+}
+
+Table playlist_items {
+  id bigint [pk, increment, not null, note: 'BIGINT UNSIGNED']
+  playlist_id bigint [not null, note: 'BIGINT UNSIGNED']
+  music_id bigint [not null, note: 'BIGINT UNSIGNED']
+  order_no int [not null, note: 'INT UNSIGNED, >= 1']
+  created_at datetime [not null, default: `CURRENT_TIMESTAMP(6)`]
+
+  indexes {
+    (playlist_id, music_id) [unique, name: 'uk_playlist_items_playlist_music']
+    (playlist_id, order_no) [unique, name: 'uk_playlist_items_playlist_order']
+    music_id [name: 'idx_playlist_items_music']
+  }
+}
+
+Table playlist_saves {
+  id bigint [pk, increment, not null, note: 'BIGINT UNSIGNED']
+  member_id bigint [not null, note: 'BIGINT UNSIGNED']
+  playlist_id bigint [not null, note: 'BIGINT UNSIGNED']
+  created_at datetime [not null, default: `CURRENT_TIMESTAMP(6)`]
+
+  indexes {
+    (member_id, playlist_id) [unique, name: 'uk_playlist_saves_member_playlist']
+    playlist_id [name: 'idx_playlist_saves_playlist']
+  }
+}
+
+Table recommendation_logs {
+  id bigint [pk, increment, not null, note: 'BIGINT UNSIGNED']
+  member_id bigint [not null, note: 'BIGINT UNSIGNED']
+  requested_intensity varchar(20) [not null, note: 'LOW, MODERATE, HIGH, INTERVAL']
+  requested_bpm_min smallint [not null, note: 'SMALLINT UNSIGNED, 60~220']
+  requested_bpm_max smallint [not null, note: 'SMALLINT UNSIGNED, 60~220']
+  requested_genre varchar(100)
+  request_conditions json
+  result_summary json [not null, note: '추천 결과 요약 JSON. 음악 ID는 물리 FK 아님']
+  recommendation_reason text
+  saved_playlist_id bigint [note: 'BIGINT UNSIGNED, 저장 요청 시 생성된 playlist']
+  created_at datetime [not null, default: `CURRENT_TIMESTAMP(6)`]
+
+  indexes {
+    (member_id, created_at) [name: 'idx_recommendation_logs_member_created']
+    (requested_intensity, requested_bpm_min, requested_bpm_max, requested_genre) [name: 'idx_recommendation_logs_conditions']
+    saved_playlist_id [name: 'idx_recommendation_logs_saved_playlist']
+  }
+}
+
+Table spotify_connections {
+  id bigint [pk, increment, not null, note: 'BIGINT UNSIGNED']
+  member_id bigint [not null, unique, note: 'BIGINT UNSIGNED']
+  spotify_user_id varchar(100) [not null, unique]
+  access_token varchar(2048) [not null]
+  refresh_token varchar(2048) [not null]
+  token_expires_at datetime [not null]
+  created_at datetime [not null, default: `CURRENT_TIMESTAMP(6)`]
+  updated_at datetime [not null, default: `CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6)`]
+
+  indexes {
+    member_id [unique, name: 'uk_spotify_connections_member_id']
+    spotify_user_id [unique, name: 'uk_spotify_connections_spotify_user_id']
+    token_expires_at [name: 'idx_spotify_connections_token_expires_at']
+  }
+}
+
+Table ai_running_reports {
+  id bigint [pk, increment, not null, note: 'BIGINT UNSIGNED']
+  member_id bigint [not null, note: 'BIGINT UNSIGNED']
+  report_type varchar(50) [not null, note: 'RUNNING_SUMMARY']
+  analysis_start_date date
+  analysis_end_date date
+  input_snapshot_hash char(64) [not null]
+  input_snapshot_json json [not null, note: '러닝 기록/추천 로그 스냅샷 JSON. 물리 FK 아님']
+  status varchar(20) [not null, note: 'PENDING, COMPLETED, FAILED']
+  generation_source varchar(20) [not null, note: 'LLM, FALLBACK']
+  provider varchar(50)
+  model_name varchar(100)
+  prompt_version varchar(50) [not null]
+  report_content_json json
+  error_code varchar(50)
+  created_at datetime [not null, default: `CURRENT_TIMESTAMP(6)`]
+  updated_at datetime [not null, default: `CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6)`]
+
+  indexes {
+    (member_id, report_type, created_at, id) [name: 'idx_ai_running_reports_member_type_created']
+    (member_id, report_type, input_snapshot_hash, status, created_at, id) [name: 'idx_ai_running_reports_member_snapshot_status']
+  }
+}
+
+Ref: running_profiles.member_id > members.id [delete: restrict, update: restrict]
+Ref: music_reviews.member_id > members.id [delete: restrict, update: restrict]
+Ref: music_reviews.music_id > music.id [delete: restrict, update: restrict]
+Ref: playlists.owner_id > members.id [delete: restrict, update: restrict]
+Ref: playlist_items.playlist_id > playlists.id [delete: cascade, update: restrict]
+Ref: playlist_items.music_id > music.id [delete: restrict, update: restrict]
+Ref: playlist_saves.member_id > members.id [delete: cascade, update: restrict]
+Ref: playlist_saves.playlist_id > playlists.id [delete: cascade, update: restrict]
+Ref: recommendation_logs.member_id > members.id [delete: restrict, update: restrict]
+Ref: recommendation_logs.saved_playlist_id > playlists.id [delete: set null, update: restrict]
+Ref: ai_running_reports.member_id > members.id [delete: restrict, update: restrict]
+Ref: spotify_connections.member_id > members.id [delete: cascade, update: restrict]
+Ref: running_records.member_id > members.id [delete: restrict, update: restrict]
+Ref: running_sessions.host_member_id > members.id [delete: restrict, update: restrict]
+Ref: running_session_participants.session_id > running_sessions.id [delete: cascade, update: restrict]
+Ref: running_session_participants.member_id > members.id [delete: cascade, update: restrict]
+
+// 논리 관계: running_profiles.preferred_genre -> music.genre
+// 논리 관계: recommendation_logs.result_summary JSON -> music.id 목록
+// 논리 관계: ai_running_reports.input_snapshot_json -> running_records/recommendation_logs 스냅샷
+// 외부 식별자: music.spotify_track_id/music.spotify_uri -> Spotify Track
+// 외부 식별자: playlists.spotify_playlist_id/spotify_playlist_url -> Spotify Playlist
+// 외부 식별자: spotify_connections.spotify_user_id -> Spotify User
+

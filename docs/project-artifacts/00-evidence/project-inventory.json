@@ -1,0 +1,374 @@
+{
+  "generated_at": "2026-06-25",
+  "source": {
+    "cwd": "C:\\Users\\SSAFY\\Desktop\\SSAFIT_Playlist",
+    "branch": "develop",
+    "head_commit": "dff5044",
+    "basis": "source inspection, Git log/branch inspection, existing test file inventory"
+  },
+  "stack": {
+    "backend": {
+      "framework": "Spring Boot",
+      "version": "4.0.6",
+      "java": "25",
+      "packaging": "war",
+      "persistence": "MyBatis 4.0.1",
+      "database_driver": "MySQL Connector/J",
+      "view_technology": "JSP/JSTL",
+      "validation": "spring-boot-starter-validation"
+    },
+    "frontend": {
+      "framework": "Vue",
+      "version": "3.5.13",
+      "router": "vue-router 4.5.1",
+      "http_client": "axios 1.7.9",
+      "build": "Vite 6.0.5",
+      "e2e": "Playwright 1.53.2"
+    },
+    "database": {
+      "engine": "MySQL",
+      "docker_image": "mysql:8.4.4",
+      "schema_files": [
+        "ssafit/src/main/resources/sql/schema.sql",
+        "ssafit/src/main/resources/sql/migrations/*.sql",
+        "ssafit/src/main/resources/sql/demo-snapshot.sql"
+      ]
+    },
+    "external_integrations": [
+      "Spotify Accounts API",
+      "Spotify Web API",
+      "OpenAI-compatible chat/completions endpoint for AI running reports"
+    ]
+  },
+  "domains": [
+    {
+      "name": "member",
+      "status": "IMPLEMENTED",
+      "backend": [
+        "MemberApiController",
+        "AuthApiController",
+        "MemberViewController",
+        "MemberService",
+        "AuthService",
+        "MemberMapper"
+      ],
+      "screens": [
+        "ssafit/src/main/webapp/WEB-INF/views/member/login.jsp",
+        "ssafit/src/main/webapp/WEB-INF/views/member/join.jsp",
+        "ssafit/src/main/webapp/WEB-INF/views/member/my-page.jsp"
+      ],
+      "tables": [
+        "members"
+      ]
+    },
+    {
+      "name": "music",
+      "status": "IMPLEMENTED",
+      "backend": [
+        "MusicApiController",
+        "MusicService",
+        "MusicMapper"
+      ],
+      "frontend": [
+        "MusicListView.vue",
+        "MusicDetailView.vue",
+        "MusicFormView.vue",
+        "musicApi.js"
+      ],
+      "tables": [
+        "music"
+      ]
+    },
+    {
+      "name": "music_review",
+      "status": "IMPLEMENTED",
+      "backend": [
+        "MusicReviewApiController",
+        "MusicReviewService",
+        "MusicReviewMapper"
+      ],
+      "frontend": [
+        "MusicReviewForm.vue",
+        "reviewApi.js"
+      ],
+      "tables": [
+        "music_reviews"
+      ]
+    },
+    {
+      "name": "playlist",
+      "status": "IMPLEMENTED",
+      "backend": [
+        "PlaylistApiController",
+        "PlaylistItemApiController",
+        "PlaylistSaveApiController",
+        "PlaylistService",
+        "PlaylistItemService",
+        "PlaylistSaveService"
+      ],
+      "frontend": [
+        "PlaylistListView.vue",
+        "PlaylistDetailView.vue",
+        "PlaylistFormView.vue",
+        "SavedPlaylistView.vue",
+        "SpotifyExportPanel.vue"
+      ],
+      "tables": [
+        "playlists",
+        "playlist_items",
+        "playlist_saves"
+      ]
+    },
+    {
+      "name": "running_profile",
+      "status": "PARTIAL",
+      "backend": [
+        "RunningProfileApiController",
+        "RunningProfileViewController",
+        "RunningProfileService",
+        "RunningFitnessMetricService"
+      ],
+      "frontend": [
+        "runningProfileApi.js"
+      ],
+      "jsp": [
+        "member/running-profile.jsp"
+      ],
+      "tables": [
+        "running_profiles"
+      ],
+      "note": "API and JSP view exist; dedicated Vue Router page was not found."
+    },
+    {
+      "name": "running_record",
+      "status": "IMPLEMENTED",
+      "backend": [
+        "RunningRecordApiController",
+        "RunningRecordService",
+        "RunningRecordMapper"
+      ],
+      "frontend": [
+        "RunningRecordListView.vue",
+        "RunningRecordDetailView.vue",
+        "RunningRecordFormView.vue",
+        "runningRecordApi.js"
+      ],
+      "tables": [
+        "running_records"
+      ]
+    },
+    {
+      "name": "running_session",
+      "status": "IMPLEMENTED",
+      "backend": [
+        "RunningSessionApiController",
+        "RunningSessionParticipantApiController",
+        "RunningSessionService",
+        "RunningSessionParticipantService"
+      ],
+      "frontend": [
+        "RunningSessionListView.vue",
+        "RunningSessionDetailView.vue",
+        "RunningSessionFormView.vue",
+        "runningSessionApi.js"
+      ],
+      "tables": [
+        "running_sessions",
+        "running_session_participants"
+      ]
+    },
+    {
+      "name": "recommendation",
+      "status": "IMPLEMENTED",
+      "backend": [
+        "RecommendationApiController",
+        "RecommendationService",
+        "CadenceResolutionService",
+        "RunningIntensityResolutionService",
+        "CadenceMatchingPolicy",
+        "IntensityMatchingPolicy"
+      ],
+      "frontend": [
+        "RecommendationView.vue",
+        "RecommendationResult.vue",
+        "recommendationApi.js"
+      ],
+      "tables": [
+        "recommendation_logs"
+      ]
+    },
+    {
+      "name": "spotify",
+      "status": "IMPLEMENTED_EXTERNAL_MANUAL_CONFIRMATION_NEEDED",
+      "backend": [
+        "SpotifyApiController",
+        "PlaylistExportApiController",
+        "SpotifyRestApiClient",
+        "SpotifyOAuthService",
+        "SpotifyService",
+        "SpotifyPlaylistImportService",
+        "PlaylistExportService"
+      ],
+      "frontend": [
+        "spotifyApi.js",
+        "SpotifyOAuthCompleteView.vue",
+        "SpotifyExportPanel.vue"
+      ],
+      "tables": [
+        "spotify_connections",
+        "music.spotify_track_id",
+        "music.spotify_uri",
+        "playlists.spotify_export_status"
+      ]
+    },
+    {
+      "name": "ai_running_report",
+      "status": "IMPLEMENTED_EXTERNAL_MANUAL_CONFIRMATION_NEEDED",
+      "backend": [
+        "AiRunningReportApiController",
+        "AiRunningReportAggregationService",
+        "AiRunningReportGenerationService",
+        "AiRunningReportStorageService",
+        "OpenAiRunningReportProvider"
+      ],
+      "frontend": [
+        "AiRunningReportCard.vue",
+        "aiRunningReportApi.js"
+      ],
+      "tables": [
+        "ai_running_reports"
+      ]
+    }
+  ],
+  "api_routes": [
+    {"method": "GET", "path": "/health", "controller": "HealthController"},
+    {"method": "POST", "path": "/api/members", "controller": "MemberApiController"},
+    {"method": "GET", "path": "/api/members/me", "controller": "MemberApiController"},
+    {"method": "POST", "path": "/api/auth/login", "controller": "AuthApiController"},
+    {"method": "POST", "path": "/api/auth/logout", "controller": "AuthApiController"},
+    {"method": "GET", "path": "/api/music", "controller": "MusicApiController"},
+    {"method": "GET", "path": "/api/music/{musicId}", "controller": "MusicApiController"},
+    {"method": "POST", "path": "/api/music/from-spotify", "controller": "MusicApiController"},
+    {"method": "POST", "path": "/api/music/internal", "controller": "MusicApiController"},
+    {"method": "PUT", "path": "/api/music/internal/{musicId}", "controller": "MusicApiController"},
+    {"method": "GET", "path": "/api/music/{musicId}/reviews", "controller": "MusicReviewApiController"},
+    {"method": "POST", "path": "/api/music/{musicId}/reviews", "controller": "MusicReviewApiController"},
+    {"method": "PUT", "path": "/api/music-reviews/{reviewId}", "controller": "MusicReviewApiController"},
+    {"method": "DELETE", "path": "/api/music-reviews/{reviewId}", "controller": "MusicReviewApiController"},
+    {"method": "GET", "path": "/api/playlists", "controller": "PlaylistApiController"},
+    {"method": "POST", "path": "/api/playlists", "controller": "PlaylistApiController"},
+    {"method": "GET", "path": "/api/playlists/{playlistId}", "controller": "PlaylistApiController"},
+    {"method": "PUT", "path": "/api/playlists/{playlistId}", "controller": "PlaylistApiController"},
+    {"method": "DELETE", "path": "/api/playlists/{playlistId}", "controller": "PlaylistApiController"},
+    {"method": "GET", "path": "/api/playlists/{playlistId}/items", "controller": "PlaylistItemApiController"},
+    {"method": "POST", "path": "/api/playlists/{playlistId}/items", "controller": "PlaylistItemApiController"},
+    {"method": "PATCH", "path": "/api/playlist-items/{itemId}/order", "controller": "PlaylistItemApiController"},
+    {"method": "PATCH", "path": "/api/playlists/{playlistId}/items/order", "controller": "PlaylistItemApiController"},
+    {"method": "DELETE", "path": "/api/playlist-items/{itemId}", "controller": "PlaylistItemApiController"},
+    {"method": "GET", "path": "/api/playlist-saves/me", "controller": "PlaylistSaveApiController"},
+    {"method": "POST", "path": "/api/playlist-saves/{playlistId}", "controller": "PlaylistSaveApiController"},
+    {"method": "DELETE", "path": "/api/playlist-saves/{playlistId}", "controller": "PlaylistSaveApiController"},
+    {"method": "GET", "path": "/api/members/me/running-profile", "controller": "RunningProfileApiController"},
+    {"method": "PUT", "path": "/api/members/me/running-profile", "controller": "RunningProfileApiController"},
+    {"method": "GET", "path": "/api/running-records/me", "controller": "RunningRecordApiController"},
+    {"method": "POST", "path": "/api/running-records", "controller": "RunningRecordApiController"},
+    {"method": "GET", "path": "/api/running-records/{runningRecordId}", "controller": "RunningRecordApiController"},
+    {"method": "PUT", "path": "/api/running-records/{runningRecordId}", "controller": "RunningRecordApiController"},
+    {"method": "DELETE", "path": "/api/running-records/{runningRecordId}", "controller": "RunningRecordApiController"},
+    {"method": "GET", "path": "/api/running-sessions", "controller": "RunningSessionApiController"},
+    {"method": "POST", "path": "/api/running-sessions", "controller": "RunningSessionApiController"},
+    {"method": "GET", "path": "/api/running-sessions/{runningSessionId}", "controller": "RunningSessionApiController"},
+    {"method": "PUT", "path": "/api/running-sessions/{runningSessionId}", "controller": "RunningSessionApiController"},
+    {"method": "PATCH", "path": "/api/running-sessions/{runningSessionId}/status", "controller": "RunningSessionApiController"},
+    {"method": "POST", "path": "/api/running-sessions/{runningSessionId}/cancel", "controller": "RunningSessionApiController"},
+    {"method": "GET", "path": "/api/running-sessions/{runningSessionId}/participants", "controller": "RunningSessionParticipantApiController"},
+    {"method": "POST", "path": "/api/running-sessions/{runningSessionId}/participants/me", "controller": "RunningSessionParticipantApiController"},
+    {"method": "DELETE", "path": "/api/running-sessions/{runningSessionId}/participants/me", "controller": "RunningSessionParticipantApiController"},
+    {"method": "GET", "path": "/api/recommendations", "controller": "RecommendationApiController"},
+    {"method": "GET", "path": "/api/recommendations/logs/me", "controller": "RecommendationApiController"},
+    {"method": "GET", "path": "/api/recommendations/{logId}", "controller": "RecommendationApiController"},
+    {"method": "DELETE", "path": "/api/recommendations/{logId}", "controller": "RecommendationApiController"},
+    {"method": "POST", "path": "/api/recommendations/{logId}/save", "controller": "RecommendationApiController"},
+    {"method": "GET", "path": "/api/spotify/tracks/search", "controller": "SpotifyApiController"},
+    {"method": "GET", "path": "/api/spotify/oauth/authorize", "controller": "SpotifyApiController"},
+    {"method": "GET", "path": "/api/spotify/oauth/callback", "controller": "SpotifyApiController"},
+    {"method": "GET", "path": "/api/spotify/me/connection", "controller": "SpotifyApiController"},
+    {"method": "GET", "path": "/api/spotify/me/playlists", "controller": "SpotifyApiController"},
+    {"method": "POST", "path": "/api/spotify/playlists/import", "controller": "SpotifyApiController"},
+    {"method": "DELETE", "path": "/api/spotify/me/connection", "controller": "SpotifyApiController"},
+    {"method": "POST", "path": "/api/playlists/{playlistId}/export/spotify", "controller": "PlaylistExportApiController"},
+    {"method": "GET", "path": "/api/ai/running-reports/latest", "controller": "AiRunningReportApiController"},
+    {"method": "POST", "path": "/api/ai/running-reports", "controller": "AiRunningReportApiController"}
+  ],
+  "jsp_routes": [
+    {"method": "GET", "path": "/join", "controller": "MemberViewController", "view": "member/join"},
+    {"method": "POST", "path": "/join", "controller": "MemberViewController", "view": "redirect/login or member/join"},
+    {"method": "GET", "path": "/login", "controller": "MemberViewController", "view": "member/login"},
+    {"method": "POST", "path": "/login", "controller": "MemberViewController", "view": "redirect"},
+    {"method": "POST", "path": "/logout", "controller": "MemberViewController", "view": "redirect"},
+    {"method": "GET", "path": "/members/me", "controller": "MemberViewController", "view": "member/my-page"},
+    {"method": "POST", "path": "/members/me/identity", "controller": "MemberViewController", "view": "redirect/member/my-page"},
+    {"method": "GET", "path": "/members/me/running-profile", "controller": "RunningProfileViewController", "view": "member/running-profile"},
+    {"method": "POST", "path": "/members/me/running-profile", "controller": "RunningProfileViewController", "view": "redirect/member/running-profile"},
+    {"method": "GET", "path": "/login/spotify", "controller": "SpotifyLoginViewController", "view": "redirect Spotify OAuth"}
+  ],
+  "vue_routes": [
+    "/", "/music", "/music/:musicId", "/music-manage/new", "/music-manage/:musicId/edit",
+    "/playlists", "/playlists/saved", "/playlists/new", "/playlists/:playlistId/edit", "/playlists/:playlistId",
+    "/running-records", "/running-records/new", "/running-records/:runningRecordId/edit", "/running-records/:runningRecordId",
+    "/running-sessions", "/running-sessions/new", "/running-sessions/:runningSessionId/edit", "/running-sessions/:runningSessionId",
+    "/recommendations", "/oauth/spotify/complete", "/login-required", "/login/spotify", "/access-check-failed", "/:pathMatch(.*)*"
+  ],
+  "tables": [
+    {"name": "members", "pk": "id", "status_values": ["ACTIVE", "INACTIVE", "SUSPENDED", "WITHDRAWN"], "soft_delete": true},
+    {"name": "running_profiles", "pk": "id", "fk": ["member_id -> members.id"]},
+    {"name": "music", "pk": "id", "indexes": ["idx_music_genre", "idx_music_bpm", "idx_music_source_bpm", "ft_music_keyword"], "spotify_columns": true},
+    {"name": "music_reviews", "pk": "id", "fk": ["member_id -> members.id", "music_id -> music.id"]},
+    {"name": "playlists", "pk": "id", "fk": ["owner_id -> members.id"], "status_values": ["NOT_EXPORTED", "PENDING", "SUCCESS", "FAILED", "PARTIAL"], "soft_delete": true},
+    {"name": "playlist_items", "pk": "id", "fk": ["playlist_id -> playlists.id", "music_id -> music.id"]},
+    {"name": "playlist_saves", "pk": "id", "fk": ["member_id -> members.id", "playlist_id -> playlists.id"]},
+    {"name": "recommendation_logs", "pk": "id", "fk": ["member_id -> members.id", "saved_playlist_id -> playlists.id"]},
+    {"name": "ai_running_reports", "pk": "id", "fk": ["member_id -> members.id"], "status_values": ["PENDING", "COMPLETED", "FAILED"]},
+    {"name": "spotify_connections", "pk": "id", "fk": ["member_id -> members.id"]},
+    {"name": "running_records", "pk": "id", "fk": ["member_id -> members.id"], "soft_delete": true},
+    {"name": "running_sessions", "pk": "id", "fk": ["host_member_id -> members.id"], "status_values": ["OPEN", "CLOSED", "CANCELLED"]},
+    {"name": "running_session_participants", "pk": "id", "fk": ["session_id -> running_sessions.id", "member_id -> members.id"]}
+  ],
+  "docker": {
+    "compose_file": "compose.yaml",
+    "services": ["mysql", "backend", "frontend"],
+    "mysql_init": [
+      "./ssafit/src/main/resources/sql/schema.sql",
+      "./ssafit/src/main/resources/sql/demo-snapshot.sql"
+    ],
+    "backend_healthcheck": "GET /health",
+    "frontend_port": "${FRONTEND_HOST_PORT:-5173}:80"
+  },
+  "tests": {
+    "backend_test_files_count": 37,
+    "notable_tests": [
+      "MapperIntegrationTest",
+      "AiRunningReportMapperIntegrationTest",
+      "TestDatabaseSafetyTest",
+      "RunningRecordApiControllerTest",
+      "RunningSessionApiControllerTest",
+      "RunningSessionParticipantApiControllerTest",
+      "SpotifyApiControllerTest",
+      "SpotifyOAuthServiceTest",
+      "PlaylistExportServiceTest",
+      "AiRunningReportApiControllerTest"
+    ],
+    "frontend_e2e": [
+      "frontend/e2e/running-features.spec.js"
+    ],
+    "execution_in_this_inventory": "not_run"
+  },
+  "open_issues": [
+    "JSP and Vue flows coexist; document both in Use-Case and screen design.",
+    "Running profile has JSP flow and API client but no dedicated Vue route.",
+    "Swagger/OpenAPI not implemented.",
+    "Internal music APIs lack confirmed role/authority model.",
+    "Live Spotify and AI provider behavior require manual credentialed confirmation.",
+    "Runtime DB schema was not queried; source DDL/migrations only."
+  ]
+}

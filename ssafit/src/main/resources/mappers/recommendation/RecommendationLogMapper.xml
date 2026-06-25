@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ssafy.ssafit.recommendation.mapper.RecommendationLogMapper">
+
+    <resultMap id="recommendationLogResultMap"
+               type="com.ssafy.ssafit.recommendation.domain.RecommendationLog">
+        <id property="id" column="id"/>
+        <result property="memberId" column="member_id"/>
+        <result property="requestedIntensity" column="requested_intensity"/>
+        <result property="requestedBpmMin" column="requested_bpm_min"/>
+        <result property="requestedBpmMax" column="requested_bpm_max"/>
+        <result property="requestedGenre" column="requested_genre"/>
+        <result property="requestConditions" column="request_conditions"/>
+        <result property="resultSummary" column="result_summary"/>
+        <result property="recommendationReason" column="recommendation_reason"/>
+        <result property="savedPlaylistId" column="saved_playlist_id"/>
+        <result property="createdAt" column="created_at"/>
+    </resultMap>
+
+    <sql id="recommendationLogColumns">
+        id,
+        member_id,
+        requested_intensity,
+        requested_bpm_min,
+        requested_bpm_max,
+        requested_genre,
+        request_conditions,
+        result_summary,
+        recommendation_reason,
+        saved_playlist_id,
+        created_at
+    </sql>
+
+    <insert id="insert"
+            parameterType="com.ssafy.ssafit.recommendation.domain.RecommendationLog"
+            useGeneratedKeys="true"
+            keyProperty="id"
+            keyColumn="id">
+        INSERT INTO recommendation_logs (
+            member_id,
+            requested_intensity,
+            requested_bpm_min,
+            requested_bpm_max,
+            requested_genre,
+            request_conditions,
+            result_summary,
+            recommendation_reason
+        ) VALUES (
+            #{memberId},
+            #{requestedIntensity},
+            #{requestedBpmMin},
+            #{requestedBpmMax},
+            #{requestedGenre},
+            #{requestConditions},
+            #{resultSummary},
+            #{recommendationReason}
+        )
+    </insert>
+
+    <select id="selectById" resultMap="recommendationLogResultMap">
+        SELECT <include refid="recommendationLogColumns"/>
+        FROM recommendation_logs
+        WHERE id = #{id}
+    </select>
+
+    <select id="selectByMemberId" resultMap="recommendationLogResultMap">
+        SELECT <include refid="recommendationLogColumns"/>
+        FROM recommendation_logs
+        WHERE member_id = #{memberId}
+        ORDER BY created_at DESC, id DESC
+    </select>
+
+    <select id="selectRecentByMemberId" resultMap="recommendationLogResultMap">
+        SELECT <include refid="recommendationLogColumns"/>
+        FROM recommendation_logs
+        WHERE member_id = #{memberId}
+        ORDER BY created_at DESC, id DESC
+        LIMIT #{limit}
+    </select>
+
+    <select id="countByMemberId" resultType="int">
+        SELECT COUNT(*)
+        FROM recommendation_logs
+        WHERE member_id = #{memberId}
+    </select>
+
+    <update id="updateSavedPlaylistId">
+        UPDATE recommendation_logs
+        SET saved_playlist_id = #{savedPlaylistId}
+        WHERE id = #{id}
+          AND saved_playlist_id IS NULL
+    </update>
+
+    <delete id="deleteByIdAndMemberId">
+        DELETE FROM recommendation_logs
+        WHERE id = #{id}
+          AND member_id = #{memberId}
+    </delete>
+
+</mapper>

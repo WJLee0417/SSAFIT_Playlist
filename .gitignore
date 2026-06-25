@@ -1,0 +1,16 @@
+/.metadata/
+target/
+.settings/
+.classpath
+.project
+.springBeans
+.sts4-cache/
+.env
+.env.*
+!.env.example
+!frontend/.env.example
+*.log
+frontend/node_modules/
+frontend/dist/
+frontend/playwright-report/
+frontend/test-results/

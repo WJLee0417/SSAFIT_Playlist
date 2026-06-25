@@ -1,0 +1,41 @@
+flowchart TD
+  Guest["비회원"] --> Join["SCR-002 회원가입<br/>JSP /join"]
+  Join --> Login["SCR-003 로그인<br/>JSP /login"]
+  Login --> Entry["SCR-001 메인 진입<br/>Vue /"]
+  Entry --> MusicList["SCR-009 음악 목록<br/>/music"]
+  Entry -. "세션 없음" .-> Login
+
+  Login --> MyPage["SCR-005 마이페이지<br/>JSP /members/me"]
+  MyPage --> RunningProfile["SCR-006 러닝 프로필<br/>JSP /members/me/running-profile"]
+  MyPage --> RunningRecords["SCR-018 러닝 기록 목록<br/>/running-records"]
+  RunningRecords --> RunningRecordForm["SCR-020 러닝 기록 등록/수정"]
+  RunningRecords --> RunningRecordDetail["SCR-019 러닝 기록 상세"]
+
+  Login --> MusicList
+  MusicList --> MusicDetail["SCR-010 음악 상세<br/>/music/:musicId"]
+  MusicDetail --> Review["SCR-011 리뷰 작성/수정<br/>컴포넌트"]
+  MusicList --> SpotifySearch["SCR-027 Spotify 검색<br/>화면 내 패널"]
+  SpotifySearch --> SaveSpotifyTrack["내부 음악 저장<br/>POST /api/music/from-spotify"]
+
+  Login --> PlaylistList["SCR-013 플레이리스트 목록<br/>/playlists"]
+  PlaylistList --> PlaylistDetail["SCR-015 플레이리스트 상세<br/>/playlists/:playlistId"]
+  PlaylistList --> PlaylistForm["SCR-016 플레이리스트 생성/수정"]
+  PlaylistDetail --> PlaylistItems["SCR-017 수록곡 관리<br/>컴포넌트"]
+  PlaylistDetail --> PlaylistExport["SCR-030 Spotify 내보내기<br/>컴포넌트"]
+
+  Login --> Recommendation["SCR-024 자동 큐레이션<br/>/recommendations"]
+  Recommendation --> RecommendationResult["SCR-025 추천 결과"]
+  RecommendationResult --> SaveRecommendation["추천 결과 저장<br/>POST /api/recommendations/{logId}/save"]
+  SaveRecommendation --> PlaylistDetail
+  Recommendation -. "프로필 없음" .-> RunningProfile
+
+  Login --> SpotifyStart["SCR-028 Spotify 연동 시작<br/>/login/spotify"]
+  SpotifyStart --> SpotifyAPI[("외부 Spotify API")]
+  SpotifyAPI --> OAuthComplete["SCR-029 OAuth 완료<br/>/oauth/spotify/complete"]
+  OAuthComplete --> MusicList
+  OAuthComplete --> PlaylistDetail
+  SpotifySearch --> SpotifyAPI
+  PlaylistExport --> SpotifyAPI
+
+  SpotifyImport["SCR-032 Spotify 플레이리스트 가져오기<br/>화면 미구현"] -. "API만 확인됨" .-> SpotifyAPI
+  RunningProfileVue["Vue 러닝 프로필 전용 화면<br/>후속 SPA 통합 과제"] -. "발표 기준은 JSP 화면" .-> RunningProfile

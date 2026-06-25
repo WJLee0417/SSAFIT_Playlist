@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ssafy.ssafit.member.mapper.MemberMapper">
+
+    <resultMap id="memberResultMap" type="com.ssafy.ssafit.member.domain.Member">
+        <id property="id" column="id"/>
+        <result property="loginId" column="login_id"/>
+        <result property="passwordHash" column="password_hash"/>
+        <result property="email" column="email"/>
+        <result property="nickname" column="nickname"/>
+        <result property="status" column="status"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="updatedAt" column="updated_at"/>
+        <result property="deletedAt" column="deleted_at"/>
+    </resultMap>
+
+    <sql id="memberColumns">
+        id,
+        login_id,
+        password_hash,
+        email,
+        nickname,
+        status,
+        created_at,
+        updated_at,
+        deleted_at
+    </sql>
+
+    <insert id="insert"
+            parameterType="com.ssafy.ssafit.member.domain.Member"
+            useGeneratedKeys="true"
+            keyProperty="id"
+            keyColumn="id">
+        INSERT INTO members (
+            login_id,
+            password_hash,
+            email,
+            nickname,
+            status
+        ) VALUES (
+            #{loginId},
+            #{passwordHash},
+            #{email},
+            #{nickname},
+            #{status}
+        )
+    </insert>
+
+    <select id="existsByLoginId" resultType="boolean">
+        SELECT EXISTS (
+            SELECT 1
+            FROM members
+            WHERE login_id = #{loginId}
+        )
+    </select>
+
+    <update id="updateIdentity"
+            parameterType="com.ssafy.ssafit.member.domain.Member">
+        UPDATE members
+        SET
+            login_id = #{loginId},
+            nickname = #{nickname}
+        WHERE id = #{id}
+    </update>
+
+    <select id="existsByEmail" resultType="boolean">
+        SELECT EXISTS (
+            SELECT 1
+            FROM members
+            WHERE email = #{email}
+        )
+    </select>
+
+    <select id="selectByLoginId" resultMap="memberResultMap">
+        SELECT
+            <include refid="memberColumns"/>
+        FROM members
+        WHERE login_id = #{loginId}
+    </select>
+
+    <select id="selectById" resultMap="memberResultMap">
+        SELECT
+            <include refid="memberColumns"/>
+        FROM members
+        WHERE id = #{id}
+    </select>
+
+</mapper>

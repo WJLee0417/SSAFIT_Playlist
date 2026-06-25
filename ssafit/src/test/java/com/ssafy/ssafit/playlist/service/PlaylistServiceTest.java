@@ -1,0 +1,275 @@
+package com.ssafy.ssafit.playlist.service;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+import java.util.List;
+import java.util.Optional;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import com.ssafy.ssafit.common.exception.CustomException;
+import com.ssafy.ssafit.common.exception.ErrorCode;
+import com.ssafy.ssafit.playlist.domain.Playlist;
+import com.ssafy.ssafit.playlist.domain.PlaylistSourceType;
+import com.ssafy.ssafit.playlist.domain.PlaylistType;
+import com.ssafy.ssafit.playlist.domain.PlaylistVisibility;
+import com.ssafy.ssafit.playlist.domain.SpotifyExportStatus;
+import com.ssafy.ssafit.playlist.mapper.PlaylistItemMapper;
+import com.ssafy.ssafit.playlist.mapper.PlaylistMapper;
+
+@ExtendWith(MockitoExtension.class)
+class PlaylistServiceTest {
+
+    @Mock
+    private PlaylistMapper playlistMapper;
+    @Mock
+    private PlaylistItemMapper playlistItemMapper;
+
+    private PlaylistService playlistService;
+
+    @BeforeEach
+    void setUp() {
+        playlistService = new PlaylistService(playlistMapper, playlistItemMapper);
+    }
+
+    @Test
+    void createBuildsUserManualPlaylist() {
+        Playlist input = playlist(null, null, PlaylistType.OFFICIAL, PlaylistVisibility.PUBLIC);
+        input.setTitle("  러닝 목록  ");
+        when(playlistMapper.insert(input)).thenAnswer(invocation -> {
+            input.setId(100L);
+            return 1;
+        });
+
+        Playlist created = playlistService.create(10L, input);
+
+        assertThat(created.getId()).isEqualTo(100L);
+        assertThat(created.getOwnerId()).isEqualTo(10L);
+        assertThat(created.getPlaylistType()).isEqualTo(PlaylistType.USER);
+        assertThat(created.getSourceType()).isEqualTo(PlaylistSourceType.MANUAL);
+        assertThat(created.getTitle()).isEqualTo("러닝 목록");
+        assertThat(created.getSpotifyExportStatus())
+                .isEqualTo(SpotifyExportStatus.NOT_EXPORTED);
+    }
+
+    @Test
+    void createRequiresAuthentication() {
+        assertError(
+                ErrorCode.AUTH_REQUIRED,
+                () -> playlistService.create(null, playlist(null, null, null, null)));
+    }
+
+    @Test
+    void listDelegatesVisiblePolicyToMapper() {
+        Playlist visible = playlist(1L, 20L, PlaylistType.USER, PlaylistVisibility.PUBLIC);
+        visible.setSaved(true);
+        when(playlistMapper.selectList(10L, null)).thenReturn(List.of(visible));
+
+        List<Playlist> result = playlistService.getList(10L, null);
+
+        assertThat(result).containsExactly(visible);
+        assertThat(result.getFirst().isSaved()).isTrue();
+    }
+
+    @Test
+    void publicDetailCanBeViewedByOtherMember() {
+        Playlist playlist = playlist(1L, 10L, PlaylistType.USER, PlaylistVisibility.PUBLIC);
+        when(playlistMapper.selectDetail(1L)).thenReturn(Optional.of(playlist));
+
+        assertThat(playlistService.getDetail(20L, 1L)).isSameAs(playlist);
+    }
+
+    @Test
+    void privateDetailRejectsOtherMember() {
+        Playlist playlist = playlist(1L, 10L, PlaylistType.USER, PlaylistVisibility.PRIVATE);
+        when(playlistMapper.selectDetail(1L)).thenReturn(Optional.of(playlist));
+
+        assertError(
+                ErrorCode.PRIVATE_PLAYLIST,
+                () -> playlistService.getDetail(20L, 1L));
+    }
+
+    @Test
+    void ownerCanUpdatePlaylist() {
+        Playlist existing = playlist(1L, 10L, PlaylistType.USER, PlaylistVisibility.PRIVATE);
+        existing.setSourceType(PlaylistSourceType.MANUAL);
+        Playlist changes = playlist(1L, 999L, PlaylistType.OFFICIAL, PlaylistVisibility.PUBLIC);
+        changes.setTitle("변경");
+        when(playlistMapper.selectDetail(1L)).thenReturn(Optional.of(existing));
+        when(playlistMapper.update(changes)).thenReturn(1);
+
+        Playlist updated = playlistService.update(10L, changes);
+
+        assertThat(updated.getOwnerId()).isEqualTo(10L);
+        assertThat(updated.getPlaylistType()).isEqualTo(PlaylistType.USER);
+        assertThat(updated.getSourceType()).isEqualTo(PlaylistSourceType.MANUAL);
+        verify(playlistMapper).update(changes);
+    }
+
+    @Test
+    void otherMemberCannotUpdatePlaylist() {
+        Playlist existing = playlist(1L, 10L, PlaylistType.USER, PlaylistVisibility.PRIVATE);
+        Playlist changes = playlist(1L, null, null, PlaylistVisibility.PUBLIC);
+        when(playlistMapper.selectDetail(1L)).thenReturn(Optional.of(existing));
+
+        assertError(ErrorCode.ACCESS_DENIED, () -> playlistService.update(20L, changes));
+        verify(playlistMapper, never()).update(changes);
+    }
+
+    @Test
+    void ownerCanSoftDeletePlaylist() {
+        Playlist playlist = playlist(1L, 10L, PlaylistType.USER, PlaylistVisibility.PRIVATE);
+        when(playlistMapper.selectDetail(1L)).thenReturn(Optional.of(playlist));
+        when(playlistMapper.softDelete(1L)).thenReturn(1);
+
+        playlistService.delete(10L, 1L);
+
+        verify(playlistMapper).softDelete(1L);
+    }
+
+    @Test
+    void officialPlaylistCannotBeDeletedByMember() {
+        Playlist playlist = playlist(1L, null, PlaylistType.OFFICIAL, PlaylistVisibility.PUBLIC);
+        when(playlistMapper.selectDetail(1L)).thenReturn(Optional.of(playlist));
+
+        assertError(ErrorCode.ACCESS_DENIED, () -> playlistService.delete(10L, 1L));
+        verify(playlistMapper, never()).softDelete(1L);
+    }
+
+    @Test
+    void exportStatusCanBeChangedToPending() {
+        Playlist playlist = playlist(1L, 10L, PlaylistType.USER, PlaylistVisibility.PRIVATE);
+        when(playlistMapper.selectExportTargetPlaylist(1L))
+                .thenReturn(Optional.of(playlist));
+        when(playlistMapper.updateSpotifyExportStatus(
+                1L, SpotifyExportStatus.PENDING)).thenReturn(1);
+
+        playlistService.updateSpotifyExportStatus(
+                10L,
+                1L,
+                SpotifyExportStatus.PENDING);
+
+        verify(playlistMapper)
+                .updateSpotifyExportStatus(1L, SpotifyExportStatus.PENDING);
+    }
+
+    @Test
+    void pendingTransitionRejectsConcurrentExportClaim() {
+        Playlist playlist = playlist(1L, 10L, PlaylistType.USER, PlaylistVisibility.PRIVATE);
+        when(playlistMapper.selectExportTargetPlaylist(1L))
+                .thenReturn(Optional.of(playlist));
+        when(playlistMapper.updateSpotifyExportStatus(
+                1L, SpotifyExportStatus.PENDING)).thenReturn(0);
+
+        assertError(
+                ErrorCode.SPOTIFY_EXPORT_FAILED,
+                () -> playlistService.updateSpotifyExportStatus(
+                        10L,
+                        1L,
+                        SpotifyExportStatus.PENDING));
+    }
+
+    @Test
+    void successStatusMustUseExportResultMethod() {
+        Playlist playlist = playlist(1L, 10L, PlaylistType.USER, PlaylistVisibility.PRIVATE);
+        when(playlistMapper.selectExportTargetPlaylist(1L))
+                .thenReturn(Optional.of(playlist));
+
+        assertError(
+                ErrorCode.INVALID_REQUEST,
+                () -> playlistService.updateSpotifyExportStatus(
+                        10L,
+                        1L,
+                        SpotifyExportStatus.SUCCESS));
+    }
+
+    @Test
+    void exportResultIsStoredAsSuccess() {
+        Playlist playlist = playlist(1L, 10L, PlaylistType.USER, PlaylistVisibility.PRIVATE);
+        when(playlistMapper.selectExportTargetPlaylist(1L))
+                .thenReturn(Optional.of(playlist));
+        when(playlistMapper.updateSpotifyExportResult(playlist)).thenReturn(1);
+
+        Playlist result = playlistService.saveSpotifyExportResult(
+                10L,
+                1L,
+                "spotify-id",
+                "https://open.spotify.com/playlist/spotify-id");
+
+        assertThat(result.getSpotifyExportStatus()).isEqualTo(SpotifyExportStatus.SUCCESS);
+        assertThat(result.getSpotifyExportedAt()).isNotNull();
+        assertThat(result.getSpotifyExportErrorCode()).isNull();
+        verify(playlistMapper).updateSpotifyExportResult(playlist);
+    }
+
+    @Test
+    void partialSpotifyResultCanBeStoredAsPending() {
+        Playlist playlist = playlist(1L, 10L, PlaylistType.USER, PlaylistVisibility.PRIVATE);
+        when(playlistMapper.selectExportTargetPlaylist(1L))
+                .thenReturn(Optional.of(playlist));
+        when(playlistMapper.updateSpotifyExportPending(playlist)).thenReturn(1);
+
+        Playlist result = playlistService.saveSpotifyExportPending(
+                10L,
+                1L,
+                "spotify-id",
+                "https://open.spotify.com/playlist/spotify-id");
+
+        assertThat(result.getSpotifyPlaylistId()).isEqualTo("spotify-id");
+        assertThat(result.getSpotifyExportStatus()).isEqualTo(SpotifyExportStatus.PENDING);
+        verify(playlistMapper).updateSpotifyExportPending(playlist);
+    }
+
+    @Test
+    void exportFailureStoresSafeErrorCodeAndExternalIdentity() {
+        Playlist playlist = playlist(1L, 10L, PlaylistType.USER, PlaylistVisibility.PRIVATE);
+        when(playlistMapper.selectExportTargetPlaylist(1L))
+                .thenReturn(Optional.of(playlist));
+        when(playlistMapper.updateSpotifyExportFailure(playlist)).thenReturn(1);
+
+        Playlist result = playlistService.saveSpotifyExportFailure(
+                10L,
+                1L,
+                "spotify-id",
+                "https://open.spotify.com/playlist/spotify-id",
+                ErrorCode.SPOTIFY_EXPORT_FAILED);
+
+        assertThat(result.getSpotifyExportStatus()).isEqualTo(SpotifyExportStatus.FAILED);
+        assertThat(result.getSpotifyExportErrorCode())
+                .isEqualTo("SPOTIFY_EXPORT_FAILED");
+        assertThat(result.getSpotifyPlaylistId()).isEqualTo("spotify-id");
+        assertThat(result.getSpotifyExportedAt()).isNull();
+        verify(playlistMapper).updateSpotifyExportFailure(playlist);
+    }
+
+    private Playlist playlist(
+            Long id,
+            Long ownerId,
+            PlaylistType type,
+            PlaylistVisibility visibility) {
+        Playlist playlist = new Playlist();
+        playlist.setId(id);
+        playlist.setOwnerId(ownerId);
+        playlist.setPlaylistType(type);
+        playlist.setSourceType(PlaylistSourceType.MANUAL);
+        playlist.setVisibility(visibility);
+        playlist.setTitle("플레이리스트");
+        playlist.setSpotifyExportStatus(SpotifyExportStatus.NOT_EXPORTED);
+        return playlist;
+    }
+
+    private void assertError(ErrorCode expected, Runnable executable) {
+        assertThatThrownBy(executable::run)
+                .isInstanceOfSatisfying(
+                        CustomException.class,
+                        exception -> assertThat(exception.getErrorCode()).isEqualTo(expected));
+    }
+}

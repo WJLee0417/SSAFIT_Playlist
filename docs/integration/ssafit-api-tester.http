@@ -1,0 +1,295 @@
+### SSAFIT Playlist API Tester
+### IntelliJ HTTP Client 또는 VS Code REST Client에서 위에서 아래 순서로 실행한다.
+### Session 인증은 응답의 JSESSIONID cookie를 같은 호스트 요청에 재사용하는 전제다.
+
+@backend = http://localhost:8080
+@api = {{backend}}/api
+@loginId = api_tester_user
+@password = ApiTester123!
+@email = api_tester_user@example.test
+@musicId = 1
+@reviewId = 1
+@playlistId = 1
+@itemId = 1
+@logId = 1
+@runningRecordId = 1
+@runningSessionId = 1
+
+### Health
+GET {{backend}}/health
+
+### 회원가입 — 성공 201 / 중복 409
+POST {{api}}/members
+Content-Type: application/json
+
+{
+  "loginId": "{{loginId}}",
+  "password": "{{password}}",
+  "email": "{{email}}",
+  "nickname": "API Tester"
+}
+
+### 로그인 — 성공 시 JSESSIONID 발급 / 실패 401 INVALID_LOGIN
+POST {{api}}/auth/login
+Content-Type: application/json
+
+{
+  "loginId": "{{loginId}}",
+  "password": "{{password}}"
+}
+
+### 내 정보 — 비로그인 401 AUTH_REQUIRED
+GET {{api}}/members/me
+
+### 러닝 프로필 저장
+PUT {{api}}/members/me/running-profile
+Content-Type: application/json
+
+{
+  "runningIntensity": "MODERATE",
+  "targetBpmMin": 120,
+  "targetBpmMax": 180,
+  "preferredGenre": "POP"
+}
+
+### 러닝 프로필 조회 — 미등록 404 PROFILE_NOT_FOUND
+GET {{api}}/members/me/running-profile
+
+### 내 러닝 기록 목록
+GET {{api}}/running-records/me
+
+### 러닝 기록 등록 — 페이스는 서버에서 자동 계산
+POST {{api}}/running-records
+Content-Type: application/json
+
+{
+  "recordDate": "2026-06-22",
+  "distanceKm": 5.25,
+  "durationSeconds": 1800,
+  "memo": "API Tester 러닝"
+}
+
+### 내 러닝 기록 상세 — 타인 기록 403 ACCESS_DENIED
+GET {{api}}/running-records/{{runningRecordId}}
+
+### 내 러닝 기록 수정
+PUT {{api}}/running-records/{{runningRecordId}}
+Content-Type: application/json
+
+{
+  "recordDate": "2026-06-23",
+  "distanceKm": 10.00,
+  "durationSeconds": 3600,
+  "memo": "수정한 러닝 기록"
+}
+
+### 내 러닝 기록 삭제 — soft delete
+DELETE {{api}}/running-records/{{runningRecordId}}
+
+### 러닝 모임 목록 — OPEN/CLOSED/CANCELLED 전체
+GET {{api}}/running-sessions
+
+### 러닝 모임 생성 — 주최자와 OPEN 상태는 Session 기준으로 설정
+POST {{api}}/running-sessions
+Content-Type: application/json
+
+{
+  "title": "API Tester 주말 러닝",
+  "description": "한강에서 함께 달립니다.",
+  "meetingPlace": "여의나루역",
+  "scheduledAt": "2026-07-01T09:00:00",
+  "capacity": 10
+}
+
+### 러닝 모임 상세 — 모임 정보, 참여 인원, 참여자 목록
+GET {{api}}/running-sessions/{{runningSessionId}}
+
+### 러닝 모임 수정 — 타인 모임 403 ACCESS_DENIED
+PUT {{api}}/running-sessions/{{runningSessionId}}
+Content-Type: application/json
+
+{
+  "title": "수정한 러닝 모임",
+  "description": "수정 설명",
+  "meetingPlace": "반포한강공원",
+  "scheduledAt": "2026-07-02T19:00:00",
+  "capacity": 8
+}
+
+### 모집 마감 — OPEN 또는 CLOSED만 허용
+PATCH {{api}}/running-sessions/{{runningSessionId}}/status
+Content-Type: application/json
+
+{
+  "status": "CLOSED"
+}
+
+### 러닝 모임 취소 — 물리 삭제 API는 없음
+POST {{api}}/running-sessions/{{runningSessionId}}/cancel
+
+### 참여자 목록
+GET {{api}}/running-sessions/{{runningSessionId}}/participants
+
+### 러닝 모임 참여
+### 중복 409 DUPLICATE_SESSION_JOIN / 정원 초과 409 SESSION_FULL
+### CLOSED/CANCELLED 409 SESSION_CLOSED / 대상 없음 404 SESSION_NOT_FOUND
+POST {{api}}/running-sessions/{{runningSessionId}}/participants/me
+
+### 내 참여 취소 — 참여 관계 없음 또는 재취소 403 ACCESS_DENIED
+DELETE {{api}}/running-sessions/{{runningSessionId}}/participants/me
+
+### 음악 목록/검색/정렬/페이징
+GET {{api}}/music?keyword=&genre=POP&minBpm=120&maxBpm=180&runningIntensity=MODERATE&sortType=BPM_ASC&page=1&size=20
+
+### 음악 상세 — 대상 없음 404 MUSIC_NOT_FOUND
+GET {{api}}/music/{{musicId}}
+
+### 음악 평가 목록
+GET {{api}}/music/{{musicId}}/reviews
+
+### 음악 평가 작성 — 중복 409 DUPLICATE_MUSIC_REVIEW
+POST {{api}}/music/{{musicId}}/reviews
+Content-Type: application/json
+
+{
+  "preferenceScore": 5,
+  "runningFitScore": 4,
+  "reviewContent": "API Tester 평가"
+}
+
+### 음악 평가 수정 — 타인 평가 403 ACCESS_DENIED
+PUT {{api}}/music-reviews/{{reviewId}}
+Content-Type: application/json
+
+{
+  "preferenceScore": 4,
+  "runningFitScore": 5,
+  "reviewContent": "수정된 평가"
+}
+
+### 음악 평가 삭제 — 대상 없음 404 MUSIC_REVIEW_NOT_FOUND
+DELETE {{api}}/music-reviews/{{reviewId}}
+
+### 플레이리스트 목록
+GET {{api}}/playlists
+
+### 플레이리스트 생성
+POST {{api}}/playlists
+Content-Type: application/json
+
+{
+  "title": "API Tester Playlist",
+  "description": "통합 테스트",
+  "visibility": "PUBLIC"
+}
+
+### 플레이리스트 상세 — 비공개 타인 접근 403 PRIVATE_PLAYLIST
+GET {{api}}/playlists/{{playlistId}}
+
+### 플레이리스트 수정 — 타인 소유 403 ACCESS_DENIED
+PUT {{api}}/playlists/{{playlistId}}
+Content-Type: application/json
+
+{
+  "title": "수정된 플레이리스트",
+  "description": "수정",
+  "visibility": "PUBLIC"
+}
+
+### 플레이리스트 삭제
+DELETE {{api}}/playlists/{{playlistId}}
+
+### 수록곡 목록
+GET {{api}}/playlists/{{playlistId}}/items
+
+### 수록곡 추가 — 중복 곡 409 DUPLICATE_PLAYLIST_ITEM
+POST {{api}}/playlists/{{playlistId}}/items
+Content-Type: application/json
+
+{
+  "musicId": {{musicId}},
+  "orderNo": 1
+}
+
+### 수록곡 순서 변경 — 중복 순서 409 DUPLICATE_PLAYLIST_ORDER
+PATCH {{api}}/playlist-items/{{itemId}}/order
+Content-Type: application/json
+
+{
+  "orderNo": 2
+}
+
+### 수록곡 삭제
+DELETE {{api}}/playlist-items/{{itemId}}
+
+### 공개/공식 플레이리스트 참조 저장 — 중복 409 DUPLICATE_SAVE
+POST {{api}}/playlist-saves/{{playlistId}}
+
+### 내 참조 저장 목록
+GET {{api}}/playlist-saves/me
+
+### 참조 저장 취소
+DELETE {{api}}/playlist-saves/{{playlistId}}
+
+### 자동 큐레이션 조회
+### 실행 전후 playlists, playlist_items 개수가 늘지 않아야 한다.
+GET {{api}}/recommendations?intensity=MODERATE&genre=POP&size=3
+
+### 내 추천 로그
+GET {{api}}/recommendations/logs/me
+
+### 자동 큐레이션 저장
+### 성공 결과는 USER + CURATION_COPY이며 playlist_saves가 아니다.
+POST {{api}}/recommendations/{{logId}}/save
+Content-Type: application/json
+
+{
+  "title": "API Tester Curation",
+  "visibility": "PRIVATE"
+}
+
+### 동일 추천 로그 재저장 — 409 RECOMMENDATION_ALREADY_SAVED
+POST {{api}}/recommendations/{{logId}}/save
+Content-Type: application/json
+
+{
+  "title": "중복 저장",
+  "visibility": "PRIVATE"
+}
+
+### Spotify 검색 — 실 환경변수 필요, 실패 시 502 SPOTIFY_SEARCH_FAILED
+GET {{api}}/spotify/tracks/search?query=running&limit=5
+
+### Spotify 검색 결과를 내부 music으로 저장
+POST {{api}}/music/from-spotify
+Content-Type: application/json
+
+{
+  "spotifyTrackId": "실제 검색 응답 ID",
+  "spotifyUri": "spotify:track:실제ID",
+  "spotifyExternalUrl": "https://open.spotify.com/track/실제ID",
+  "title": "실제 검색 응답 제목",
+  "artist": "실제 검색 응답 아티스트",
+  "albumName": "실제 검색 응답 앨범",
+  "imageUrl": null,
+  "bpm": null,
+  "genre": null
+}
+
+### Spotify OAuth URL — Session 로그인 및 환경변수 필요
+GET {{api}}/spotify/oauth/authorize
+
+### Spotify 연결 상태 — 미연결이면 200 connected=false
+GET {{api}}/spotify/me/connection
+
+### Spotify 연결 해제 — 미연결 401 SPOTIFY_AUTH_REQUIRED
+DELETE {{api}}/spotify/me/connection
+
+### Spotify 내보내기
+POST {{api}}/playlists/{{playlistId}}/export/spotify
+
+### 로그아웃
+POST {{api}}/auth/logout
+
+### 로그아웃 후 내 정보 — 401 AUTH_REQUIRED
+GET {{api}}/members/me

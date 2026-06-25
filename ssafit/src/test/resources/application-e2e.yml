@@ -1,0 +1,27 @@
+spring:
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: ${SSAFIT_TEST_DB_URL}
+    username: ${SSAFIT_TEST_DB_USERNAME}
+    password: ${SSAFIT_TEST_DB_PASSWORD}
+
+  sql:
+    init:
+      mode: always
+      schema-locations:
+        - classpath:sql/schema-reset.sql
+        - classpath:sql/schema.sql
+      data-locations:
+        - classpath:sql/e2e-seed.sql
+      continue-on-error: false
+
+mybatis:
+  mapper-locations: classpath:/mappers/**/*.xml
+  type-aliases-package: com.ssafy.ssafit
+  configuration:
+    map-underscore-to-camel-case: true
+
+ai:
+  running-report:
+    enabled: false
+    provider: none

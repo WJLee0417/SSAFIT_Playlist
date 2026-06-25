@@ -1,0 +1,65 @@
+package com.ssafy.ssafit.spotify.client;
+
+import java.util.Collections;
+import java.util.List;
+
+import com.ssafy.ssafit.spotify.domain.SpotifyPlaylistResult;
+import com.ssafy.ssafit.spotify.domain.SpotifyPlaylistSummary;
+import com.ssafy.ssafit.spotify.domain.SpotifyToken;
+import com.ssafy.ssafit.spotify.domain.SpotifyTrack;
+import com.ssafy.ssafit.spotify.domain.SpotifyUserProfile;
+
+public interface SpotifyApiClient {
+
+    String issueClientAccessToken();
+
+    List<SpotifyTrack> searchTracks(
+            String accessToken,
+            String query,
+            int offset,
+            int limit);
+
+    default List<SpotifyTrack> searchTracks(
+            String accessToken,
+            String query,
+            int limit) {
+        return searchTracks(accessToken, query, 0, limit);
+    }
+
+    default Integer getTrackTempoBpm(String accessToken, String trackId) {
+        return null;
+    }
+
+    default List<String> getArtistGenres(String accessToken, String artistId) {
+        return Collections.emptyList();
+    }
+
+    SpotifyToken exchangeAuthorizationCode(String code);
+
+    SpotifyToken refreshAccessToken(String refreshToken);
+
+    SpotifyUserProfile getCurrentUser(String accessToken);
+
+    SpotifyPlaylistResult createPlaylist(
+            String accessToken,
+            String name,
+            String description,
+            boolean isPublic);
+
+    void addTracks(String accessToken, String spotifyPlaylistId, List<String> uris);
+
+    default List<SpotifyPlaylistSummary> getCurrentUserPlaylists(
+            String accessToken,
+            int offset,
+            int limit) {
+        return Collections.emptyList();
+    }
+
+    default List<SpotifyTrack> getPlaylistTracks(
+            String accessToken,
+            String spotifyPlaylistId,
+            int offset,
+            int limit) {
+        return Collections.emptyList();
+    }
+}
