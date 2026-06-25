@@ -388,18 +388,10 @@ function summarizePlaylist(playlist, detail) {
       : bpmMin === bpmMax
         ? `${bpmMin} BPM`
         : `${bpmMin}–${bpmMax} BPM`,
-    intensityKey: isUserSectionPlaylist(playlist)
+    intensityKey: isOwnedPlaylist(playlist)
       ? "UNCLASSIFIED"
       : resolveIntensityKey(bpmMin, bpmMax, bpmAverage),
   };
-}
-
-function isUserSectionPlaylist(playlist) {
-  return isFavoritePlaylist(playlist)
-    || (
-      playlist?.playlistType === "USER"
-      && playlist?.sourceType === "CURATION_COPY"
-    );
 }
 
 function resolveIntensityKey(bpmMin, bpmMax, bpmAverage) {
@@ -413,7 +405,7 @@ function resolveIntensityKey(bpmMin, bpmMax, bpmAverage) {
 
 async function load() {
   try {
-    currentMember.value = await authApi.getSession();
+    currentMember.value = await authApi.getSession({ force: true });
   } catch {
     currentMember.value = null;
   }
