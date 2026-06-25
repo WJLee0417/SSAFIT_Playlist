@@ -8,6 +8,7 @@ import org.springframework.boot.web.servlet.support.SpringBootServletInitializer
 
 @MapperScan(
         basePackages = {
+            "com.ssafy.ssafit.airunningreport.mapper",
             "com.ssafy.ssafit.member.mapper",
             "com.ssafy.ssafit.music.mapper",
             "com.ssafy.ssafit.musicreview.mapper",

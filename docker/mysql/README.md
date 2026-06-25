@@ -1,11 +1,14 @@
 # SSAFIT MySQL Docker
 
-This service initializes a new MySQL volume with the project schema only.
+This service initializes a new MySQL volume with the project schema and the
+demo snapshot.
 
 ## Initial schema
 
 - Source: `ssafit/src/main/resources/sql/schema.sql`
 - Mounted as: `/docker-entrypoint-initdb.d/01-schema.sql`
+- Demo source: `ssafit/src/main/resources/sql/demo-snapshot.sql`
+- Mounted as: `/docker-entrypoint-initdb.d/02-demo-snapshot.sql`
 - Runs only when the named volume is empty and MySQL creates a fresh data directory.
 
 ## Local access
@@ -17,13 +20,14 @@ This service initializes a new MySQL volume with the project schema only.
   If you change `MYSQL_HOST_PORT`, update the local Spring datasource URL for
   that run as well.
 
-## Seed data
+## Demo data
 
-No seed data is loaded by default. Do not add personal accounts, Spotify OAuth
-tokens, refresh tokens, Spotify user IDs, or local database dumps to Git.
+The demo snapshot includes official demo playlists, Zone 2 running, WORKOUT
+K-POP, demo members, running records, running sessions, playlist items, reviews,
+and save relationships.
 
-If non-sensitive sample data is needed later, keep it separate from the schema
-and mount it after `01-schema.sql` with a higher init filename.
+Do not add personal accounts, Spotify OAuth tokens, refresh tokens, Spotify
+user IDs, or production database dumps to Git.
 
 ## Schema changes
 

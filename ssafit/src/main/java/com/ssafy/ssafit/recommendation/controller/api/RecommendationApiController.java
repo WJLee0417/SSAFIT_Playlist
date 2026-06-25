@@ -3,6 +3,7 @@ package com.ssafy.ssafit.recommendation.controller.api;
 import java.util.List;
 
 import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -44,11 +45,13 @@ public class RecommendationApiController {
         RecommendationResult result = recommendationService.recommend(
                 memberId,
                 request.intensity(),
+                request.targetDistanceKm(),
                 request.targetCadenceSpm(),
                 request.runningIntensityGoal(),
                 request.genre(),
                 request.size(),
-                request.limit());
+                request.limit(),
+                request.page());
         return ApiResponse.success(ResultResponse.from(result));
     }
 
@@ -60,6 +63,24 @@ public class RecommendationApiController {
                         .stream()
                         .map(LogResponse::from)
                         .toList());
+    }
+
+    @GetMapping("/{logId}")
+    public ApiResponse<ResultResponse> getMyRecommendationResult(
+            @PathVariable Long logId,
+            HttpSession session) {
+        Long memberId = sessionMemberResolver.requireMemberId(session);
+        return ApiResponse.success(ResultResponse.from(
+                recommendationService.getMyRecommendationResult(memberId, logId)));
+    }
+
+    @DeleteMapping("/{logId}")
+    public ApiResponse<Void> deleteMyRecommendationLog(
+            @PathVariable Long logId,
+            HttpSession session) {
+        Long memberId = sessionMemberResolver.requireMemberId(session);
+        recommendationService.deleteMyRecommendationLog(memberId, logId);
+        return ApiResponse.success("異붿쿇 ?덉뒪?좊━瑜???젣?덉뒿?덈떎.");
     }
 
     @PostMapping("/{logId}/save")

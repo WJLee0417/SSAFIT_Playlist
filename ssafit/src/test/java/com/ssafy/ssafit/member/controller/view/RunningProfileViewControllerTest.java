@@ -23,8 +23,9 @@ import org.springframework.web.servlet.view.InternalResourceViewResolver;
 import com.ssafy.ssafit.common.auth.SessionMemberResolver;
 import com.ssafy.ssafit.common.exception.CustomException;
 import com.ssafy.ssafit.common.exception.ErrorCode;
-import com.ssafy.ssafit.runningprofile.domain.RunningIntensity;
+import com.ssafy.ssafit.runningprofile.domain.RunningFitnessMetric;
 import com.ssafy.ssafit.runningprofile.domain.RunningProfile;
+import com.ssafy.ssafit.runningprofile.service.RunningFitnessMetricService;
 import com.ssafy.ssafit.runningprofile.service.RunningProfileService;
 
 import jakarta.servlet.http.HttpSession;
@@ -36,6 +37,9 @@ class RunningProfileViewControllerTest {
     private RunningProfileService runningProfileService;
 
     @Mock
+    private RunningFitnessMetricService runningFitnessMetricService;
+
+    @Mock
     private SessionMemberResolver sessionMemberResolver;
 
     private MockMvc mockMvc;
@@ -44,6 +48,7 @@ class RunningProfileViewControllerTest {
     void setUp() {
         RunningProfileViewController controller = new RunningProfileViewController(
                 runningProfileService,
+                runningFitnessMetricService,
                 sessionMemberResolver);
         InternalResourceViewResolver viewResolver = new InternalResourceViewResolver(
                 "/WEB-INF/views/",
@@ -59,11 +64,14 @@ class RunningProfileViewControllerTest {
                 .thenReturn(10L);
         when(runningProfileService.getProfile(10L, 10L))
                 .thenThrow(new CustomException(ErrorCode.PROFILE_NOT_FOUND));
+        when(runningFitnessMetricService.calculate(10L))
+                .thenReturn(RunningFitnessMetric.empty());
 
         mockMvc.perform(get("/members/me/running-profile"))
                 .andExpect(status().isOk())
                 .andExpect(view().name("member/running-profile"))
-                .andExpect(model().attributeExists("profileForm"));
+                .andExpect(model().attributeExists("profileForm"))
+                .andExpect(model().attribute("runningFitnessScore", org.hamcrest.Matchers.nullValue()));
     }
 
     @Test
@@ -72,6 +80,21 @@ class RunningProfileViewControllerTest {
                 .thenReturn(10L);
         when(runningProfileService.getProfile(10L, 10L))
                 .thenReturn(profile());
+        when(runningFitnessMetricService.calculate(10L))
+                .thenReturn(new RunningFitnessMetric(
+                        72,
+                        4,
+                        20.0,
+                        300,
+                        5.0,
+                        2.5,
+                        4.0,
+                        0.08,
+                        0.2,
+                        50.0,
+                        68.0,
+                        80.0,
+                        72.0));
 
         mockMvc.perform(get("/members/me/running-profile"))
                 .andExpect(status().isOk())
@@ -79,7 +102,8 @@ class RunningProfileViewControllerTest {
                         "profileForm",
                         org.hamcrest.Matchers.hasProperty(
                                 "targetBpmMin",
-                                org.hamcrest.Matchers.is(120))));
+                                org.hamcrest.Matchers.is(120))))
+                .andExpect(model().attribute("runningFitnessScore", 72));
     }
 
     @Test
@@ -92,9 +116,6 @@ class RunningProfileViewControllerTest {
                 .thenReturn(profile());
 
         mockMvc.perform(post("/members/me/running-profile")
-                        .param("runningIntensity", "MODERATE")
-                        .param("targetBpmMin", "120")
-                        .param("targetBpmMax", "160")
                         .param("preferredGenre", "POP"))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/members/me/running-profile"))
@@ -115,9 +136,6 @@ class RunningProfileViewControllerTest {
                 .thenReturn(profile());
 
         mockMvc.perform(post("/members/me/running-profile")
-                        .param("runningIntensity", "MODERATE")
-                        .param("targetBpmMin", "120")
-                        .param("targetBpmMax", "160")
                         .param("preferredGenre", "POP")
                         .param(
                                 "returnTo",
@@ -134,11 +152,11 @@ class RunningProfileViewControllerTest {
                 org.mockito.ArgumentMatchers.eq(10L),
                 any(RunningProfile.class)))
                 .thenThrow(new CustomException(ErrorCode.INVALID_PROFILE_VALUE));
+        when(runningFitnessMetricService.calculate(10L))
+                .thenReturn(RunningFitnessMetric.empty());
 
         mockMvc.perform(post("/members/me/running-profile")
-                        .param("runningIntensity", "MODERATE")
-                        .param("targetBpmMin", "170")
-                        .param("targetBpmMax", "120"))
+                        .param("age", "32"))
                 .andExpect(status().isOk())
                 .andExpect(view().name("member/running-profile"))
                 .andExpect(model().attributeHasErrors("profileForm"));
@@ -158,7 +176,6 @@ class RunningProfileViewControllerTest {
         RunningProfile profile = new RunningProfile();
         profile.setId(20L);
         profile.setMemberId(10L);
-        profile.setRunningIntensity(RunningIntensity.MODERATE);
         profile.setTargetBpmMin(120);
         profile.setTargetBpmMax(160);
         profile.setPreferredGenre("POP");

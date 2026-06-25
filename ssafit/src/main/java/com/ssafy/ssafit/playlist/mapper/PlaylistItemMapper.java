@@ -16,9 +16,20 @@ public interface PlaylistItemMapper {
 
     int delete(@Param("id") Long id);
 
+    int deleteByPlaylistAndMusic(
+            @Param("playlistId") Long playlistId,
+            @Param("musicId") Long musicId);
+
     int updateOrder(
             @Param("id") Long id,
             @Param("orderNo") Integer orderNo);
+
+    int shiftOrders(
+            @Param("playlistId") Long playlistId,
+            @Param("offset") Integer offset);
+
+    int bulkUpdateOrders(
+            @Param("items") List<PlaylistItem> items);
 
     boolean existsByPlaylistAndMusic(
             @Param("playlistId") Long playlistId,
@@ -36,6 +47,10 @@ public interface PlaylistItemMapper {
     int bulkInsertFromRecommendation(
             @Param("items") List<PlaylistItem> items);
 
+    int copyItems(
+            @Param("sourcePlaylistId") Long sourcePlaylistId,
+            @Param("targetPlaylistId") Long targetPlaylistId);
+
     List<String> selectSpotifyUrisByPlaylistId(
             @Param("playlistId") Long playlistId);
 
@@ -45,4 +60,6 @@ public interface PlaylistItemMapper {
     int countByPlaylistId(@Param("playlistId") Long playlistId);
 
     int countSpotifyUrisByPlaylistId(@Param("playlistId") Long playlistId);
+
+    int selectNextOrderNo(@Param("playlistId") Long playlistId);
 }

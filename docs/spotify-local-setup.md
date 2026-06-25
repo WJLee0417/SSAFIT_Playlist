@@ -68,14 +68,18 @@ callback URL에는 access token이나 refresh token을 포함하지 않는다. �
 ## 4. 요청 scope
 
 ```text
+user-read-private
+playlist-read-private
 playlist-modify-private
 playlist-modify-public
 ```
 
+- `user-read-private`: Spotify 로그인 및 계정 연결 시 현재 사용자 profile 조회
+- `playlist-read-private`: Spotify private 플레이리스트 목록 조회
 - `playlist-modify-private`: 비공개 Spotify 플레이리스트 생성·수정
 - `playlist-modify-public`: 공개 Spotify 플레이리스트 생성·수정
 
-현재 사용자 식별은 승인된 사용자 token으로 `/me`의 Spotify 사용자 ID만 확인한다.
+현재 사용자 식별은 승인된 사용자 token으로 `/me`의 stable account ID를 우선 사용한다.
 이메일, 재생 이력, 라이브러리 정보는 요청하지 않으므로 관련 scope를 추가하지 않는다.
 
 ## 5. Client Secret 관리

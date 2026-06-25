@@ -22,6 +22,8 @@ import com.ssafy.ssafit.common.exception.ErrorCode;
 import com.ssafy.ssafit.common.exception.GlobalExceptionHandler;
 import com.ssafy.ssafit.spotify.domain.SpotifyConnection;
 import com.ssafy.ssafit.spotify.service.SpotifyOAuthService;
+import com.ssafy.ssafit.spotify.service.SpotifyOAuthService.SpotifyConnectResult;
+import com.ssafy.ssafit.spotify.service.SpotifyPlaylistImportService;
 import com.ssafy.ssafit.spotify.service.SpotifyService;
 
 @ExtendWith(MockitoExtension.class)
@@ -34,6 +36,9 @@ class SpotifyApiControllerTest {
     private SpotifyOAuthService spotifyOAuthService;
 
     @Mock
+    private SpotifyPlaylistImportService spotifyPlaylistImportService;
+
+    @Mock
     private SessionMemberResolver sessionMemberResolver;
 
     private MockMvc mockMvc;
@@ -43,6 +48,7 @@ class SpotifyApiControllerTest {
         SpotifyApiController controller = new SpotifyApiController(
                 spotifyService,
                 spotifyOAuthService,
+                spotifyPlaylistImportService,
                 sessionMemberResolver);
         mockMvc = MockMvcBuilders.standaloneSetup(controller)
                 .setControllerAdvice(new GlobalExceptionHandler())
@@ -67,15 +73,15 @@ class SpotifyApiControllerTest {
 
     @Test
     void oauthCallbackRedirectsToVueWithoutSensitiveParameters() throws Exception {
-        when(sessionMemberResolver.requireMemberId(any()))
+        when(sessionMemberResolver.optionalMemberId(any()))
                 .thenReturn(10L);
-        when(spotifyOAuthService.handleCallback(
+        when(spotifyOAuthService.handleConnectCallback(
                 eq(10L),
                 eq("authorization-code"),
                 eq(null),
                 eq("oauth-state"),
                 any()))
-                .thenReturn(new SpotifyConnection());
+                .thenReturn(new SpotifyConnectResult(new SpotifyConnection(), null));
 
         mockMvc.perform(get("/api/spotify/oauth/callback")
                         .param("code", "authorization-code")
@@ -86,10 +92,33 @@ class SpotifyApiControllerTest {
     }
 
     @Test
-    void oauthCallbackFailureRedirectsWithPublicErrorCodeOnly() throws Exception {
-        when(sessionMemberResolver.requireMemberId(any()))
+    void oauthCallbackRedirectsToVueWithSafeReturnTo() throws Exception {
+        when(sessionMemberResolver.optionalMemberId(any()))
                 .thenReturn(10L);
-        when(spotifyOAuthService.handleCallback(
+        when(spotifyOAuthService.handleConnectCallback(
+                eq(10L),
+                eq("authorization-code"),
+                eq(null),
+                eq("oauth-state"),
+                any()))
+                .thenReturn(new SpotifyConnectResult(
+                        new SpotifyConnection(),
+                        "/recommendations"));
+
+        mockMvc.perform(get("/api/spotify/oauth/callback")
+                        .param("code", "authorization-code")
+                        .param("state", "oauth-state"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl(
+                        "http://127.0.0.1:5173/oauth/spotify/complete"
+                                + "?returnTo=%2Frecommendations"));
+    }
+
+    @Test
+    void oauthCallbackFailureRedirectsWithPublicErrorCodeOnly() throws Exception {
+        when(sessionMemberResolver.optionalMemberId(any()))
+                .thenReturn(10L);
+        when(spotifyOAuthService.handleConnectCallback(
                 eq(10L),
                 eq(null),
                 eq("access_denied"),

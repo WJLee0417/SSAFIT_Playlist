@@ -154,7 +154,7 @@ docs/integration/ssafit-api-tester.http
 
 - Vue가 열리지 않음: `npm install` 후 `npm run dev`
 - 로그인 상태 미전달: Cookie와 CORS credentials 확인
-- 추천 데이터 부족: `data.sql`, `dummy.sql`, 러닝 프로필 BPM 확인
+- 추천 데이터 부족: `demo-snapshot.sql`, 러닝 프로필 BPM 확인
 - Spotify 검색 실패: 환경변수 확인 후 API Tester 오류 응답만 시연
 - OAuth callback 실패: ErrorCode가 포함된 완료 화면 복귀와 연결 재시도 UI 확인
 
@@ -170,4 +170,3 @@ docs/integration/ssafit-api-tester.http
   - 아니다. HttpSession과 JSESSIONID를 사용한다.
 - “부분 Export 실패는 자동 재시도하나요?”
   - Spotify ID/URL이 남은 실패는 중복 방지를 위해 자동 재시도하지 않는다.
-

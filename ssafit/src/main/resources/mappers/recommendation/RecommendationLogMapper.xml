@@ -72,11 +72,31 @@
         ORDER BY created_at DESC, id DESC
     </select>
 
+    <select id="selectRecentByMemberId" resultMap="recommendationLogResultMap">
+        SELECT <include refid="recommendationLogColumns"/>
+        FROM recommendation_logs
+        WHERE member_id = #{memberId}
+        ORDER BY created_at DESC, id DESC
+        LIMIT #{limit}
+    </select>
+
+    <select id="countByMemberId" resultType="int">
+        SELECT COUNT(*)
+        FROM recommendation_logs
+        WHERE member_id = #{memberId}
+    </select>
+
     <update id="updateSavedPlaylistId">
         UPDATE recommendation_logs
         SET saved_playlist_id = #{savedPlaylistId}
         WHERE id = #{id}
           AND saved_playlist_id IS NULL
     </update>
+
+    <delete id="deleteByIdAndMemberId">
+        DELETE FROM recommendation_logs
+        WHERE id = #{id}
+          AND member_id = #{memberId}
+    </delete>
 
 </mapper>

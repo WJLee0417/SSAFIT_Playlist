@@ -13,9 +13,8 @@
 <%@ include file="/WEB-INF/views/common/nav.jspf" %>
 <main class="page-shell profile-shell">
     <section class="page-heading">
-        <span class="eyebrow">RUNNING PROFILE</span>
-        <h1>나의 러닝 기준 설정</h1>
-        <p>저장한 강도와 BPM 범위는 자동 큐레이션의 실제 Service 계약에 사용됩니다.</p>
+        <h1>나의 프로필</h1>
+        <p>최근 러닝 기록을 바탕으로 운동 목표를 추천합니다</p>
     </section>
 
     <section class="card profile-card">
@@ -23,55 +22,108 @@
             <div class="alert alert-success"><c:out value="${successMessage}"/></div>
         </c:if>
 
+        <section class="profile-score-panel" aria-label="Running Fitness Score">
+            <div>
+                <span class="eyebrow">FITNESS SCORE</span>
+                <h2>
+                    <c:choose>
+                        <c:when test="${runningFitnessScore ne null}">
+                            <c:out value="${runningFitnessScore}"/><small>/100</small>
+                        </c:when>
+                        <c:otherwise>--<small>/100</small></c:otherwise>
+                    </c:choose>
+                </h2>
+                <p>*최근 러닝의 거리, 심박 효율, 케이던스 안정성, 기록 변동성을 100점 만점으로 환산</p>
+            </div>
+            <dl class="profile-score-breakdown">
+                <div>
+                    <dt>평균 거리</dt>
+                    <dd><c:out value="${averageDistanceScore == null ? '-' : averageDistanceScore}"/></dd>
+                </div>
+                <div>
+                    <dt>심박 효율</dt>
+                    <dd><c:out value="${paceEfficiencyScore == null ? '-' : paceEfficiencyScore}"/></dd>
+                </div>
+                <div>
+                    <dt>케이던스 안정성</dt>
+                    <dd><c:out value="${cadenceStabilityScore == null ? '-' : cadenceStabilityScore}"/></dd>
+                </div>
+                <div>
+                    <dt>기록 변동성</dt>
+                    <dd><c:out value="${variationScore == null ? '-' : variationScore}"/></dd>
+                </div>
+            </dl>
+        </section>
+
         <form:form method="post" modelAttribute="profileForm" cssClass="stack-form">
             <c:if test="${not empty returnTo}">
                 <input type="hidden" name="returnTo" value="<c:out value='${returnTo}'/>">
             </c:if>
             <form:errors path="*" element="div" cssClass="alert alert-error"/>
 
-            <fieldset>
-                <legend>러닝 강도 <span class="required">*</span></legend>
-                <div class="choice-grid">
-                    <label><form:radiobutton path="runningIntensity" value="LOW"/> 가볍게</label>
-                    <label><form:radiobutton path="runningIntensity" value="MODERATE"/> 보통</label>
-                    <label><form:radiobutton path="runningIntensity" value="HIGH"/> 강하게</label>
-                    <label><form:radiobutton path="runningIntensity" value="INTERVAL"/> 인터벌</label>
-                </div>
-                <form:errors path="runningIntensity" cssClass="field-error"/>
-            </fieldset>
-
             <div class="two-column">
                 <div>
-                    <label for="targetBpmMin">최소 BPM <span class="required">*</span></label>
-                    <form:input path="targetBpmMin" id="targetBpmMin" type="number"
-                                min="60" max="220" placeholder="예: 120"/>
-                    <form:errors path="targetBpmMin" cssClass="field-error"/>
+                    <label for="gender">성별</label>
+                    <form:select path="gender" id="gender">
+                        <form:option value="">선택 안 함</form:option>
+                        <form:option value="FEMALE">여성</form:option>
+                        <form:option value="MALE">남성</form:option>
+                        <form:option value="OTHER">기타</form:option>
+                        <form:option value="UNSPECIFIED">응답하지 않음</form:option>
+                    </form:select>
+                    <form:errors path="gender" cssClass="field-error"/>
                 </div>
                 <div>
-                    <label for="targetBpmMax">최대 BPM <span class="required">*</span></label>
-                    <form:input path="targetBpmMax" id="targetBpmMax" type="number"
-                                min="60" max="220" placeholder="예: 160"/>
-                    <form:errors path="targetBpmMax" cssClass="field-error"/>
+                    <label for="age">나이 (만)</label>
+                    <form:input path="age" id="age" type="number"
+                                min="10" max="100" placeholder="예: 32"/>
+                    <form:errors path="age" cssClass="field-error"/>
                 </div>
             </div>
+            <small class="muted">
+                추정 최대 심박수는 = 220 - 나이.
+                <c:if test="${profileForm.age ne null}">
+                    현재 입력 기준 <strong><c:out value="${220 - profileForm.age}"/> BPM</strong>
+                </c:if>
+            </small>
 
-            <div class="two-column">
-                <div>
-                    <label for="targetCadenceMin">목표 케이던스 최소값 (SPM)</label>
-                    <form:input path="targetCadenceMin" id="targetCadenceMin"
-                                type="number" min="60" max="240"
-                                placeholder="예: 165"/>
-                    <form:errors path="targetCadenceMin" cssClass="field-error"/>
+            <section class="auto-target-summary" aria-label="자동 산출 기준값">
+                <span class="eyebrow">SUMMARY</span>
+                <div class="summary-inline">
+                    <p>
+                        <span>누적 거리</span>
+                        <em><c:out value="${totalDistanceKmText}"/> km</em>
+                    </p>
+                    <p>
+                        <span>평균 페이스</span>
+                        <em><c:out value="${averagePaceText}"/>/km</em>
+                    </p>
                 </div>
-                <div>
-                    <label for="targetCadenceMax">목표 케이던스 최대값 (SPM)</label>
-                    <form:input path="targetCadenceMax" id="targetCadenceMax"
-                                type="number" min="60" max="240"
-                                placeholder="예: 180"/>
-                    <form:errors path="targetCadenceMax" cssClass="field-error"/>
-                </div>
-            </div>
-            <small class="muted">목표 케이던스는 두 값을 함께 입력하거나 모두 비워 두세요.</small>
+                <dl>
+                    <div>
+                        <dt>최근 심박 범위</dt>
+                        <dd>
+                            <c:choose>
+                                <c:when test="${profileForm.targetBpmMin ne null and profileForm.targetBpmMax ne null}">
+                                    <c:out value="${profileForm.targetBpmMin}"/> - <c:out value="${profileForm.targetBpmMax}"/> BPM
+                                </c:when>
+                                <c:otherwise>기록 등록 후 자동 산출</c:otherwise>
+                            </c:choose>
+                        </dd>
+                    </div>
+                    <div>
+                        <dt>최근 케이던스 범위</dt>
+                        <dd>
+                            <c:choose>
+                                <c:when test="${profileForm.targetCadenceMin ne null and profileForm.targetCadenceMax ne null}">
+                                    <c:out value="${profileForm.targetCadenceMin}"/> - <c:out value="${profileForm.targetCadenceMax}"/> SPM
+                                </c:when>
+                                <c:otherwise>기록 등록 후 자동 산출</c:otherwise>
+                            </c:choose>
+                        </dd>
+                    </div>
+                </dl>
+            </section>
 
             <label for="preferredGenre">선호 장르</label>
             <form:input path="preferredGenre" id="preferredGenre" maxlength="100"

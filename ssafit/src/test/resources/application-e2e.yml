@@ -20,3 +20,8 @@ mybatis:
   type-aliases-package: com.ssafy.ssafit
   configuration:
     map-underscore-to-camel-case: true
+
+ai:
+  running-report:
+    enabled: false
+    provider: none

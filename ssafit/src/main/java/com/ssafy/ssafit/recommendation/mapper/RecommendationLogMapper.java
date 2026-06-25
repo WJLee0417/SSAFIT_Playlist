@@ -17,7 +17,17 @@ public interface RecommendationLogMapper {
 
     List<RecommendationLog> selectByMemberId(@Param("memberId") Long memberId);
 
+    List<RecommendationLog> selectRecentByMemberId(
+            @Param("memberId") Long memberId,
+            @Param("limit") int limit);
+
+    int countByMemberId(@Param("memberId") Long memberId);
+
     int updateSavedPlaylistId(
             @Param("id") Long id,
             @Param("savedPlaylistId") Long savedPlaylistId);
+
+    int deleteByIdAndMemberId(
+            @Param("id") Long id,
+            @Param("memberId") Long memberId);
 }

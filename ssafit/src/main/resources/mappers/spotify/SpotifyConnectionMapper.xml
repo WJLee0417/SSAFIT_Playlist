@@ -50,6 +50,20 @@
         WHERE member_id = #{memberId}
     </select>
 
+    <select id="selectBySpotifyUserId" resultMap="spotifyConnectionResultMap">
+        SELECT
+            id,
+            member_id,
+            spotify_user_id,
+            access_token,
+            refresh_token,
+            token_expires_at,
+            created_at,
+            updated_at
+        FROM spotify_connections
+        WHERE spotify_user_id = #{spotifyUserId}
+    </select>
+
     <update id="updateConnection"
             parameterType="com.ssafy.ssafit.spotify.domain.SpotifyConnection">
         UPDATE spotify_connections

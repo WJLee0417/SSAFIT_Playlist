@@ -19,25 +19,37 @@
         <div>
           <div class="badge-row">
             <span class="eyebrow">{{ data.music.genre || "장르 미정" }}</span>
-            <span v-if="isSpotify" class="source-badge">Spotify 기반</span>
           </div>
           <h1>{{ data.music.title }}</h1>
           <p class="lead">{{ data.music.artist }} · {{ data.music.albumName || "앨범 정보 없음" }}</p>
-          <a
-            v-if="data.music.spotifyExternalUrl"
-            class="secondary-button inline-button"
-            :href="data.music.spotifyExternalUrl"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Spotify에서 열기
-          </a>
-          <RouterLink
-            class="secondary-button inline-button"
-            :to="{ name: 'music-edit', params: { musicId: data.music.id } }"
-          >
-            내부 메타데이터 수정
-          </RouterLink>
+          <div class="music-detail-actions">
+            <button
+              type="button"
+              class="playlist-icon-button heart-button music-detail-like-button"
+              :class="{ active: isLiked }"
+              :disabled="actionBusy || viewerStatus === 'checking'"
+              :title="isLiked ? '좋아요 취소' : '좋아요'"
+              @click="toggleLike"
+            >
+              {{ isLiked ? "♥" : "♡" }}
+            </button>
+            <a
+              v-if="data.music.spotifyExternalUrl"
+              class="secondary-button"
+              :href="data.music.spotifyExternalUrl"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Spotify에서 열기
+            </a>
+            <RouterLink
+              v-if="isAdmin"
+              class="secondary-button"
+              :to="{ name: 'music-edit', params: { musicId: data.music.id } }"
+            >
+              내부 메타데이터 수정
+            </RouterLink>
+          </div>
         </div>
       </div>
 
@@ -45,11 +57,7 @@
         <div><dt>음악 에너지</dt><dd>{{ energyLabel(data.music.musicEnergyLevel) }}</dd></div>
         <div><dt>음악 BPM</dt><dd>{{ data.music.musicBpm || "정보 없음" }}</dd></div>
         <div>
-          <dt>평균 선호도</dt>
-          <dd>{{ formatAverage(data.reviewAverage?.averagePreferenceScore) }}</dd>
-        </div>
-        <div>
-          <dt>평균 러닝 적합도</dt>
+          <dt>러닝 적합도</dt>
           <dd>{{ formatAverage(data.reviewAverage?.averageRunningFitScore) }}</dd>
         </div>
         <div><dt>리뷰</dt><dd>{{ data.reviewAverage?.reviewCount || 0 }}개</dd></div>
@@ -80,10 +88,11 @@
           아직 작성된 리뷰가 없습니다. 첫 리뷰를 남겨 보세요.
         </p>
 
-        <div v-else class="review-list">
-          <article v-for="review in data.reviews" :key="review.id" class="review-card">
+        <div v-else class="review-list music-review-list">
+          <article v-for="review in data.reviews" :key="review.id" class="review-list-item">
             <MusicReviewForm
               v-if="editingReviewId === review.id"
+              class="review-form-inline"
               mode="edit"
               :review="review"
               :busy="actionBusy"
@@ -92,10 +101,10 @@
               @cancel="cancelEdit"
             />
             <template v-else>
-              <div class="review-card-heading">
+              <div class="review-list-heading">
                 <div>
-                  <strong>선호 {{ review.preferenceScore }} · 러닝 적합 {{ review.runningFitScore }}</strong>
-                  <small>작성자 회원 #{{ review.memberId }}</small>
+                  <strong>작성자 : {{ reviewAuthorLabel(review) }}</strong>
+                  <small>러닝 적합도 {{ review.runningFitScore }}점</small>
                 </div>
                 <div v-if="isMine(review)" class="review-actions">
                   <button type="button" class="secondary-button" @click="startEdit(review)">수정</button>
@@ -104,7 +113,7 @@
                   </button>
                 </div>
               </div>
-              <p>{{ review.reviewContent || "내용 없음" }}</p>
+              <p class="review-content">{{ review.reviewContent || "내용 없음" }}</p>
             </template>
           </article>
         </div>
@@ -141,8 +150,18 @@ const actionMessage = ref("");
 const actionType = ref("success");
 let loadSequence = 0;
 
-const isSpotify = computed(() => data.value?.music?.sourceType === "SPOTIFY");
+const isAdmin = computed(() => {
+  const member = currentMember.value;
+  if (!member) return false;
+  return member.admin === true
+    || member.isAdmin === true
+    || member.role === "ADMIN"
+    || member.memberRole === "ADMIN"
+    || member.authority === "ADMIN"
+    || member.status === "ADMIN";
+});
 const myReview = computed(() => data.value?.reviews?.find(isMine) || null);
+const isLiked = computed(() => Number(myReview.value?.preferenceScore) >= 4);
 const backLocation = computed(() => {
   const candidate = route.query.returnTo;
   return typeof candidate === "string" && candidate.startsWith("/music")
@@ -154,6 +173,12 @@ const loginUrl = computed(() => buildJspLoginUrl(window.location.href));
 function isMine(review) {
   return currentMember.value != null
     && String(currentMember.value.id) === String(review.memberId);
+}
+
+function reviewAuthorLabel(review) {
+  if (review?.authorLoginId) return review.authorLoginId;
+  if (isMine(review) && currentMember.value?.loginId) return currentMember.value.loginId;
+  return review?.memberId != null ? `#${review.memberId}` : "알 수 없음";
 }
 
 function formatAverage(value) {
@@ -244,16 +269,52 @@ async function runReviewAction(action, successMessage, { globalError = false } =
 }
 
 function createReview(payload) {
+  const reviewPayload = {
+    preferenceScore: payload.preferenceScore ?? 3,
+    runningFitScore: payload.runningFitScore,
+    reviewContent: payload.reviewContent ?? null,
+  };
   return runReviewAction(
-    () => reviewApi.create(props.musicId, payload),
+    () => reviewApi.create(props.musicId, reviewPayload),
     "리뷰를 등록했습니다.",
   );
 }
 
 function updateReview(reviewId, payload) {
+  const existing = data.value?.reviews?.find((review) => review.id === reviewId);
+  const hasReviewContent = Object.prototype.hasOwnProperty.call(payload, "reviewContent");
+  const reviewPayload = {
+    preferenceScore: payload.preferenceScore ?? existing?.preferenceScore ?? 3,
+    runningFitScore: payload.runningFitScore ?? existing?.runningFitScore ?? 3,
+    reviewContent: hasReviewContent
+      ? payload.reviewContent
+      : existing?.reviewContent ?? null,
+  };
   return runReviewAction(
-    () => reviewApi.update(reviewId, payload),
+    () => reviewApi.update(reviewId, reviewPayload),
     "리뷰를 수정했습니다.",
+  );
+}
+
+function toggleLike() {
+  if (viewerStatus.value !== "authenticated" || !currentMember.value) {
+    window.location.assign(buildJspLoginUrl(window.location.href));
+    return;
+  }
+  if (actionBusy.value) return;
+
+  const existing = myReview.value;
+  const payload = {
+    preferenceScore: isLiked.value ? 1 : 5,
+    runningFitScore: existing?.runningFitScore ?? 3,
+    reviewContent: existing?.reviewContent || null,
+  };
+  const action = existing?.id
+    ? () => reviewApi.update(existing.id, payload)
+    : () => reviewApi.create(props.musicId, payload);
+  return runReviewAction(
+    action,
+    isLiked.value ? "좋아요를 취소했습니다." : "좋아요한 노래에 추가했습니다.",
   );
 }
 

@@ -14,6 +14,9 @@ public interface SpotifyConnectionMapper {
 
     Optional<SpotifyConnection> selectByMemberId(@Param("memberId") Long memberId);
 
+    Optional<SpotifyConnection> selectBySpotifyUserId(
+            @Param("spotifyUserId") String spotifyUserId);
+
     int updateConnection(SpotifyConnection connection);
 
     int updateToken(SpotifyConnection connection);

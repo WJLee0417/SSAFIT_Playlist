@@ -18,7 +18,6 @@
         <p>러닝 강도와 목표 BPM을 설정하면 운동 흐름에 어울리는 음악을 더 쉽게 찾을 수 있습니다.</p>
         <ul class="feature-list">
             <li>Spotify 음악 검색과 플레이리스트 구성</li>
-            <li>러닝 적합도 기반 음악 평가</li>
             <li>프로필을 활용한 자동 큐레이션</li>
         </ul>
     </section>
@@ -55,6 +54,8 @@
 
             <button class="primary-button" type="submit">계정 만들기</button>
         </form:form>
+        <c:url var="spotifyLoginUrl" value="/login/spotify"/>
+        <a class="spotify-login-button" href="${spotifyLoginUrl}">Spotify로 로그인</a>
         <p class="form-footer">이미 계정이 있나요? <a href="<c:url value='/login'/>">로그인</a></p>
     </section>
 </main>

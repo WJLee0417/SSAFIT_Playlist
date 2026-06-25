@@ -13,6 +13,7 @@ import com.ssafy.ssafit.playlist.domain.PlaylistVisibility;
 import com.ssafy.ssafit.playlist.domain.SpotifyExportStatus;
 import com.ssafy.ssafit.spotify.domain.SpotifyExportResult;
 
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -67,6 +68,29 @@ public final class PlaylistApiDtos {
 
     public record ItemOrderUpdateRequest(
             @NotNull @Min(1) Integer orderNo) {
+    }
+
+    public record ItemReorderEntry(
+            @NotNull Long itemId,
+            @NotNull @Min(1) Integer orderNo) {
+
+        public PlaylistItem toDomain(Long playlistId) {
+            PlaylistItem item = new PlaylistItem();
+            item.setId(itemId);
+            item.setPlaylistId(playlistId);
+            item.setOrderNo(orderNo);
+            return item;
+        }
+    }
+
+    public record ItemReorderRequest(
+            @NotNull @Size(min = 1) List<@Valid ItemReorderEntry> items) {
+
+        public List<PlaylistItem> toDomain(Long playlistId) {
+            return items.stream()
+                    .map(item -> item.toDomain(playlistId))
+                    .toList();
+        }
     }
 
     public record PlaylistResponse(

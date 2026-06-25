@@ -183,7 +183,6 @@ class MapperIntegrationTest {
         Member member = insertMember("mapper_member");
         RunningProfile profile = new RunningProfile();
         profile.setMemberId(member.getId());
-        profile.setRunningIntensity(RunningIntensity.MODERATE);
         profile.setTargetBpmMin(130);
         profile.setTargetBpmMax(160);
         profile.setTargetCadenceMin(165);
@@ -199,7 +198,6 @@ class MapperIntegrationTest {
         assertThat(memberMapper.selectById(member.getId()).orElseThrow().getStatus())
                 .isEqualTo(MemberStatus.ACTIVE);
         assertThat(selected.getId()).isNotNull();
-        assertThat(selected.getRunningIntensity()).isEqualTo(RunningIntensity.MODERATE);
         assertThat(selected.getTargetBpmMin()).isEqualTo(130);
         assertThat(selected.getTargetCadenceMin()).isEqualTo(165);
         assertThat(selected.getTargetCadenceMax()).isEqualTo(180);
@@ -295,6 +293,8 @@ class MapperIntegrationTest {
         runningSession.setScheduledAt(
                 java.time.LocalDateTime.of(2026, 7, 1, 9, 0));
         runningSession.setCapacity(10);
+        runningSession.setTargetDistanceKm(new java.math.BigDecimal("10.00"));
+        runningSession.setTargetPaceSecondsPerKm(330);
         runningSession.setStatus(RunningSessionStatus.OPEN);
 
         runningSessionMapper.insert(runningSession);
@@ -302,9 +302,16 @@ class MapperIntegrationTest {
         assertThat(runningSession.getId()).isNotNull();
         assertThat(runningSessionMapper.selectHostId(runningSession.getId()))
                 .isEqualTo(host.getId());
-        assertThat(runningSessionMapper.selectList())
+        assertThat(runningSessionMapper.selectList(host.getId()))
                 .extracting(RunningSession::getId)
                 .contains(runningSession.getId());
+        assertThat(runningSessionMapper.selectList(host.getId()))
+                .filteredOn(session -> runningSession.getId().equals(session.getId()))
+                .first()
+                .satisfies(session -> {
+                    assertThat(session.getParticipantCount()).isZero();
+                    assertThat(session.getCurrentMemberHosting()).isTrue();
+                });
         assertThat(runningSessionMapper
                 .selectByIdForUpdate(runningSession.getId())
                 .orElseThrow()
@@ -673,7 +680,7 @@ class MapperIntegrationTest {
     @Test
     void recommendationQueryCreatesOnlyLogAndSaveCopiesItems() {
         Member member = insertMember("recommend_member");
-        insertProfile(member.getId(), RunningIntensity.MODERATE, 135, 165, "POP");
+        insertProfile(member.getId(), 135, 165, "POP");
         insertMusic("Recommended First", "POP", 150, MusicSourceType.SEED, null);
         insertMusic("Recommended Second", "POP", 145, MusicSourceType.ADMIN, null);
 
@@ -776,13 +783,11 @@ class MapperIntegrationTest {
 
     private void insertProfile(
             Long memberId,
-            RunningIntensity intensity,
             int minBpm,
             int maxBpm,
             String genre) {
         RunningProfile profile = new RunningProfile();
         profile.setMemberId(memberId);
-        profile.setRunningIntensity(intensity);
         profile.setTargetBpmMin(minBpm);
         profile.setTargetBpmMax(maxBpm);
         profile.setPreferredGenre(genre);
@@ -864,6 +869,8 @@ class MapperIntegrationTest {
         runningSession.setScheduledAt(
                 java.time.LocalDateTime.of(2026, 7, 1, 9, 0));
         runningSession.setCapacity(capacity);
+        runningSession.setTargetDistanceKm(new java.math.BigDecimal("10.00"));
+        runningSession.setTargetPaceSecondsPerKm(330);
         runningSession.setStatus(RunningSessionStatus.OPEN);
         runningSessionMapper.insert(runningSession);
         return runningSession;

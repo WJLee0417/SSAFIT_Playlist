@@ -12,6 +12,7 @@ import com.ssafy.ssafit.music.mapper.MusicMapper;
 import com.ssafy.ssafit.musicreview.domain.MusicReview;
 import com.ssafy.ssafit.musicreview.domain.MusicReviewAverage;
 import com.ssafy.ssafit.musicreview.mapper.MusicReviewMapper;
+import com.ssafy.ssafit.playlist.service.FavoritePlaylistService;
 
 import lombok.RequiredArgsConstructor;
 
@@ -25,6 +26,7 @@ public class MusicReviewService {
 
     private final MusicReviewMapper musicReviewMapper;
     private final MusicMapper musicMapper;
+    private final FavoritePlaylistService favoritePlaylistService;
 
     @Transactional
     public MusicReview create(Long loginMemberId, MusicReview musicReview) {
@@ -50,6 +52,10 @@ public class MusicReviewService {
         } catch (DuplicateKeyException exception) {
             throw new CustomException(ErrorCode.DUPLICATE_MUSIC_REVIEW);
         }
+        favoritePlaylistService.syncLikedMusic(
+                loginMemberId,
+                musicReview.getMusicId(),
+                isLiked(musicReview));
         return musicReview;
     }
 
@@ -70,6 +76,10 @@ public class MusicReviewService {
         if (musicReviewMapper.update(musicReview) != 1) {
             throw new CustomException(ErrorCode.MUSIC_REVIEW_NOT_FOUND);
         }
+        favoritePlaylistService.syncLikedMusic(
+                loginMemberId,
+                musicReview.getMusicId(),
+                isLiked(musicReview));
         return musicReview;
     }
 
@@ -85,6 +95,7 @@ public class MusicReviewService {
         if (musicReviewMapper.delete(musicReviewId) != 1) {
             throw new CustomException(ErrorCode.MUSIC_REVIEW_NOT_FOUND);
         }
+        favoritePlaylistService.syncLikedMusic(loginMemberId, existing.getMusicId(), false);
     }
 
     public List<MusicReview> getReviewsByMusicId(Long musicId) {
@@ -129,5 +140,10 @@ public class MusicReviewService {
 
     private boolean isValidScore(Integer score) {
         return score != null && score >= MIN_SCORE && score <= MAX_SCORE;
+    }
+
+    private boolean isLiked(MusicReview musicReview) {
+        return musicReview.getPreferenceScore() != null
+                && musicReview.getPreferenceScore() >= 4;
     }
 }

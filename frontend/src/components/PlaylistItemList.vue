@@ -3,141 +3,254 @@
     <div class="section-heading">
       <div>
         <span class="eyebrow">TRACKS</span>
-        <h2>수록곡 {{ items.length }}곡</h2>
+        <h2>수록곡 {{ localItems.length }}곡</h2>
       </div>
     </div>
-
-    <form v-if="editable" class="item-add-form" @submit.prevent="addItem">
-      <label>
-        음악 ID
-        <input v-model="addForm.musicId" inputmode="numeric" placeholder="저장된 음악 ID" />
-      </label>
-      <label>
-        순서
-        <input v-model="addForm.orderNo" inputmode="numeric" placeholder="1 이상의 빈 순서" />
-      </label>
-      <button type="submit" :disabled="busy">수록곡 추가</button>
-    </form>
 
     <p v-if="message" class="save-status" :class="messageType === 'error' ? 'save-error' : 'save-success'">
       {{ message }}
     </p>
 
-    <p v-if="!items.length" class="empty-inline">아직 수록곡이 없습니다.</p>
-    <div v-else class="stack-list">
-      <article v-for="item in orderedItems" :key="item.id" class="playlist-item-row">
-        <span class="order-chip">{{ item.orderNo }}</span>
+    <p v-if="!localItems.length" class="empty-inline playlist-items-empty">
+      아직 수록곡이 없습니다.
+    </p>
+    <div v-else class="playlist-track-list">
+      <article
+        v-for="item in localItems"
+        :key="item.id"
+        class="playlist-item-row"
+        :class="{ dragging: draggedItemId === item.id }"
+        :draggable="editable"
+        @dragstart="startDrag(item, $event)"
+        @dragover.prevent="moveDraggedItem(item)"
+        @dragend="finishDrag"
+        @drop.prevent="finishDrag"
+      >
+        <button
+          v-if="editable"
+          type="button"
+          class="drag-handle"
+          draggable="true"
+          title="드래그해서 순서 변경"
+          @dragstart="startDrag(item, $event)"
+        >
+          <span></span>
+          <span></span>
+        </button>
+        <span v-else class="playlist-item-position">{{ item.orderNo }}</span>
+
+        <div class="playlist-item-cover">
+          <img
+            v-if="item.music?.imageUrl"
+            :src="item.music.imageUrl"
+            :alt="`${item.music?.title || '음악'} 앨범커버`"
+          />
+          <span v-else>{{ item.orderNo }}</span>
+        </div>
+
         <div class="playlist-item-copy">
           <strong>{{ item.music?.title || `음악 #${item.musicId}` }}</strong>
-          <small>{{ item.music?.artist || "아티스트 정보 없음" }}</small>
+          <small>
+            {{ item.music?.artist || "아티스트 정보 없음" }}
+            <template v-if="item.music?.musicBpm"> · {{ item.music.musicBpm }} BPM</template>
+          </small>
         </div>
-        <div v-if="editable" class="item-controls">
-          <label>
-            순서 번호
-            <input
-              :value="orderDrafts[item.id]"
-              inputmode="numeric"
-              @input="orderDrafts[item.id] = $event.target.value"
-            />
-          </label>
-          <button type="button" class="secondary-button" :disabled="busy" @click="changeOrder(item)">
-            순서 변경
+
+        <div v-if="reviewable || editable" class="playlist-item-actions">
+          <button
+            v-if="reviewable"
+            type="button"
+            class="playlist-icon-button heart-button"
+            :class="{ active: isLiked(item) }"
+            :disabled="isReviewBusy(item)"
+            :title="isLiked(item) ? '좋아요 취소' : '좋아요'"
+            @click="toggleLike(item)"
+          >
+            {{ isLiked(item) ? "♥" : "♡" }}
           </button>
-          <button type="button" class="danger-button" :disabled="busy" @click="removeItem(item)">
-            삭제
+
+          <div v-if="reviewable" class="fit-score-control" title="러닝 적합도">
+            <span>FIT</span>
+            <button
+              v-for="score in scoreOptions"
+              :key="score"
+              type="button"
+              class="fit-score-button"
+              :class="{ active: runningFitScore(item) === score }"
+              :disabled="isReviewBusy(item)"
+              :aria-label="`러닝 적합도 ${score}점`"
+              @click="setRunningFitScore(item, score)"
+            >
+              {{ score }}
+            </button>
+          </div>
+
+          <button
+            v-if="editable"
+            type="button"
+            class="playlist-icon-button delete-track-button"
+            :disabled="busy"
+            title="삭제"
+            @click="removeItem(item)"
+          >
+            ×
           </button>
         </div>
       </article>
     </div>
-
-    <p v-if="editable" class="contract-note">
-      현재 API는 한 곡의 순서 번호만 변경합니다. 이미 사용 중인 번호와 직접 교환하는 배치 재정렬은 지원하지 않습니다.
-    </p>
   </section>
 </template>
 
 <script setup>
 import { computed, reactive, ref, watch } from "vue";
+import { reviewApi } from "../api/reviewApi";
 import { playlistErrorMessage } from "../utils/playlistError";
 
 const props = defineProps({
   items: { type: Array, default: () => [] },
   editable: { type: Boolean, default: false },
+  reviewable: { type: Boolean, default: false },
   busy: { type: Boolean, default: false },
+  currentMemberId: { type: [Number, String], default: null },
 });
 
-const emit = defineEmits(["add", "change-order", "remove"]);
-const addForm = reactive({ musicId: "", orderNo: "" });
-const orderDrafts = reactive({});
+const emit = defineEmits(["reorder", "remove"]);
+const localItems = ref([]);
+const reviewByMusicId = reactive({});
+const reviewBusyMusicIds = reactive({});
 const message = ref("");
 const messageType = ref("error");
+const draggedItemId = ref(null);
+const dragChanged = ref(false);
+const scoreOptions = Object.freeze([1, 2, 3, 4, 5]);
 
 const orderedItems = computed(() => [...props.items].sort(
   (left, right) => Number(left.orderNo) - Number(right.orderNo),
 ));
 
 watch(
-  () => props.items,
+  orderedItems,
   (items) => {
-    for (const item of items) orderDrafts[item.id] = String(item.orderNo);
+    localItems.value = items.map((item, index) => ({ ...item, orderNo: index + 1 }));
   },
-  { immediate: true, deep: true },
+  { immediate: true },
 );
 
-function positiveInteger(raw) {
-  if (!/^\d+$/.test(String(raw).trim())) return null;
-  const value = Number(raw);
-  return Number.isSafeInteger(value) && value >= 1 ? value : null;
+watch(
+  () => [props.currentMemberId, props.items.map((item) => item.musicId).join(",")],
+  loadOwnReviews,
+  { immediate: true },
+);
+
+function startDrag(item, event) {
+  if (!props.editable || props.busy) return;
+  draggedItemId.value = item.id;
+  dragChanged.value = false;
+  event.dataTransfer.effectAllowed = "move";
+  event.dataTransfer.setData("text/plain", String(item.id));
 }
 
-function addItem() {
-  message.value = "";
-  const musicId = positiveInteger(addForm.musicId);
-  const orderNo = positiveInteger(addForm.orderNo);
-  if (musicId == null) {
-    message.value = "음악 ID는 1 이상의 정수로 입력해 주세요.";
-    return;
-  }
-  if (orderNo == null) {
-    message.value = "순서는 1 이상의 정수로 입력해 주세요.";
-    return;
-  }
-  emit("add", { musicId, orderNo }, {
-    success() {
-      addForm.musicId = "";
-      addForm.orderNo = "";
-      messageType.value = "success";
-      message.value = "수록곡을 추가했습니다.";
-    },
-    fail(error) {
-      messageType.value = "error";
-      message.value = playlistErrorMessage(error);
-    },
-  });
+function moveDraggedItem(targetItem) {
+  if (draggedItemId.value == null || draggedItemId.value === targetItem.id) return;
+  const items = [...localItems.value];
+  const fromIndex = items.findIndex((item) => item.id === draggedItemId.value);
+  const toIndex = items.findIndex((item) => item.id === targetItem.id);
+  if (fromIndex < 0 || toIndex < 0) return;
+  const [moved] = items.splice(fromIndex, 1);
+  items.splice(toIndex, 0, moved);
+  localItems.value = items.map((item, index) => ({ ...item, orderNo: index + 1 }));
+  dragChanged.value = true;
 }
 
-function changeOrder(item) {
-  message.value = "";
-  const orderNo = positiveInteger(orderDrafts[item.id]);
-  if (orderNo == null) {
-    message.value = "순서는 1 이상의 정수로 입력해 주세요.";
-    return;
-  }
-  if (orderNo === Number(item.orderNo)) {
-    message.value = "현재 순서와 다른 번호를 입력해 주세요.";
-    return;
-  }
-  emit("change-order", item, orderNo, {
+function finishDrag() {
+  if (draggedItemId.value == null) return;
+  const changed = dragChanged.value;
+  draggedItemId.value = null;
+  dragChanged.value = false;
+  if (!changed) return;
+
+  emit("reorder", {
+    items: localItems.value.map((item, index) => ({
+      itemId: item.id,
+      orderNo: index + 1,
+    })),
+  }, {
     success() {
       messageType.value = "success";
       message.value = "수록곡 순서를 변경했습니다.";
     },
     fail(error) {
-      orderDrafts[item.id] = String(item.orderNo);
+      localItems.value = orderedItems.value.map((item, index) => ({ ...item, orderNo: index + 1 }));
       messageType.value = "error";
       message.value = playlistErrorMessage(error);
     },
   });
+}
+
+async function loadOwnReviews() {
+  if (!props.currentMemberId || !props.items.length) {
+    Object.keys(reviewByMusicId).forEach((musicId) => {
+      delete reviewByMusicId[musicId];
+    });
+    return;
+  }
+  const musicIds = [...new Set(props.items.map((item) => item.musicId).filter(Boolean))];
+  await Promise.allSettled(musicIds.map(async (musicId) => {
+    const reviews = await reviewApi.getByMusic(musicId);
+    reviewByMusicId[musicId] = Array.isArray(reviews)
+      ? reviews.find((review) => String(review.memberId) === String(props.currentMemberId)) || null
+      : null;
+  }));
+}
+
+function ownReview(item) {
+  return reviewByMusicId[item.musicId] || null;
+}
+
+function isLiked(item) {
+  return Number(ownReview(item)?.preferenceScore) >= 4;
+}
+
+function runningFitScore(item) {
+  return Number(ownReview(item)?.runningFitScore) || null;
+}
+
+function isReviewBusy(item) {
+  return Boolean(reviewBusyMusicIds[item.musicId]);
+}
+
+async function toggleLike(item) {
+  await saveReview(item, {
+    preferenceScore: isLiked(item) ? 1 : 5,
+  });
+}
+
+async function setRunningFitScore(item, score) {
+  await saveReview(item, { runningFitScore: score });
+}
+
+async function saveReview(item, patch) {
+  if (!props.currentMemberId || !item.musicId || isReviewBusy(item)) return;
+  reviewBusyMusicIds[item.musicId] = true;
+  message.value = "";
+  const existing = ownReview(item);
+  const payload = {
+    preferenceScore: patch.preferenceScore ?? existing?.preferenceScore ?? 3,
+    runningFitScore: patch.runningFitScore ?? existing?.runningFitScore ?? 3,
+    reviewContent: existing?.reviewContent || null,
+  };
+  try {
+    reviewByMusicId[item.musicId] = existing?.id
+      ? await reviewApi.update(existing.id, payload)
+      : await reviewApi.create(item.musicId, payload);
+    messageType.value = "success";
+    message.value = "곡 평가를 저장했습니다.";
+  } catch (caught) {
+    messageType.value = "error";
+    message.value = playlistErrorMessage(caught);
+  } finally {
+    reviewBusyMusicIds[item.musicId] = false;
+  }
 }
 
 function removeItem(item) {

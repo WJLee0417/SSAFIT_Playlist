@@ -102,6 +102,21 @@
         WHERE m.id = #{id}
     </select>
 
+    <select id="selectByIds" resultMap="musicResultMap">
+        SELECT
+            <include refid="musicColumns"/>
+        FROM music m
+        WHERE m.id IN
+        <foreach collection="ids" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+        ORDER BY FIELD(m.id,
+        <foreach collection="ids" item="id" separator=",">
+            #{id}
+        </foreach>
+        )
+    </select>
+
     <select id="countMusicList"
             parameterType="com.ssafy.ssafit.music.domain.MusicSearchCondition"
             resultType="long">
@@ -153,12 +168,14 @@
         SELECT
             <include refid="musicColumns"/>
         FROM music m
-        <where>
-            <if test="genre != null and genre != ''">
-                AND m.genre = #{genre}
-            </if>
-        </where>
-        ORDER BY m.created_at DESC, m.id ASC
+        ORDER BY
+            CASE
+                WHEN #{genre} IS NOT NULL AND #{genre} != ''
+                    AND UPPER(m.genre) = UPPER(#{genre}) THEN 0
+                ELSE 1
+            END,
+            m.created_at DESC,
+            m.id ASC
         LIMIT #{limit}
     </select>
 

@@ -8,25 +8,34 @@
                type="com.ssafy.ssafit.runningsession.domain.RunningSession">
         <id property="id" column="id"/>
         <result property="hostMemberId" column="host_member_id"/>
+        <result property="hostNickname" column="host_nickname"/>
         <result property="title" column="title"/>
         <result property="description" column="description"/>
         <result property="meetingPlace" column="meeting_place"/>
         <result property="scheduledAt" column="scheduled_at"/>
         <result property="capacity" column="capacity"/>
+        <result property="targetDistanceKm" column="target_distance_km"/>
+        <result property="targetPaceSecondsPerKm" column="target_pace_seconds_per_km"/>
         <result property="status" column="status"/>
         <result property="cancelledAt" column="cancelled_at"/>
         <result property="createdAt" column="created_at"/>
         <result property="updatedAt" column="updated_at"/>
+        <result property="participantCount" column="participant_count"/>
+        <result property="currentMemberParticipating" column="current_member_participating"/>
+        <result property="currentMemberHosting" column="current_member_hosting"/>
     </resultMap>
 
     <sql id="runningSessionColumns">
         id,
         host_member_id,
+        NULL AS host_nickname,
         title,
         description,
         meeting_place,
         scheduled_at,
         capacity,
+        target_distance_km,
+        target_pace_seconds_per_km,
         status,
         cancelled_at,
         created_at,
@@ -45,6 +54,8 @@
             meeting_place,
             scheduled_at,
             capacity,
+            target_distance_km,
+            target_pace_seconds_per_km,
             status
         ) VALUES (
             #{hostMemberId},
@@ -53,22 +64,77 @@
             #{meetingPlace},
             #{scheduledAt},
             #{capacity},
+            #{targetDistanceKm},
+            #{targetPaceSecondsPerKm},
             #{status}
         )
     </insert>
 
     <select id="selectList" resultMap="runningSessionResultMap">
         SELECT
-            <include refid="runningSessionColumns"/>
-        FROM running_sessions
-        ORDER BY scheduled_at ASC, id ASC
+            rs.id,
+            rs.host_member_id,
+            host.nickname AS host_nickname,
+            rs.title,
+            rs.description,
+            rs.meeting_place,
+            rs.scheduled_at,
+            rs.capacity,
+            rs.target_distance_km,
+            rs.target_pace_seconds_per_km,
+            rs.status,
+            rs.cancelled_at,
+            rs.created_at,
+            rs.updated_at,
+            COALESCE(pc.participant_count, 0) AS participant_count,
+            CASE
+                WHEN mp.member_id IS NULL THEN FALSE
+                ELSE TRUE
+            END AS current_member_participating,
+            CASE
+                WHEN rs.host_member_id = #{memberId} THEN TRUE
+                ELSE FALSE
+            END AS current_member_hosting
+        FROM running_sessions rs
+        INNER JOIN members host ON host.id = rs.host_member_id
+        LEFT JOIN (
+            SELECT session_id, COUNT(*) AS participant_count
+            FROM running_session_participants
+            GROUP BY session_id
+        ) pc ON pc.session_id = rs.id
+        LEFT JOIN running_session_participants mp
+            ON mp.session_id = rs.id
+           AND mp.member_id = #{memberId}
+        ORDER BY
+            CASE
+                WHEN rs.status = 'OPEN'
+                     AND rs.scheduled_at >= CURRENT_TIMESTAMP(6)
+                     AND COALESCE(pc.participant_count, 0) &lt; rs.capacity THEN 0
+                ELSE 1
+            END ASC,
+            rs.scheduled_at DESC,
+            rs.id DESC
     </select>
 
     <select id="selectDetail" resultMap="runningSessionResultMap">
         SELECT
-            <include refid="runningSessionColumns"/>
-        FROM running_sessions
-        WHERE id = #{sessionId}
+            rs.id,
+            rs.host_member_id,
+            host.nickname AS host_nickname,
+            rs.title,
+            rs.description,
+            rs.meeting_place,
+            rs.scheduled_at,
+            rs.capacity,
+            rs.target_distance_km,
+            rs.target_pace_seconds_per_km,
+            rs.status,
+            rs.cancelled_at,
+            rs.created_at,
+            rs.updated_at
+        FROM running_sessions rs
+        INNER JOIN members host ON host.id = rs.host_member_id
+        WHERE rs.id = #{sessionId}
     </select>
 
     <select id="selectByIdForUpdate" resultMap="runningSessionResultMap">
@@ -87,7 +153,9 @@
             description = #{description},
             meeting_place = #{meetingPlace},
             scheduled_at = #{scheduledAt},
-            capacity = #{capacity}
+            capacity = #{capacity},
+            target_distance_km = #{targetDistanceKm},
+            target_pace_seconds_per_km = #{targetPaceSecondsPerKm}
         WHERE id = #{id}
           AND status != 'CANCELLED'
     </update>

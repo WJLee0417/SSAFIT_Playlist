@@ -48,6 +48,7 @@ public final class MusicReviewApiDtos {
     public record ReviewResponse(
             Long id,
             Long memberId,
+            String authorLoginId,
             Long musicId,
             Integer preferenceScore,
             Integer runningFitScore,
@@ -59,6 +60,7 @@ public final class MusicReviewApiDtos {
             return new ReviewResponse(
                     review.getId(),
                     review.getMemberId(),
+                    review.getAuthorLoginId(),
                     review.getMusicId(),
                     review.getPreferenceScore(),
                     review.getRunningFitScore(),

@@ -88,6 +88,10 @@
             </choose> AS saved
         FROM playlists p
         WHERE p.deleted_at IS NULL
+          AND NOT (
+              p.source_type = 'CURATION_COPY'
+              AND p.spotify_playlist_id IS NOT NULL
+          )
           AND (
               p.visibility = 'PUBLIC'
               OR p.playlist_type = 'OFFICIAL'
@@ -98,7 +102,16 @@
         <if test="ownerId != null">
             AND p.owner_id = #{ownerId}
         </if>
-        ORDER BY p.created_at DESC, p.id DESC
+        ORDER BY
+            CASE
+                WHEN #{viewerMemberId} IS NOT NULL
+                     AND p.owner_id = #{viewerMemberId}
+                     AND p.playlist_type = 'USER'
+                     AND p.title = '좋아요한 노래' THEN 0
+                ELSE 1
+            END ASC,
+            p.created_at DESC,
+            p.id DESC
     </select>
 
     <select id="selectDetail" resultMap="playlistResultMap">
@@ -107,6 +120,29 @@
         FROM playlists p
         WHERE p.id = #{id}
           AND p.deleted_at IS NULL
+    </select>
+
+    <select id="selectByIds" resultMap="playlistResultMap">
+        SELECT
+            <include refid="playlistColumns"/>
+        FROM playlists p
+        WHERE p.deleted_at IS NULL
+          AND p.id IN
+          <foreach collection="ids" item="id" open="(" separator="," close=")">
+            #{id}
+          </foreach>
+    </select>
+
+    <select id="selectFavoriteByOwner" resultMap="playlistResultMap">
+        SELECT
+            <include refid="playlistColumns"/>
+        FROM playlists p
+        WHERE p.deleted_at IS NULL
+          AND p.owner_id = #{ownerId}
+          AND p.playlist_type = 'USER'
+          AND p.title = '좋아요한 노래'
+        ORDER BY p.created_at ASC, p.id ASC
+        LIMIT 1
     </select>
 
     <update id="update"

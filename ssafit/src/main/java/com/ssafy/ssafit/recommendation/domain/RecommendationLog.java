@@ -26,4 +26,5 @@ public class RecommendationLog {
     private String recommendationReason;
     private Long savedPlaylistId;
     private LocalDateTime createdAt;
+    private Integer displayNumber;
 }

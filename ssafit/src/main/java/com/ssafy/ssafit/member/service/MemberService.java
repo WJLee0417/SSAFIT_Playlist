@@ -34,6 +34,31 @@ public class MemberService {
         return member;
     }
 
+    @Transactional
+    public Member updateIdentity(Long loginMemberId, Member changes) {
+        if (loginMemberId == null || changes == null
+                || isBlank(changes.getLoginId())
+                || isBlank(changes.getNickname())) {
+            throw new CustomException(ErrorCode.INVALID_REQUEST);
+        }
+
+        Member current = getMyInfo(loginMemberId);
+        String loginId = changes.getLoginId().trim();
+        String nickname = changes.getNickname().trim();
+        memberMapper.selectByLoginId(loginId)
+                .filter(member -> !loginMemberId.equals(member.getId()))
+                .ifPresent(member -> {
+                    throw new CustomException(ErrorCode.DUPLICATE_LOGIN_ID);
+                });
+
+        current.setLoginId(loginId);
+        current.setNickname(nickname);
+        if (memberMapper.updateIdentity(current) != 1) {
+            throw new CustomException(ErrorCode.INTERNAL_SERVER_ERROR);
+        }
+        return current;
+    }
+
     public void validateDuplicateLoginId(String loginId) {
         if (memberMapper.existsByLoginId(loginId)) {
             throw new CustomException(ErrorCode.DUPLICATE_LOGIN_ID);

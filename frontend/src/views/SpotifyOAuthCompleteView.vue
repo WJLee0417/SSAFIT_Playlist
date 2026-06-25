@@ -1,7 +1,14 @@
 <template>
   <AppLayout>
+    <section v-if="status === 'authorizationFailed'" class="state-panel state-error">
+      <h2 style="text-align: center;">Spotify 연결에 실패했습니다</h2>
+      <p class="save-status save-error">
+        내보내기 기능을 사용하려면 Spotify 계정으로 로그인해 주세요
+      </p>
+    </section>
+
     <PageStatePanel
-      v-if="status !== 'ready' && status !== 'disconnected' && status !== 'expired'"
+      v-if="status !== 'ready' && status !== 'disconnected' && status !== 'expired' && status !== 'authorizationFailed'"
       :status="status"
       :error="displayError"
       error-title="Spotify 연결을 확인하지 못했습니다"
@@ -116,7 +123,32 @@ onMounted(async () => {
     ? route.query.oauthError[0]
     : route.query.oauthError;
   if (typeof oauthError === "string" && oauthError) {
-    oauthErrorMessage.value = spotifyErrorMessage({ errorCode: oauthError });
+    if (oauthError === "SPOTIFY_AUTHORIZATION_FAILED") {
+      error.value = {
+        errorCode: oauthError,
+        message: "내보내기 기능을 사용하려면 Spotify 계정으로 로그인해 주세요",
+      };
+      status.value = "authorizationFailed";
+      oauthErrorMessage.value = "";
+      await router.replace({
+        name: "spotify-oauth-complete",
+        query: safeReturnTo ? { returnTo: safeReturnTo } : {},
+      });
+      return;
+    }
+    const oauthErrorObject = {
+      errorCode: oauthError,
+      message: spotifyErrorMessage({ errorCode: oauthError }),
+      status: oauthError === "SPOTIFY_FORBIDDEN" ? 403 : undefined,
+    };
+    error.value = oauthErrorObject;
+    status.value = "error";
+    oauthErrorMessage.value = oauthErrorObject.message;
+    await router.replace({
+      name: "spotify-oauth-complete",
+      query: safeReturnTo ? { returnTo: safeReturnTo } : {},
+    });
+    return;
   }
   const hasSensitiveQuery = ["code", "state", "token", "access_token", "refresh_token"]
     .some((key) => Object.prototype.hasOwnProperty.call(route.query, key));

@@ -70,6 +70,16 @@
         ORDER BY record_date DESC, id DESC
     </select>
 
+    <select id="selectRecentByMemberId" resultMap="runningRecordResultMap">
+        SELECT
+            <include refid="runningRecordColumns"/>
+        FROM running_records
+        WHERE member_id = #{memberId}
+          AND deleted_at IS NULL
+        ORDER BY record_date DESC, id DESC
+        LIMIT #{limit}
+    </select>
+
     <select id="selectRecentAverageHeartRates" resultType="int">
         SELECT average_heart_rate_bpm
         FROM running_records

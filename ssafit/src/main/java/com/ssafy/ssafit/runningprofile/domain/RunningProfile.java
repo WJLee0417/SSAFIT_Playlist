@@ -15,7 +15,9 @@ public class RunningProfile {
 
     private Long id;
     private Long memberId;
-    private RunningIntensity runningIntensity;
+    private RunningGender gender;
+    private Integer age;
+    private Integer estimatedMaxHeartRateBpm;
     private Integer targetBpmMin;
     private Integer targetBpmMax;
     private Integer targetCadenceMin;

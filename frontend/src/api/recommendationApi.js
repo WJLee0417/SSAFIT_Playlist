@@ -3,6 +3,9 @@ import { apiClient } from "./http";
 function cleanRecommendationParams(condition) {
   return {
     intensity: condition.intensity,
+    ...(condition.targetDistanceKm != null
+      ? { targetDistanceKm: condition.targetDistanceKm }
+      : {}),
     ...(condition.targetCadenceSpm != null
       ? { targetCadenceSpm: condition.targetCadenceSpm }
       : {}),
@@ -12,6 +15,7 @@ function cleanRecommendationParams(condition) {
     ...(condition.genre?.trim() ? { genre: condition.genre.trim() } : {}),
     ...(condition.size != null ? { size: condition.size } : {}),
     ...(condition.limit != null ? { limit: condition.limit } : {}),
+    ...(condition.page != null ? { page: condition.page } : {}),
   };
 }
 
@@ -30,6 +34,12 @@ export const recommendationApi = {
   },
   getMyLogs() {
     return apiClient.get("/recommendations/logs/me");
+  },
+  getResult(logId) {
+    return apiClient.get(`/recommendations/${logId}`);
+  },
+  deleteLog(logId) {
+    return apiClient.delete(`/recommendations/${logId}`);
   },
   save(logId, payload) {
     return apiClient.post(

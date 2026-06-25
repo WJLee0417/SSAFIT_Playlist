@@ -14,6 +14,7 @@ import com.ssafy.ssafit.member.domain.Member;
 import com.ssafy.ssafit.member.dto.MemberApiDtos.JoinRequest;
 import com.ssafy.ssafit.member.dto.MemberApiDtos.MemberResponse;
 import com.ssafy.ssafit.member.service.MemberService;
+import com.ssafy.ssafit.playlist.service.FavoritePlaylistService;
 
 import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
@@ -26,6 +27,7 @@ public class MemberApiController {
 
     private final MemberService memberService;
     private final SessionMemberResolver sessionMemberResolver;
+    private final FavoritePlaylistService favoritePlaylistService;
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
@@ -38,6 +40,7 @@ public class MemberApiController {
     @GetMapping("/me")
     public ApiResponse<MemberResponse> me(HttpSession session) {
         Long memberId = sessionMemberResolver.requireMemberId(session);
+        favoritePlaylistService.ensureForMember(memberId);
         return ApiResponse.success(MemberResponse.from(memberService.getMyInfo(memberId)));
     }
 }

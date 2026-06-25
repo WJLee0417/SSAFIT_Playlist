@@ -79,6 +79,8 @@
       </dl>
     </section>
 
+    <AiRunningReportCard v-if="status === 'ready' || status === 'empty'" />
+
     <section v-if="status === 'ready'" class="running-record-grid">
       <RouterLink
         v-for="record in filteredRecords"
@@ -104,6 +106,7 @@
 import { computed, ref } from "vue";
 import { RouterLink } from "vue-router";
 import { runningRecordApi } from "../api/runningRecordApi";
+import AiRunningReportCard from "../components/AiRunningReportCard.vue";
 import AppLayout from "../components/AppLayout.vue";
 import PageStatePanel from "../components/PageStatePanel.vue";
 import { usePageState } from "../utils/pageState";

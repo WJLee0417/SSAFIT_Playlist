@@ -1,5 +1,7 @@
 package com.ssafy.ssafit.member.controller.view;
 
+import java.util.Locale;
+
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
@@ -13,8 +15,10 @@ import com.ssafy.ssafit.common.auth.SessionMemberResolver;
 import com.ssafy.ssafit.common.exception.CustomException;
 import com.ssafy.ssafit.common.exception.ErrorCode;
 import com.ssafy.ssafit.common.web.FrontendReturnUrl;
+import com.ssafy.ssafit.runningprofile.domain.RunningFitnessMetric;
 import com.ssafy.ssafit.runningprofile.domain.RunningProfile;
 import com.ssafy.ssafit.runningprofile.dto.RunningProfileViewForm;
+import com.ssafy.ssafit.runningprofile.service.RunningFitnessMetricService;
 import com.ssafy.ssafit.runningprofile.service.RunningProfileService;
 
 import jakarta.servlet.http.HttpSession;
@@ -26,6 +30,7 @@ import lombok.RequiredArgsConstructor;
 public class RunningProfileViewController {
 
     private final RunningProfileService runningProfileService;
+    private final RunningFitnessMetricService runningFitnessMetricService;
     private final SessionMemberResolver sessionMemberResolver;
 
     @GetMapping("/members/me/running-profile")
@@ -46,6 +51,7 @@ public class RunningProfileViewController {
         if (!model.containsAttribute("profileForm")) {
             model.addAttribute("profileForm", loadForm(memberId));
         }
+        applyMetricAttributes(model, calculateMetric(memberId));
         model.addAttribute("returnTo", returnTo);
         return "member/running-profile";
     }
@@ -64,6 +70,7 @@ public class RunningProfileViewController {
             return "redirect:/login";
         }
         if (bindingResult.hasErrors()) {
+            applyMetricAttributes(model, calculateMetric(memberId));
             return "member/running-profile";
         }
 
@@ -75,6 +82,7 @@ public class RunningProfileViewController {
             bindingResult.reject(
                     exception.getErrorCode().name(),
                     exception.getErrorCode().getMessage());
+            applyMetricAttributes(model, calculateMetric(memberId));
             return "member/running-profile";
         }
 
@@ -98,5 +106,38 @@ public class RunningProfileViewController {
             }
             throw exception;
         }
+    }
+
+    private RunningFitnessMetric calculateMetric(Long memberId) {
+        return runningFitnessMetricService.calculate(memberId);
+    }
+
+    private void applyMetricAttributes(Model model, RunningFitnessMetric metric) {
+        RunningFitnessMetric resolved = metric == null
+                ? RunningFitnessMetric.empty()
+                : metric;
+        model.addAttribute("runningFitnessMetric", resolved);
+        model.addAttribute("runningFitnessScore", resolved.score());
+        model.addAttribute("runningFitnessRecordCount", resolved.recordCount());
+        model.addAttribute("totalDistanceKmText", formatDistance(resolved.totalDistanceKm()));
+        model.addAttribute("averagePaceText", formatPace(resolved.averagePaceSecondsPerKm()));
+        model.addAttribute("averageDistanceScore", resolved.averageDistanceScore());
+        model.addAttribute("paceEfficiencyScore", resolved.paceEfficiencyScore());
+        model.addAttribute("cadenceStabilityScore", resolved.cadenceStabilityScore());
+        model.addAttribute("variationScore", resolved.variationScore());
+    }
+
+    private String formatDistance(Double distanceKm) {
+        if (distanceKm == null) {
+            return "-";
+        }
+        return String.format(Locale.US, "%.1f", distanceKm);
+    }
+
+    private String formatPace(Integer secondsPerKm) {
+        if (secondsPerKm == null || secondsPerKm <= 0) {
+            return "-";
+        }
+        return "%d'%02d\"".formatted(secondsPerKm / 60, secondsPerKm % 60);
     }
 }

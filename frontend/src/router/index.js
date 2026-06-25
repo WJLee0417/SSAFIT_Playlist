@@ -1,9 +1,34 @@
 import { createRouter, createWebHistory } from "vue-router";
 import { authApi } from "../api/authApi";
 import { isApiError } from "../api/http";
+import { buildJspLoginUrl, buildJspUrl } from "../utils/navigation";
 
 const routes = [
-  { path: "/", redirect: "/music" },
+  {
+    path: "/",
+    name: "entry",
+    beforeEnter: async () => {
+      try {
+        await authApi.getSession();
+        return { name: "music-list" };
+      } catch (error) {
+        if (isApiError(error) && error.loginRequired) {
+          authApi.clearSessionCache();
+          window.location.assign(buildJspLoginUrl());
+          return false;
+        }
+        return {
+          name: "access-check-failed",
+          query: {
+            returnTo: "/",
+            status: error?.status,
+            errorCode: error?.errorCode,
+          },
+        };
+      }
+    },
+    component: () => import("../views/NotFoundView.vue"),
+  },
   {
     path: "/music",
     name: "music-list",
@@ -117,20 +142,27 @@ const routes = [
     meta: { requiresAuth: true },
   },
   {
-    path: "/spotify/search",
-    name: "spotify-search",
-    component: () => import("../views/SpotifySearchView.vue"),
-  },
-  {
     path: "/oauth/spotify/complete",
     name: "spotify-oauth-complete",
     component: () => import("../views/SpotifyOAuthCompleteView.vue"),
-    meta: { requiresAuth: true },
   },
   {
     path: "/login-required",
     name: "login-required",
     component: () => import("../views/LoginRequiredView.vue"),
+  },
+  {
+    path: "/login/spotify",
+    name: "spotify-login-redirect",
+    beforeEnter: (to) => {
+      const url = new URL(buildJspUrl("/login/spotify"));
+      if (to.query.returnTo) {
+        url.searchParams.set("returnTo", to.query.returnTo);
+      }
+      window.location.assign(url.toString());
+      return false;
+    },
+    component: () => import("../views/NotFoundView.vue"),
   },
   {
     path: "/access-check-failed",

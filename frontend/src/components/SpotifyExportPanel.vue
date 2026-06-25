@@ -1,5 +1,43 @@
 <template>
-  <section class="spotify-extension-panel spotify-export-panel" data-spotify-export>
+  <div v-if="compact" class="spotify-export-compact" data-spotify-export>
+    <button
+      v-if="connectionStatus === 'disconnected' || connectionStatus === 'expired'"
+      type="button"
+      class="secondary-button"
+      :disabled="busy"
+      @click="connect"
+    >
+      Spotify 연결
+    </button>
+    <button
+      v-else-if="connectionStatus === 'connected' && !alreadyExported"
+      type="button"
+      class="secondary-button"
+      :disabled="busy || exportBlocked"
+      @click="exportPlaylist"
+    >
+      {{ exporting ? "내보내는 중..." : "Spotify로 내보내기" }}
+    </button>
+    <button
+      v-else-if="connectionStatus === 'unknown' || connectionStatus === 'checking'"
+      type="button"
+      class="secondary-button"
+      :disabled="busy"
+      @click="checkConnection"
+    >
+      Spotify 연결
+    </button>
+    <a
+      v-else-if="exportState.spotifyPlaylistUrl"
+      class="secondary-button"
+      :href="exportState.spotifyPlaylistUrl"
+      target="_blank"
+      rel="noopener noreferrer"
+    >
+      Spotify에서 열기
+    </a>
+  </div>
+  <section v-else class="spotify-extension-panel spotify-export-panel" data-spotify-export>
     <div>
       <span class="eyebrow">SPOTIFY EXPORT</span>
       <h2>Spotify 연결 및 내보내기</h2>
@@ -87,6 +125,7 @@ const props = defineProps({
   editable: { type: Boolean, default: false },
   returnTo: { type: String, required: true },
   items: { type: Array, default: () => [] },
+  compact: { type: Boolean, default: false },
 });
 
 const emit = defineEmits(["exported"]);
@@ -167,10 +206,14 @@ async function checkConnection() {
 
 async function connect() {
   if (busy.value) return;
+  redirectToSpotifyAuthorization();
+}
+
+async function redirectToSpotifyAuthorization() {
   message.value = "";
   rememberSpotifyReturnPath(props.returnTo);
   try {
-    await spotifyApi.startAuthorization();
+    await spotifyApi.startAuthorization(props.returnTo);
   } catch (caught) {
     messageType.value = "error";
     message.value = spotifyErrorMessage(caught);
@@ -201,6 +244,8 @@ async function exportPlaylist() {
     message.value = spotifyErrorMessage(caught);
     if (requiresSpotifyReconnect(caught)) {
       connectionStatus.value = "expired";
+      await redirectToSpotifyAuthorization();
+      return;
     }
     emit("exported", {
       type: "error",

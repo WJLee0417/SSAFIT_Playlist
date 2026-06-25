@@ -99,7 +99,7 @@ class PlaylistExportServiceTest {
 
     @Test
     void rejectsExportBeforeStateChangeWhenSpotifyIsNotConnected() {
-        when(playlistService.getExportTarget(10L, 1L)).thenReturn(playlist());
+        when(playlistService.prepareExportTarget(10L, 1L)).thenReturn(playlist());
         when(spotifyOAuthService.getValidConnection(10L))
                 .thenThrow(new CustomException(ErrorCode.SPOTIFY_NOT_CONNECTED));
 
@@ -191,7 +191,7 @@ class PlaylistExportServiceTest {
         playlist.setSpotifyExportStatus(SpotifyExportStatus.PARTIAL);
         playlist.setSpotifyPlaylistId("existing");
         playlist.setSpotifyPlaylistUrl(spotifyUrl());
-        when(playlistService.getExportTarget(10L, 1L)).thenReturn(playlist);
+        when(playlistService.prepareExportTarget(10L, 1L)).thenReturn(playlist);
 
         assertError(
                 ErrorCode.SPOTIFY_ALREADY_EXPORTED,
@@ -199,7 +199,7 @@ class PlaylistExportServiceTest {
     }
 
     private void preparePlaylist() {
-        when(playlistService.getExportTarget(10L, 1L)).thenReturn(playlist());
+        when(playlistService.prepareExportTarget(10L, 1L)).thenReturn(playlist());
         when(playlistService.saveSpotifyExportPending(
                 10L, 1L, "spotify-playlist", spotifyUrl()))
                 .thenReturn(exported(SpotifyExportStatus.PENDING));

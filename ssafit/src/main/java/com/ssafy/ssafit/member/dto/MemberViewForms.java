@@ -95,4 +95,46 @@ public final class MemberViewForms {
             this.password = password;
         }
     }
+
+    public static class IdentityForm {
+
+        @NotBlank(message = "로그인 ID를 입력해 주세요.")
+        @Size(max = 50, message = "로그인 ID는 50자 이하여야 합니다.")
+        private String loginId;
+
+        @NotBlank(message = "닉네임을 입력해 주세요.")
+        @Size(max = 100, message = "닉네임은 100자 이하여야 합니다.")
+        private String nickname;
+
+        public static IdentityForm from(Member member) {
+            IdentityForm form = new IdentityForm();
+            form.setLoginId(member.getLoginId());
+            form.setNickname(member.getNickname());
+            return form;
+        }
+
+        public Member toMember(Long memberId) {
+            Member member = new Member();
+            member.setId(memberId);
+            member.setLoginId(loginId);
+            member.setNickname(nickname);
+            return member;
+        }
+
+        public String getLoginId() {
+            return loginId;
+        }
+
+        public void setLoginId(String loginId) {
+            this.loginId = loginId;
+        }
+
+        public String getNickname() {
+            return nickname;
+        }
+
+        public void setNickname(String nickname) {
+            this.nickname = nickname;
+        }
+    }
 }

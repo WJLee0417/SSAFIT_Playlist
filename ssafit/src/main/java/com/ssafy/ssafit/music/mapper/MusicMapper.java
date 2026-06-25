@@ -17,6 +17,8 @@ public interface MusicMapper {
 
     Optional<Music> selectMusicDetail(@Param("id") Long id);
 
+    List<Music> selectByIds(@Param("ids") List<Long> ids);
+
     long countMusicList(MusicSearchCondition condition);
 
     List<Music> selectRecommendedMusic(MusicSearchCondition condition);

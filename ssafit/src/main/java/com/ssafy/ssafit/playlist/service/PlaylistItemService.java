@@ -1,6 +1,10 @@
 package com.ssafy.ssafit.playlist.service;
 
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
@@ -92,6 +96,30 @@ public class PlaylistItemService {
         return playlistItem;
     }
 
+    @Transactional
+    public List<PlaylistItem> reorder(
+            Long loginMemberId,
+            Long playlistId,
+            List<PlaylistItem> requestedItems) {
+        validateAuthenticated(loginMemberId);
+        validateOwnedPlaylist(loginMemberId, playlistId);
+        if (requestedItems == null || requestedItems.isEmpty()) {
+            throw new CustomException(ErrorCode.INVALID_PLAYLIST_ORDER);
+        }
+
+        List<PlaylistItem> existingItems = playlistItemMapper.selectByPlaylistId(playlistId);
+        validateReorderRequest(playlistId, existingItems, requestedItems);
+
+        int offset = existingItems.size() + requestedItems.size() + 1;
+        if (playlistItemMapper.shiftOrders(playlistId, offset) != existingItems.size()) {
+            throw new CustomException(ErrorCode.INTERNAL_SERVER_ERROR);
+        }
+        if (playlistItemMapper.bulkUpdateOrders(requestedItems) != requestedItems.size()) {
+            throw new CustomException(ErrorCode.INTERNAL_SERVER_ERROR);
+        }
+        return playlistItemMapper.selectByPlaylistId(playlistId);
+    }
+
     public List<PlaylistItem> getItems(Long viewerMemberId, Long playlistId) {
         Playlist playlist = getPlaylist(playlistId);
         validateViewAccess(viewerMemberId, playlist);
@@ -144,6 +172,39 @@ public class PlaylistItemService {
             return new CustomException(ErrorCode.DUPLICATE_PLAYLIST_ORDER);
         }
         return new CustomException(ErrorCode.DUPLICATE_PLAYLIST_ITEM);
+    }
+
+    private void validateReorderRequest(
+            Long playlistId,
+            List<PlaylistItem> existingItems,
+            List<PlaylistItem> requestedItems) {
+        if (existingItems.size() != requestedItems.size()) {
+            throw new CustomException(ErrorCode.INVALID_PLAYLIST_ORDER);
+        }
+
+        Map<Long, PlaylistItem> existingById = existingItems.stream()
+                .collect(Collectors.toMap(PlaylistItem::getId, Function.identity()));
+        Set<Integer> requestedOrders = requestedItems.stream()
+                .map(PlaylistItem::getOrderNo)
+                .collect(Collectors.toSet());
+
+        if (requestedOrders.size() != requestedItems.size()) {
+            throw new CustomException(ErrorCode.DUPLICATE_PLAYLIST_ORDER);
+        }
+
+        for (PlaylistItem requestedItem : requestedItems) {
+            if (requestedItem == null
+                    || requestedItem.getId() == null
+                    || !existingById.containsKey(requestedItem.getId())
+                    || !playlistId.equals(requestedItem.getPlaylistId())) {
+                throw new CustomException(ErrorCode.PLAYLIST_ITEM_NOT_FOUND);
+            }
+            validateOrder(requestedItem.getOrderNo());
+            if (requestedItem.getOrderNo() > existingItems.size()) {
+                throw new CustomException(ErrorCode.INVALID_PLAYLIST_ORDER);
+            }
+            requestedItem.setMusicId(existingById.get(requestedItem.getId()).getMusicId());
+        }
     }
 
     private PlaylistItem getItem(Long playlistItemId) {

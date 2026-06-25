@@ -4,8 +4,11 @@ let currentMember;
 let checked = false;
 
 export const authApi = {
-  login(credentials) {
-    return apiClient.post("/auth/login", credentials);
+  async login(credentials) {
+    const response = await apiClient.post("/auth/login", credentials);
+    currentMember = response?.member;
+    checked = Boolean(currentMember);
+    return response;
   },
   logout() {
     currentMember = undefined;

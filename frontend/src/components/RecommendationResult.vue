@@ -2,85 +2,88 @@
   <section class="detail-card recommendation-result">
     <div class="page-heading">
       <div>
-        <span class="eyebrow">TEMPORARY RESULT</span>
-        <h2>추천 결과</h2>
+        <span class="eyebrow">AI WORKOUT PLAN</span>
+        <h2>{{ distanceLabel }} · {{ result.log.requestedIntensity }}</h2>
       </div>
-      <span class="source-badge">로그 #{{ result.log.id }}</span>
+      <div class="recommendation-result-header-actions">
+        <button
+          type="button"
+          class="secondary-button inline-button recommendation-header-action"
+          @click="$emit('close')"
+        >
+          결과 닫기
+        </button>
+        <span class="source-badge recommendation-header-action">로그 #{{ logNumber }}</span>
+      </div>
     </div>
 
-    <p class="policy-callout">
-      조회만으로는 플레이리스트가 생성되지 않습니다.
-    </p>
+    <section class="recommendation-ai-summary">
+      <h3>AI 요약</h3>
+      <p>{{ plan.coachingSummary }}</p>
+    </section>
 
-    <p class="lead">{{ result.log.recommendationReason }}</p>
-    <aside class="policy-callout">
-      <strong>
-        운동 강도 목표:
-        {{ result.resolvedIntensityGoal || "UNKNOWN" }}
-      </strong>
-      <span>
-        {{ result.intensityExplanation }}
-        <template v-if="result.intensitySource">
-          (출처: {{ result.intensitySource }})
-        </template>
-      </span>
-    </aside>
-    <dl class="summary-list recommendation-summary">
+    <dl class="summary-list recommendation-summary workout-plan-summary">
       <div>
-        <dt>러닝 케이던스</dt>
-        <dd>{{ result.resolvedTargetCadenceSpm ? `${result.resolvedTargetCadenceSpm} SPM` : "미적용" }}</dd>
+        <dt>전체 러닝 시간</dt>
+        <dd>{{ plan.totalDurationMinutes }}분</dd>
       </div>
       <div>
-        <dt>평균 심박수</dt>
-        <dd>{{ result.averageHeartRateBpm != null ? `${Number(result.averageHeartRateBpm).toFixed(1)} BPM` : "참고 이력 없음" }}</dd>
+        <dt>목표 페이스</dt>
+        <dd>{{ plan.targetPace }}</dd>
       </div>
-      <div><dt>운동 강도 목표</dt><dd>{{ result.resolvedIntensityGoal || "UNKNOWN" }}</dd></div>
-    </dl>
-    <aside class="policy-callout">
-      <strong>
-        목표 케이던스:
-        {{ result.resolvedTargetCadenceSpm ? `${result.resolvedTargetCadenceSpm} SPM` : "미적용" }}
-      </strong>
-      <span>{{ result.cadenceExplanation }}</span>
-    </aside>
-    <dl class="summary-list recommendation-summary">
-      <div><dt>강도</dt><dd>{{ result.log.requestedIntensity }}</dd></div>
       <div>
-        <dt>실제 적용 BPM</dt>
-        <dd>{{ result.log.requestedBpmMin }}~{{ result.log.requestedBpmMax }}</dd>
+        <dt>케이던스 목표</dt>
+        <dd>{{ plan.cadenceMinSpm }}~{{ plan.cadenceMaxSpm }} SPM</dd>
       </div>
-      <div><dt>장르</dt><dd>{{ result.log.requestedGenre || "제한 없음" }}</dd></div>
-      <div><dt>추천 곡</dt><dd>{{ music.length }}곡</dd></div>
+      <div>
+        <dt>심박 목표</dt>
+        <dd>{{ plan.heartRateMinBpm }}~{{ plan.heartRateMaxBpm }} BPM</dd>
+      </div>
+      <div>
+        <dt>음악 BPM</dt>
+        <dd>{{ plan.musicBpmMin }}~{{ plan.musicBpmMax }} BPM</dd>
+      </div>
+      <div>
+        <dt>예상 재생 시간</dt>
+        <dd>{{ playlistDurationLabel }}</dd>
+      </div>
     </dl>
 
-    <div v-if="music.length" class="stack-list recommendation-music-list">
-      <article v-for="track in music" :key="track.id" class="list-row">
-        <div>
-          <strong>{{ track.title }}</strong>
-          <small>{{ track.artist }}</small>
-          <small>{{ track.recommendationReason }}</small>
-          <small>음악 에너지: {{ track.musicEnergyLevel || "미지정" }}</small>
+    <section class="workout-segment-list" aria-label="러닝 구간별 BPM">
+      <article v-for="segment in segments" :key="`${segment.name}-${segment.durationMinutes}`">
+        <strong>{{ segment.name }}</strong>
+        <span>{{ segment.durationMinutes }}분 · {{ segment.bpmMin }}~{{ segment.bpmMax }} BPM</span>
+        <small>{{ segment.purpose }}</small>
+      </article>
+    </section>
+
+    <div v-if="music.length" class="recommendation-music-list">
+      <article v-for="(track, index) in music" :key="track.id" class="recommendation-track-row">
+        <div class="recommendation-track-cover">
+          <img v-if="track.imageUrl" :src="track.imageUrl" :alt="`${track.title} 앨범 커버`" />
+          <span v-else>{{ index + 1 }}</span>
         </div>
-        <div>
-          <span>{{ track.musicBpm ? `${track.musicBpm} BPM` : "BPM 미정" }}</span>
-          <small>
-            최종 {{ formatScore(track.finalScore) }} ·
-            케이던스 {{ formatScore(track.cadenceScore) }} ·
-            강도 {{ formatScore(track.intensityScore) }} ·
-            선호 {{ formatScore(track.preferenceScore) }}
-          </small>
+        <div class="recommendation-track-main">
+          <strong>{{ index + 1 }}. {{ track.title }}</strong>
+          <small>{{ track.artist || "아티스트 미정" }}</small>
+          <div class="recommendation-track-tags">
+            <span v-for="keyword in trackKeywords(track)" :key="keyword">{{ keyword }}</span>
+          </div>
+        </div>
+        <div class="recommendation-track-stats">
+          <span>{{ formatDuration(track.durationMs) }}</span>
+          <small>{{ track.musicBpm ? `${track.musicBpm} BPM` : "BPM 미정" }}</small>
         </div>
       </article>
     </div>
-    <p v-else class="empty-inline">추천 결과에 표시할 음악이 없습니다.</p>
+    <p v-else class="empty-inline">로컬 DB에서 추천할 음악을 찾지 못했습니다.</p>
 
     <section class="curation-save-panel">
       <div>
-        <span class="eyebrow">CREATE CURATION COPY</span>
-        <h3>개인 플레이리스트로 생성</h3>
+        <h3>이 운동 계획을 플레이리스트로 추가</h3>
         <p>
-          이 버튼을 눌러야만 <code>USER + CURATION_COPY</code> 플레이리스트와
-          수록곡이 생성됩니다. <code>playlist_saves</code> 참조 저장과는 다른 기능입니다.
+          수락하면 목표 강도에 맞는 사용자 큐레이션 플레이리스트가 생성되고,
+          현재 트랙 순서 그대로 저장됩니다.
         </p>
       </div>
 
@@ -90,60 +93,50 @@
           <input
             v-model="saveForm.title"
             maxlength="200"
-            placeholder="비우면 Backend 기본 제목 사용"
-            :disabled="saving || savedPlaylist != null"
+            :placeholder="defaultTitle"
+            :disabled="saving || creationCompleted"
           />
         </label>
         <label>
           공개 범위
-          <select v-model="saveForm.visibility" :disabled="saving || savedPlaylist != null">
+          <select v-model="saveForm.visibility" :disabled="saving || creationCompleted">
             <option value="PRIVATE">PRIVATE</option>
             <option value="PUBLIC">PUBLIC</option>
           </select>
         </label>
         <button
           type="submit"
-          :disabled="!canSave || saving || savedPlaylist != null"
+          :disabled="!canSave || saving || creationCompleted"
         >
-          {{ saving ? "개인 플레이리스트 생성 중..." : "개인 플레이리스트로 생성" }}
+          {{ creationCompleted ? "플레이리스트 생성 완료" : saving ? "플레이리스트 생성 중..." : "플레이리스트 생성" }}
         </button>
       </form>
     </section>
 
     <SaveStatus :type="saveMessageType" :message="saveMessage" />
 
-    <section v-if="savedPlaylist" class="curation-created-panel">
-      <span class="eyebrow">CURATION COPY CREATED</span>
-      <h3>{{ savedPlaylist.title }}</h3>
-      <dl class="playlist-meta">
-        <div><dt>플레이리스트 ID</dt><dd>{{ savedPlaylist.id }}</dd></div>
-        <div><dt>유형</dt><dd>{{ savedPlaylist.playlistType }}</dd></div>
-        <div><dt>생성 경로</dt><dd>{{ savedPlaylist.sourceType }}</dd></div>
-        <div><dt>공개 범위</dt><dd>{{ savedPlaylist.visibility }}</dd></div>
-      </dl>
-      <div class="card-actions">
-        <RouterLink
-          class="primary-button"
-          :to="{ name: 'playlist-detail', params: { playlistId: savedPlaylist.id }, query: { returnTo: '/recommendations' } }"
-        >
-          생성된 개인 플레이리스트 상세
-        </RouterLink>
-        <RouterLink
-          class="secondary-button"
-          :to="{ name: 'playlist-list', query: { ownerId: savedPlaylist.ownerId } }"
-        >
-          내 개인 플레이리스트 목록
-        </RouterLink>
-      </div>
+    <section v-if="savedPlaylist" class="curation-created-actions">
+      <RouterLink
+        class="primary-button"
+        :to="{ name: 'playlist-detail', params: { playlistId: savedPlaylist.id }, query: { returnTo: '/recommendations' } }"
+      >
+        생성된 플레이리스트 보기
+      </RouterLink>
+      <RouterLink
+        class="secondary-button"
+        :to="{ name: 'playlist-list', query: { ownerId: savedPlaylist.ownerId } }"
+      >
+        플레이리스트 목록
+      </RouterLink>
+      <SpotifyExportPanel
+        :playlist="savedPlaylist"
+        :playlist-id="savedPlaylist.id"
+        :editable="true"
+        return-to="/recommendations"
+        :items="exportItems"
+        compact
+      />
     </section>
-    <SpotifyExportPanel
-      v-if="savedPlaylist"
-      :playlist="savedPlaylist"
-      :playlist-id="savedPlaylist.id"
-      :editable="true"
-      return-to="/recommendations"
-      :items="exportItems"
-    />
   </section>
 </template>
 
@@ -161,8 +154,12 @@ const props = defineProps({
   saveMessageType: { type: String, default: "success" },
 });
 
-const emit = defineEmits(["save"]);
+const emit = defineEmits(["save", "close"]);
 const saveForm = reactive({ title: "", visibility: "PRIVATE" });
+const plan = computed(() => props.result.workoutPlan || {});
+const segments = computed(() => (
+  Array.isArray(plan.value.segments) ? plan.value.segments : []
+));
 const music = computed(() => (
   Array.isArray(props.result?.music) ? props.result.music : []
 ));
@@ -173,17 +170,55 @@ const exportItems = computed(() => music.value.map((track) => ({
 const canSave = computed(() => (
   Number.isSafeInteger(Number(props.result?.log?.id))
   && Number(props.result.log.id) >= 1
+  && music.value.length > 0
 ));
+const creationCompleted = computed(() => props.savedPlaylist != null);
+const distanceLabel = computed(() => (
+  props.result.targetDistanceKm
+    ? `${props.result.targetDistanceKm}km`
+    : "목표 거리"
+));
+const defaultTitle = computed(() => (
+  `${distanceLabel.value} ${props.result.log.requestedIntensity} 러닝`
+));
+const logNumber = computed(() => (
+  props.result?.log?.displayNumber || props.result?.log?.id
+));
+const playlistDurationLabel = computed(() => {
+  const totalMs = music.value.reduce((sum, track) => (
+    sum + (Number(track.durationMs) > 0 ? Number(track.durationMs) : 210000)
+  ), 0);
+  return formatDuration(totalMs);
+});
 
 function submitSave() {
-  if (!canSave.value || props.saving || props.savedPlaylist) return;
+  if (!canSave.value || props.saving || creationCompleted.value) return;
   emit("save", {
-    title: saveForm.title,
+    title: saveForm.title.trim() || defaultTitle.value,
     visibility: saveForm.visibility,
   });
 }
 
-function formatScore(value) {
-  return value == null ? "계산 불가" : Number(value).toFixed(2);
+function formatDuration(durationMs) {
+  const seconds = Math.max(0, Math.round((Number(durationMs) || 0) / 1000));
+  const minutes = Math.floor(seconds / 60);
+  const restSeconds = seconds % 60;
+  return `${minutes}:${String(restSeconds).padStart(2, "0")}`;
+}
+
+function trackKeywords(track) {
+  const reasonKeywords = String(track?.recommendationReason || "")
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean);
+  const values = [
+    track?.genre || null,
+    track?.musicBpm ? `${track.musicBpm} BPM` : null,
+    plan.value.cadenceMinSpm && plan.value.cadenceMaxSpm
+      ? `${plan.value.cadenceMinSpm}~${plan.value.cadenceMaxSpm} SPM`
+      : null,
+    ...reasonKeywords,
+  ];
+  return [...new Set(values.filter(Boolean))].slice(0, 4);
 }
 </script>

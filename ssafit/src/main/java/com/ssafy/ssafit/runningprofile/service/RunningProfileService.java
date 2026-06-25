@@ -1,11 +1,16 @@
 package com.ssafy.ssafit.runningprofile.service;
 
+import java.util.IntSummaryStatistics;
+import java.util.List;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.ssafy.ssafit.common.exception.CustomException;
 import com.ssafy.ssafit.common.exception.ErrorCode;
 import com.ssafy.ssafit.member.mapper.MemberMapper;
+import com.ssafy.ssafit.runningrecord.domain.RunningRecord;
+import com.ssafy.ssafit.runningrecord.mapper.RunningRecordMapper;
 import com.ssafy.ssafit.runningprofile.domain.RunningProfile;
 import com.ssafy.ssafit.runningprofile.mapper.RunningProfileMapper;
 
@@ -16,13 +21,13 @@ import lombok.RequiredArgsConstructor;
 @Transactional(readOnly = true)
 public class RunningProfileService {
 
-    private static final int MIN_BPM = 60;
-    private static final int MAX_BPM = 220;
-    private static final int MIN_CADENCE_SPM = 60;
-    private static final int MAX_CADENCE_SPM = 240;
+    private static final int MIN_AGE = 10;
+    private static final int MAX_AGE = 100;
+    private static final int RECENT_RECORD_LIMIT = 10;
 
     private final RunningProfileMapper runningProfileMapper;
     private final MemberMapper memberMapper;
+    private final RunningRecordMapper runningRecordMapper;
 
     public RunningProfile getProfile(Long loginMemberId, Long targetMemberId) {
         validateSelf(loginMemberId, targetMemberId);
@@ -46,11 +51,40 @@ public class RunningProfileService {
 
         validateSelf(loginMemberId, targetMemberId);
         validateMemberExists(targetMemberId);
+        applyDerivedValues(runningProfile);
         validateProfileValues(runningProfile);
 
         return runningProfileMapper.selectByMemberId(targetMemberId)
                 .map(existing -> updateExisting(existing, runningProfile))
                 .orElseGet(() -> insertNew(runningProfile));
+    }
+
+    @Transactional
+    public void refreshAutoTargets(Long memberId) {
+        if (memberId == null) {
+            return;
+        }
+
+        List<RunningRecord> records = runningRecordMapper.selectRecentByMemberId(
+                memberId,
+                RECENT_RECORD_LIMIT);
+        IntSummaryStatistics heartRateSummary = records.stream()
+                .map(RunningRecord::getAverageHeartRateBpm)
+                .filter(value -> value != null)
+                .mapToInt(Integer::intValue)
+                .summaryStatistics();
+        IntSummaryStatistics cadenceSummary = records.stream()
+                .map(RunningRecord::getAverageCadence)
+                .filter(value -> value != null)
+                .mapToInt(Integer::intValue)
+                .summaryStatistics();
+
+        runningProfileMapper.updateAutoTargets(
+                memberId,
+                minOrNull(heartRateSummary),
+                maxOrNull(heartRateSummary),
+                minOrNull(cadenceSummary),
+                maxOrNull(cadenceSummary));
     }
 
     private RunningProfile insertNew(RunningProfile runningProfile) {
@@ -65,6 +99,7 @@ public class RunningProfileService {
             RunningProfile runningProfile) {
         runningProfile.setId(existing.getId());
         runningProfile.setCreatedAt(existing.getCreatedAt());
+        preserveAutoTargets(existing, runningProfile);
         if (runningProfileMapper.update(runningProfile) != 1) {
             throw new CustomException(ErrorCode.PROFILE_NOT_FOUND);
         }
@@ -87,41 +122,32 @@ public class RunningProfileService {
     }
 
     private void validateProfileValues(RunningProfile runningProfile) {
-        Integer minBpm = runningProfile.getTargetBpmMin();
-        Integer maxBpm = runningProfile.getTargetBpmMax();
-
-        if (runningProfile.getRunningIntensity() == null
-                || minBpm == null
-                || maxBpm == null
-                || minBpm < MIN_BPM
-                || maxBpm > MAX_BPM
-                || minBpm > maxBpm) {
+        Integer age = runningProfile.getAge();
+        if (age != null && (age < MIN_AGE || age > MAX_AGE)) {
             throw new CustomException(ErrorCode.INVALID_PROFILE_VALUE);
         }
-
-        validateCadenceRange(
-                runningProfile.getTargetCadenceMin(),
-                runningProfile.getTargetCadenceMax());
     }
 
-    private void validateCadenceRange(
-            Integer targetCadenceMin,
-            Integer targetCadenceMax) {
-        if (targetCadenceMin == null && targetCadenceMax == null) {
-            return;
-        }
-        if (targetCadenceMin == null
-                || targetCadenceMax == null) {
-            throw new CustomException(ErrorCode.INVALID_CADENCE_RANGE);
-        }
-        if (targetCadenceMin < MIN_CADENCE_SPM
-                || targetCadenceMin > MAX_CADENCE_SPM
-                || targetCadenceMax < MIN_CADENCE_SPM
-                || targetCadenceMax > MAX_CADENCE_SPM) {
-            throw new CustomException(ErrorCode.INVALID_CADENCE_VALUE);
-        }
-        if (targetCadenceMin > targetCadenceMax) {
-            throw new CustomException(ErrorCode.INVALID_CADENCE_RANGE);
-        }
+    private void applyDerivedValues(RunningProfile runningProfile) {
+        Integer age = runningProfile.getAge();
+        runningProfile.setEstimatedMaxHeartRateBpm(
+                age == null ? null : 220 - age);
+    }
+
+    private void preserveAutoTargets(
+            RunningProfile existing,
+            RunningProfile runningProfile) {
+        runningProfile.setTargetBpmMin(existing.getTargetBpmMin());
+        runningProfile.setTargetBpmMax(existing.getTargetBpmMax());
+        runningProfile.setTargetCadenceMin(existing.getTargetCadenceMin());
+        runningProfile.setTargetCadenceMax(existing.getTargetCadenceMax());
+    }
+
+    private Integer minOrNull(IntSummaryStatistics statistics) {
+        return statistics.getCount() == 0 ? null : statistics.getMin();
+    }
+
+    private Integer maxOrNull(IntSummaryStatistics statistics) {
+        return statistics.getCount() == 0 ? null : statistics.getMax();
     }
 }

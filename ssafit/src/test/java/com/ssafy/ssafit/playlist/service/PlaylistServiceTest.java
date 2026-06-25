@@ -22,6 +22,7 @@ import com.ssafy.ssafit.playlist.domain.PlaylistSourceType;
 import com.ssafy.ssafit.playlist.domain.PlaylistType;
 import com.ssafy.ssafit.playlist.domain.PlaylistVisibility;
 import com.ssafy.ssafit.playlist.domain.SpotifyExportStatus;
+import com.ssafy.ssafit.playlist.mapper.PlaylistItemMapper;
 import com.ssafy.ssafit.playlist.mapper.PlaylistMapper;
 
 @ExtendWith(MockitoExtension.class)
@@ -29,12 +30,14 @@ class PlaylistServiceTest {
 
     @Mock
     private PlaylistMapper playlistMapper;
+    @Mock
+    private PlaylistItemMapper playlistItemMapper;
 
     private PlaylistService playlistService;
 
     @BeforeEach
     void setUp() {
-        playlistService = new PlaylistService(playlistMapper);
+        playlistService = new PlaylistService(playlistMapper, playlistItemMapper);
     }
 
     @Test
