@@ -307,10 +307,10 @@ Set-Location .\ssafit
 .\mvnw.cmd test
 .\mvnw.cmd spring-boot:run
 
-# Frontend: 별도 PowerShell에서 Node.js/pnpm 사용
+# Frontend: 별도 PowerShell에서 Node.js/npm 사용
 Set-Location .\frontend
-pnpm install --frozen-lockfile
-pnpm dev
+npm ci
+npm run dev
 ```
 
 ## 공통 구현 기준
