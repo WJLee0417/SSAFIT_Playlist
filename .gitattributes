@@ -11,3 +11,4 @@
 *.md text eol=lf
 *.sh text eol=lf
 *.cmd text eol=crlf
+ssafit/mvnw text eol=lf
