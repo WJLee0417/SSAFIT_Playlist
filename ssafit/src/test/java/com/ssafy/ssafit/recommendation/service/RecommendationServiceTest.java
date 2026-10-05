@@ -104,6 +104,8 @@ class RecommendationServiceTest {
                 new WorkoutPlanService(
                         List.of(),
                         new ObjectMapper()),
+                new RecommendationSnapshotService(
+                        new ObjectMapper()),
                 spotifyService,
                 runningFitnessMetricService,
                 runningRecordMapper,
