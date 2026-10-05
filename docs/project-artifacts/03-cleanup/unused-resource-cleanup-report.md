@@ -23,6 +23,7 @@
 |---|---|---|---|
 | Placeholder | `ssafit/src/main/java/com/ssafy/ssafit/**/.gitkeep` 37개 | 각 디렉터리에 실제 Java 파일 또는 하위 패키지가 존재하여 빈 디렉터리 보존 목적이 사라졌다. Spring Bean, import, 라우트, Mapper 연결과 무관한 placeholder 파일이다. | `git ls-files "**/.gitkeep"`와 디렉터리별 tracked file 수로 확인했다. |
 | Placeholder | `ssafit/src/main/resources/mappers/**/.gitkeep` 9개 | 각 Mapper 디렉터리에 실제 XML Mapper가 존재하여 빈 디렉터리 보존 목적이 사라졌다. MyBatis XML 자체는 삭제하지 않았다. | 각 디렉터리에 1개 이상의 XML Mapper가 존재함을 확인했다. |
+| Package manager | 기존 Frontend 보조 lock/workspace 파일 | Frontend 패키지 매니저를 npm으로 통일했다. Dockerfile도 `package-lock.json` 기반 `npm ci`를 사용하므로 별도 lock/workspace 파일이 불필요하다. | `package.json`과 `package-lock.json`을 npm 기준 파일로 유지한다. |
 
 ## 4. 유지한 항목
 
@@ -32,7 +33,6 @@
 | `frontend/src/components/SaveStatus.vue` | 여러 Vue 화면과 `SpotifyExportPanel.vue`, `RecommendationResult.vue`에서 공통 상태 표시 컴포넌트로 사용된다. |
 | `frontend/src/api/memberApi.js` | Vue 화면 import는 없지만 기존 산출물과 인수인계 문서에서 회원 API 클라이언트 근거로 참조된다. 요구사항 문서 영향이 크므로 삭제하지 않았다. |
 | `frontend/src/api/runningProfileApi.js` | Vue Router 전용 화면은 없지만 러닝 프로필 API 클라이언트 및 기존 요구사항 근거로 명시되어 있어 삭제하지 않았다. |
-| `frontend/pnpm-lock.yaml`, `frontend/pnpm-workspace.yaml` | README와 인수인계 문서가 pnpm 실행을 안내하고 있어 중복 lock으로 단정할 수 없다. |
 | `ssafit/src/main/webapp/WEB-INF/views/**/*.jsp`, `common/nav.jspf` | Spring View Controller에서 로그인, 회원가입, 마이페이지, 러닝 프로필 흐름으로 사용된다. |
 | `ssafit/src/main/resources/static/css/member.css` | JSP 페이지에서 `<c:url value='/css/member.css'/>`로 참조된다. |
 | `ssafit/src/main/resources/static/images/running-landing.webp` | `member.css`의 background image로 사용된다. |
@@ -48,7 +48,7 @@
 | `frontend/src/api/memberApi.js` | 현재 Vue 화면에서는 직접 import되지 않지만 `authApi.getSession()`과 기능 영역이 일부 중복된다. | Vue 마이페이지를 JSP로 유지할지, Vue 화면으로 전환할지 결정한 뒤 API 클라이언트 통합 여부를 판단한다. |
 | `frontend/src/api/runningProfileApi.js` | API 클라이언트는 있으나 Vue Router 전용 러닝 프로필 화면이 없다. | 화면 설계 단계에서 JSP 유지 또는 Vue 전환을 결정한 뒤 정리한다. |
 | PowerShell 기본 출력 인코딩 | `Get-Content` 기본 출력에서는 한글이 깨져 보일 수 있으나 `Get-Content -Encoding UTF8`로 README와 본 보고서가 정상 표시됨을 확인했다. | 문서 확인 시 UTF-8 명시 읽기 또는 에디터 표시를 기준으로 검토한다. |
-| `docs/integration/b-ui-api-contract-audit.md`의 lock 파일 설명 | 현재 `package-lock.json`, `pnpm-lock.yaml`이 존재하지만 문서에는 lock 파일이 없다고 적힌 오래된 내용이 있다. | 문서 현행화 단계에서 수정한다. |
+| `docs/integration/b-ui-api-contract-audit.md`의 lock 파일 설명 | 초기 감사 시점의 Frontend 부재 설명과 현재 구조가 다르다. | 현재 main은 npm 기준 `package.json`, `package-lock.json`을 사용한다고 현행화한다. |
 | `.metadata/.plugins/org.eclipse.swt/**/LOG.old` | 프로젝트 코드가 아니라 로컬 IDE/WebView 캐시 파일이다. | 저장소 추적 대상이 아니면 `.gitignore` 정책만 확인하고, IDE 캐시는 별도 로컬 정리 대상으로 분리한다. |
 
 ## 6. 의존성 정리 결과
@@ -57,7 +57,7 @@
 
 - 제거한 npm package: 없음
 - 유지한 package: `axios`, `vue`, `vue-router`, `@vitejs/plugin-vue`, `vite`, `@playwright/test`
-- 제거하지 않은 이유: 모든 의존성이 API 통신, Vue 런타임, 라우터, Vite 빌드, E2E 테스트 설정과 직접 연결되어 있다. pnpm 관련 파일도 README와 문서 실행 경로에 남아 있어 제거하지 않았다.
+- 제거하지 않은 이유: 모든 의존성이 API 통신, Vue 런타임, 라우터, Vite 빌드, E2E 테스트 설정과 직접 연결되어 있다. Frontend 패키지 매니저는 npm으로 통일하고 `package-lock.json`만 유지한다.
 
 ### Backend
 
