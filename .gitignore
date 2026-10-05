@@ -14,3 +14,31 @@ frontend/node_modules/
 frontend/dist/
 frontend/playwright-report/
 frontend/test-results/
+
+# Backend module tooling
+ssafit/HELP.md
+ssafit/.mvn/wrapper/maven-wrapper.jar
+ssafit/.apt_generated/
+ssafit/.factorypath
+ssafit/.mvn-user/
+
+# IDE metadata
+.idea/
+*.iws
+*.iml
+*.ipr
+.vscode/
+
+# NetBeans / alternate build output for backend module
+ssafit/nbproject/private/
+ssafit/nbbuild/
+ssafit/dist/
+ssafit/nbdist/
+ssafit/.nb-gradle/
+ssafit/build/
+!ssafit/src/main/**/build/
+!ssafit/src/test/**/build/
+
+# Preserve source directories named target if intentionally used
+!ssafit/src/main/**/target/
+!ssafit/src/test/**/target/
