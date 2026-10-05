@@ -25,7 +25,7 @@ public abstract class DatabaseIntegrationTestSupport {
             TestDatabaseGuard.requireFromEnvironment();
 
     @DynamicPropertySource
-    static void configureTestDatabase(DynamicPropertyRegistry registry) {
+    protected static void configureTestDatabase(DynamicPropertyRegistry registry) {
         registry.add("spring.datasource.url", TEST_DATABASE::jdbcUrl);
         registry.add("spring.datasource.username", TEST_DATABASE::username);
         registry.add("spring.datasource.password", TEST_DATABASE::password);
@@ -38,7 +38,7 @@ public abstract class DatabaseIntegrationTestSupport {
     protected MemberMapper memberMapper;
 
     @BeforeAll
-    void cleanBeforeTests() {
+    protected void cleanBeforeTests() {
         String databaseName = jdbcTemplate.queryForObject(
                 "SELECT DATABASE()",
                 String.class);
@@ -69,17 +69,17 @@ public abstract class DatabaseIntegrationTestSupport {
     }
 
     @BeforeEach
-    void cleanBeforeEachTest() {
+    protected void cleanBeforeEachTest() {
         deleteAllData();
     }
 
     @AfterEach
-    void cleanAfterEachTest() {
+    protected void cleanAfterEachTest() {
         deleteAllData();
     }
 
     @AfterAll
-    void cleanAfterTests() {
+    protected void cleanAfterTests() {
         deleteAllData();
     }
 
