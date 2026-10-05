@@ -78,7 +78,7 @@ SSAFIT_Playlist/
 
 - Backend는 `ssafit/pom.xml`을 사용하는 단일 Maven 모듈이다.
 - Gradle 파일은 없다.
-- Vue/Vite 프로젝트, `package.json`, npm/pnpm/yarn lock 파일은 없다.
+- 이 감사 시점에는 Vue/Vite 프로젝트와 `package.json`, Frontend lock 파일이 없었다. 현재 `main`은 Frontend 패키지 매니저를 npm으로 통일해 `package.json`과 `package-lock.json`을 사용한다.
 - JSP 파일과 `src/main/webapp`이 없고, JSP/JSTL 실행 의존성도 `pom.xml`에 없다.
 
 검증 결과:
