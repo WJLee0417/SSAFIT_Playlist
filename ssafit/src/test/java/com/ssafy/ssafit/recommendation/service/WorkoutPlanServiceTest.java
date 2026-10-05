@@ -137,6 +137,16 @@ class WorkoutPlanServiceTest {
                 .containsExactly(130, 155);
     }
 
+    @Test
+    void usesIntensityDefaultBpmRangeWhenProfileRangeIsMissing() {
+        WorkoutPlanService service = new WorkoutPlanService(
+                List.of(),
+                new ObjectMapper());
+
+        assertThat(service.resolveBpmRange(new RunningProfile(), RunningIntensity.INTERVAL))
+                .containsExactly(140, 200);
+    }
+
     private RunningProfile profile() {
         RunningProfile profile = new RunningProfile();
         profile.setAge(29);
