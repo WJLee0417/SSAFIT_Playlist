@@ -49,7 +49,7 @@ Java 버전을 변경하거나 설치하는 스크립트는 추가하지 않았�
 - Windows PowerShell의 `JAVA_HOME`, `PATH` 설정 예시 추가
 - 셸 Java와 Maven 실행 Java를 각각 확인하는 방법 추가
 - STS와 IntelliJ의 Maven 실행 JDK를 Java 25로 지정하는 안내 추가
-- Backend(Java 25/Maven)와 Frontend(Node.js/pnpm) 실행 환경 분리
+- Backend(Java 25/Maven)와 Frontend(Node.js/npm) 실행 환경 분리
 - 현재 환경과 맞지 않던 Java 21 안내를 Java 25로 수정
 
 ### CI
