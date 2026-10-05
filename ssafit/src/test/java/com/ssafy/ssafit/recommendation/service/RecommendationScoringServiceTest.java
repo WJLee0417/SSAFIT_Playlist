@@ -82,6 +82,26 @@ class RecommendationScoringServiceTest {
     }
 
     @Test
+    void preferredGenreWinsWhenScoresAreOtherwiseEqual() {
+        Music unclassified = music(1L, null, null);
+        Music matching = music(2L, null, null);
+        matching.setGenre("pop");
+
+        List<RecommendedMusic> sorted = List.of(
+                        service.scoreMusic(unclassified, null, null, "POP", 3.0),
+                        service.scoreMusic(matching, null, null, "POP", 3.0))
+                .stream()
+                .sorted(service.recommendationComparator("POP"))
+                .toList();
+
+        assertThat(sorted)
+                .extracting(result -> result.music().getId())
+                .containsExactly(2L, 1L);
+        assertThat(sorted.getFirst().recommendationReason())
+                .contains("선호 장르 POP 일치");
+    }
+
+    @Test
     void workoutPlaylistPrefersTracksInsideEachSegmentBpmRangeWithoutDuplicates() {
         Music warmupTrack = music(1L, 125, MusicEnergyLevel.STEADY);
         Music mainTrack = music(2L, 170, MusicEnergyLevel.ENERGETIC);
