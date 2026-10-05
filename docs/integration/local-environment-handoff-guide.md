@@ -80,27 +80,51 @@ git log -5 --oneline
 
 ## 4. MySQL 설정
 
-기본 애플리케이션 설정은 다음 값을 사용한다.
+기본 로컬 개발값은 다음과 같으며 비밀번호는 환경변수로만 주입한다.
 
 ```text
 Database: ssafit_playlist
 Username: ssafit
-Password: ssafit1234!
+Password: <LOCAL_DB_PASSWORD>
 Host: localhost
 Port: 3306
 ```
 
-MySQL에서 로컬 개발용 DB와 계정을 준비한다.
+MySQL에서 로컬 개발용 DB와 계정을 준비한다. 아래 비밀번호 placeholder는 로컬에서 사용할 값으로 직접 바꾸되 Git에 커밋하지 않는다.
 
 ```sql
 CREATE DATABASE ssafit_playlist
 DEFAULT CHARACTER SET utf8mb4
 COLLATE utf8mb4_0900_ai_ci;
 
-CREATE USER 'ssafit'@'localhost' IDENTIFIED BY 'ssafit1234!';
+CREATE USER 'ssafit'@'localhost' IDENTIFIED BY '<LOCAL_DB_PASSWORD>';
 GRANT ALL PRIVILEGES ON ssafit_playlist.* TO 'ssafit'@'localhost';
 FLUSH PRIVILEGES;
 ```
+
+Backend 실행 전에 애플리케이션이 사용할 DB 환경변수를 설정한다.
+
+Windows PowerShell:
+
+```powershell
+$env:SSAFIT_DB_HOST = "localhost"
+$env:SSAFIT_DB_PORT = "3306"
+$env:SSAFIT_DB_NAME = "ssafit_playlist"
+$env:SSAFIT_DB_USERNAME = "ssafit"
+$env:SSAFIT_DB_PASSWORD = "<LOCAL_DB_PASSWORD>"
+```
+
+macOS/Linux:
+
+```bash
+export SSAFIT_DB_HOST=localhost
+export SSAFIT_DB_PORT=3306
+export SSAFIT_DB_NAME=ssafit_playlist
+export SSAFIT_DB_USERNAME=ssafit
+export SSAFIT_DB_PASSWORD='<LOCAL_DB_PASSWORD>'
+```
+
+실제 비밀번호는 로컬 환경 또는 IDE Run Configuration에만 저장하고 문서, 소스 코드, 커밋에 포함하지 않는다.
 
 테이블이 없다면 다음 파일을 MySQL에서 실행한다.
 
