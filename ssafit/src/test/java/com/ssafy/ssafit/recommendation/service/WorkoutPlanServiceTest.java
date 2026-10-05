@@ -105,7 +105,7 @@ class WorkoutPlanServiceTest {
     void fallsBackWhenLlmProviderFails() {
         when(provider.generate(any(), anyString(), anyString()))
                 .thenThrow(new AiRunningReportProviderException(
-                        AiRunningReportProviderFailureReason.UPSTREAM_ERROR,
+                        AiRunningReportProviderFailureReason.API_ERROR,
                         "provider failed"));
 
         WorkoutPlanService service = new WorkoutPlanService(
