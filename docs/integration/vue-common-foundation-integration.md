@@ -55,7 +55,7 @@
 - Backend 테스트 실행: 프로젝트는 Java 25를 요구하지만 현재 셸은 Java 17이라 컴파일 전에 실패
 - JSP 로그인 후 브라우저의 실제 `JSESSIONID` 전달: 실행 가능한 Backend와 DB가 필요
 - 실제 Spotify OAuth/검색/Export: Spotify 환경변수와 외부 계정이 필요
-- Vite dev 서버: `--configLoader runner` 사용 시 서버는 `ready`까지 도달했으나 현재 샌드박스가 esbuild의 상위 디렉터리 탐색을 차단해 dependency pre-bundle에서 종료. pnpm junction과 npm 일반 설치 양쪽에서 동일했고 production build는 정상
+- Vite dev 서버: `--configLoader runner` 사용 시 서버는 `ready`까지 도달했으나 현재 샌드박스가 esbuild의 상위 디렉터리 탐색을 차단해 dependency pre-bundle에서 종료. npm 설치 환경에서도 동일했고 production build는 정상
 
 ## 6. Backend 미구현 또는 실제 연동 미검증 API
 
