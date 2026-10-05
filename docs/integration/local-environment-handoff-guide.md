@@ -34,7 +34,7 @@ git push origin feature/b-ui-api
 - JDK 25
 - MySQL 8
 - Node.js
-- pnpm
+- npm (Node.js에 포함)
 - IntelliJ IDEA, STS 또는 VS Code
 
 버전을 확인한다.
@@ -43,7 +43,7 @@ git push origin feature/b-ui-api
 git --version
 java -version
 node --version
-pnpm --version
+npm --version
 ```
 
 Backend 기준 Java 버전은 25다. IDE의 Project SDK, Maven 실행 JDK, 터미널의
@@ -214,16 +214,16 @@ Mapper 통합 테스트 13건은 별도 테스트 DB 환경이 준비되지 않�
 
 ```powershell
 cd frontend
-pnpm install --frozen-lockfile
-pnpm build
-pnpm dev
+npm ci
+npm run build
+npm run dev
 ```
 
 기본 주소는 `http://localhost:5173`이다.
 
 확인 기준:
 
-- `pnpm build` 성공
+- `npm run build` 성공
 - Vite 개발 서버 접속 가능
 - API prefix가 `/api/**`
 - Axios 요청에 `withCredentials: true` 적용
