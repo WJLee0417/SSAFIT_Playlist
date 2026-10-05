@@ -108,9 +108,7 @@ class RecommendationServiceTest {
                         new ObjectMapper()),
                 spotifyService,
                 runningFitnessMetricService,
-                runningRecordMapper,
-                List.of(),
-                new ObjectMapper());
+                runningRecordMapper);
         lenient().when(runningFitnessMetricService.calculate(any()))
                 .thenReturn(com.ssafy.ssafit.runningprofile.domain.RunningFitnessMetric.empty());
         lenient().when(runningRecordMapper.selectRecentByMemberId(any(), anyInt()))
