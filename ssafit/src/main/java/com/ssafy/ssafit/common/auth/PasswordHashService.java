@@ -80,6 +80,6 @@ public class PasswordHashService {
             throw new IllegalArgumentException("비밀번호는 비어 있을 수 없습니다.");
         }
 
-        // TODO: 운영 정책 확정 시 길이/복잡도 검증 및 BCrypt 또는 Argon2 전환을 검토한다.
+        // 비밀번호 복잡도 정책은 인증 요구사항과 함께 별도 계층에서 확장할 수 있다.
     }
 }
