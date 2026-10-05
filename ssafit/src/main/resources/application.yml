@@ -21,9 +21,9 @@ spring:
 
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://localhost:3306/ssafit_playlist?serverTimezone=Asia/Seoul&characterEncoding=UTF-8&useSSL=false&allowPublicKeyRetrieval=true
-    username: ssafit
-    password: ssafit1234!
+    url: jdbc:mysql://${SSAFIT_DB_HOST:localhost}:${SSAFIT_DB_PORT:3306}/${SSAFIT_DB_NAME:ssafit_playlist}?serverTimezone=Asia/Seoul&characterEncoding=UTF-8&useSSL=false&allowPublicKeyRetrieval=true
+    username: ${SSAFIT_DB_USERNAME:ssafit}
+    password: ${SSAFIT_DB_PASSWORD}
 
   sql:
     init:
