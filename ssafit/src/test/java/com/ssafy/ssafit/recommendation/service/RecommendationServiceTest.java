@@ -101,6 +101,9 @@ class RecommendationServiceTest {
                 new RecommendationScoringService(
                         new CadenceMatchingPolicy(),
                         new IntensityMatchingPolicy()),
+                new WorkoutPlanService(
+                        List.of(),
+                        new ObjectMapper()),
                 spotifyService,
                 runningFitnessMetricService,
                 runningRecordMapper,
@@ -218,4 +221,3 @@ class RecommendationServiceTest {
         when(recommendationLogMapper.insert(any())).thenReturn(1);
 
         RecommendationResult result = recommendationService.recommend(
-                10L,
