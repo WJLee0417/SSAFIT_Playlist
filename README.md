@@ -142,7 +142,7 @@ Docker 환경에서는 Nginx가 Vue 정적 파일을 제공하고, `/api`, `/log
 
 음악 BPM이나 에너지 정보가 없을 때 해당 항목을 0점으로 처리하지 않습니다. 사용 가능한 점수의 가중치만 다시 정규화해 일부 메타데이터 누락이 전체 추천을 과도하게 낮추지 않도록 구성했습니다.
 
-상세 설계는 [케이던스·운동 강도 통합 추천 설계](docs/cadence-intensity-recommendation-design.md)에 정리되어 있습니다.
+상세 설계는 [추천 설계](docs/recommendation-design.md)에 정리되어 있습니다.
 
 ## 7. 외부 서비스 연동
 
@@ -187,7 +187,7 @@ flowchart TD
 
 LLM이 수치를 직접 계산하도록 맡기지 않고 서버에서 먼저 러닝 데이터를 집계합니다. LLM에는 회원 ID, 이메일, 닉네임 같은 식별 정보를 제외한 집계 스냅샷을 전달하며, 호출 실패나 데이터 부족 시 fallback 경로를 사용합니다.
 
-상세 내용은 [AI 러닝 리포트 기능](docs/ai-running-report-feature.md)에서 확인할 수 있습니다.
+상세 내용은 [AI 러닝 리포트](docs/ai-running-report.md)에서 확인할 수 있습니다.
 
 ## 8. 데이터 구조
 
@@ -210,7 +210,7 @@ erDiagram
     MEMBERS ||--o{ AI_RUNNING_REPORTS : receives
 ```
 
-전체 스키마와 제약조건은 `ssafit/src/main/resources/sql/schema.sql`에서 확인할 수 있으며, ERD 원본은 [docs/project-artifacts/03-erd](docs/project-artifacts/03-erd)에 정리되어 있습니다.
+전체 스키마와 제약조건은 `ssafit/src/main/resources/sql/schema.sql`에서 확인할 수 있으며, ERD 원본은 [데이터 모델](docs/data-model.md)에 정리되어 있습니다.
 
 ## 9. 프로젝트 구조
 
@@ -285,7 +285,7 @@ docker compose up -d --build
 http://127.0.0.1:5173
 ```
 
-상세한 로컬 개발 환경과 환경변수 설정은 [로컬 환경 이전 및 작업 시작 가이드](docs/integration/local-environment-handoff-guide.md)를 참고합니다.
+상세한 로컬 개발 환경과 환경변수 설정은 [프로젝트 문서](docs/README.md)를 참고합니다.
 
 ## 11. 테스트
 
@@ -324,9 +324,10 @@ npm run e2e
 
 ## 13. 관련 문서
 
-- [최종 프로젝트 보고서](docs/final/02-final-project-report.md)
-- [시스템 아키텍처 근거](docs/project-artifacts/00-evidence/architecture-as-is.md)
-- [ERD](docs/project-artifacts/03-erd/erd.mmd)
-- [Spotify 연동 정리](docs/final/03-external-api-utilization.md)
-- [생성형 AI 활용 정리](docs/final/04-generative-ai-utilization.md)
-- [케이던스·운동 강도 추천 설계](docs/cadence-intensity-recommendation-design.md)
+- [문서 인덱스](docs/README.md)
+- [시스템 아키텍처](docs/architecture.md)
+- [데이터 모델](docs/data-model.md)
+- [추천 설계](docs/recommendation-design.md)
+- [Spotify 연동](docs/spotify-integration.md)
+- [AI 러닝 리포트](docs/ai-running-report.md)
+- [테스트 전략](docs/testing.md)
